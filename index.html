@@ -712,6 +712,9 @@ fillIdentity((app.staff.find(s=>W.roleOf(s)==='Reviewer'&&W.nameOf(s)==='Tonya H
       const checks = (await chkRes.json()).items || [];
       if (checks.length) { app.checks = checks; app.snapshot.checklists = checks; }
     }
+    // Re-enable role/staff selectors now that live data is loaded
+    if ($('role')) $('role').disabled = false;
+    if ($('identity')) $('identity').disabled = false;
   } catch (e) { console.warn('Live load failed, using snapshot', e); }
   fillIdentity();
   fillSort();
