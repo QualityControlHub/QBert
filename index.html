@@ -628,12 +628,18 @@ async function connect(e){
 
 function disconnectedPresentation(){
  if(originalSnapshot.staff.length)return;
- $('role').disabled=true;$('identity').disabled=true;
- document.querySelector('label[for="role"]').textContent='Access role';$('identity-label').textContent='Staff account';
- $('identity').innerHTML='<option>Sign in to load staff</option>';
- $('connection-status').innerHTML='<span class="dot"></span><span>Not connected</span>';
- $('mode-notice').querySelector('span').textContent='Connect to PocketBase to load your department’s reviews.';
- $('reset-preview').hidden=true;if($('data-status'))$('data-status').textContent='Not connected · sign in to load live reviews';
+ if($('role'))$('role').disabled=true;
+ if($('identity'))$('identity').disabled=true;
+ const roleLabel=document.querySelector('label[for="role"]');
+ if(roleLabel)roleLabel.textContent='Access role';
+ const idLabel=$('identity-label');
+ if(idLabel)idLabel.textContent='Staff account';
+ if($('identity'))$('identity').innerHTML='<option>Sign in to load staff</option>';
+ if($('connection-status'))$('connection-status').innerHTML='<span class="dot"></span><span>Not connected</span>';
+ const modeNotice=$('mode-notice');
+ if(modeNotice&&modeNotice.querySelector('span'))modeNotice.querySelector('span').textContent='Connect to PocketBase to load your department’s reviews.';
+ if($('reset-preview'))$('reset-preview').hidden=true;
+ if($('data-status'))$('data-status').textContent='Not connected · sign in to load live reviews';
 }
 
 async function disconnect(){if(!await confirmAction('Disconnect from PocketBase?','Live changes already saved will remain in the database. The page will return to the uploaded preview.','Disconnect','Stay connected'))return;app.mode='preview';app.token='';app.staff=copy(originalSnapshot.staff);app.checks=copy(originalSnapshot.checklists);app.checklistError='';$('role').disabled=false;$('identity').disabled=false;document.querySelector('label[for="role"]').textContent='Preview role';$('identity-label').textContent='Staff identity';$('account-button').textContent='Connect';$('mode-notice').hidden=false;$('connection-status').classList.remove('live');$('connection-status').innerHTML='<span class="dot"></span><span>Uploaded data · preview</span>';fillIdentity();fillSort();await query(true);if($('data-status'))$('data-status').textContent='Uploaded snapshot · '+originalSnapshot.loans.length+' loans · '+app.staff.length+' staff · '+app.checks.length+' checklist entries';disconnectedPresentation();}
