@@ -352,7 +352,13 @@ body[data-width="full"]{--page-w:100%}
       }
       if (command === 'issue-finding') {
         const checkedItems = Object.keys(r.checklistResponses || {}).filter(k => k !== '__manualReviewConfirmed' && r.checklistResponses[k]);
-        if (!r.findingCategory && checkedItems.length) r.findingCategory = checkedItems.length + ' checklist item(s)';
+        if (!r.findingCategory && checkedItems.length) {
+        const ids = checkedItems.map(id => {
+          const c = available.find(x => x.id === id);
+          return c ? (c.checkID || id) : id;
+        });
+        r.findingCategory = ids.join(', ');
+      }
         need(r.findingText || checkedItems.length, 'Enter findings and notes, or check at least one checklist item.');
         need(/^\d{4}-\d{2}-\d{2}/.test(r.findingIssuedOn), 'Choose a finding issued date.');
         need(r.findingIssuedOn.slice(0,10) <= at.slice(0,10), 'The finding issued date cannot be in the future.');
@@ -617,6 +623,7 @@ async function saveReview(command){
      if(saved.supervisorSignedOffStaff) patch.supervisorSignedOffStaff = saved.supervisorSignedOffStaff;
      if(saved.supervisorSignOffNotes) patch.supervisorSignOffNotes = saved.supervisorSignOffNotes;
      if(saved.state) patch.state = saved.state;
+     if(saved.checklistResponses && Object.keys(saved.checklistResponses).length) patch.checklistResponses = saved.checklistResponses;
      if(Object.keys(patch).length){
        await fetch(CONFIG.url+'/api/collections/loan_action_reviews/records/'+encodeURIComponent(record.id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
      }
