@@ -287,7 +287,10 @@ body[data-width="full"]{--page-w:100%}
 <dialog id="review-dialog" aria-labelledby="review-title"><div id="review-content"></div></dialog>
 <dialog id="confirm-dialog" class="small-dialog" aria-labelledby="confirm-title"><div class="dialog-header"><h2 id="confirm-title">Discard unsaved changes?</h2></div><div class="dialog-body"><p id="confirm-message">Your changes have not been saved.</p></div><div class="dialog-footer"><button class="btn" id="confirm-cancel">Keep editing</button><button class="btn primary" id="confirm-accept">Discard changes</button></div></dialog>
 <dialog id="connection-dialog" class="small-dialog" aria-labelledby="connect-title"><form id="connection-form"><div class="dialog-header"><div><h2 id="connect-title">Connect to Database</h2><p>Use your department’s staff account.</p></div><button type="button" class="close-btn" data-close="connection-dialog" aria-label="Close connection dialog">×</button></div><div class="dialog-body"><div class="form-callout">Live roles come from your signed-in staff record. The preview role switcher is disabled while connected.</div><div class="field"><label for="server-url">Database address</label><input type="url" id="server-url" value="http://155.138.240.74:8090" required></div><div class="form-grid"><div class="field full"><label for="login-email">Email</label><input id="login-email" type="email" autocomplete="username" required></div><div class="field full"><label for="login-password">Password</label><input id="login-password" type="password" autocomplete="current-password" required></div></div><div id="connection-error" class="inline-error" role="alert" hidden></div><p class="hint" style="margin-top:15px">The included setup package adds the workflow fields and links each account to its staff record.</p></div><div class="dialog-footer"><button type="button" class="btn" data-close="connection-dialog">Cancel</button><button type="submit" class="btn primary" id="login-submit">Connect &amp; sign in</button></div></form></dialog>
-<dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><div><h2 id="help-title">Workflow Steps</h2><p>One review, three clear stages.</p></div><button class="close-btn" data-close="help-dialog" aria-label="Close workflow help">×</button></div><div class="dialog-body help-block"><h3>How a review moves</h3><table><thead><tr><th>Bin</th><th>Action</th><th>Who completes it</th></tr></thead><tbody><tr><td>In Review</td><td>Concur → Completed. Non Concur → Findings.</td><td>Reviewer</td></tr><tr><td>Findings</td><td>Document a correction and/or corrective action. Sign off → Completed.</td><td>Assigned Supervisor</td></tr><tr><td>Completed</td><td>Read-only review history. Filter by completion month and original outcome.</td><td>All authorized staff</td></tr></tbody></table><h3>Correction and corrective action</h3><p><strong>Correction:</strong> the fix for this loan action. The assigned Agent or Supervisor can document it.</p><p><strong>Corrective action:</strong> what will help prevent the issue from happening again. The assigned Supervisor documents it.</p><p>A Supervisor must approve every response that is documented before closing a finding. At least one response is required.</p><h3>Working with the uploaded data</h3><p>The preview starts with the exact uploaded snapshot. All 40 loan actions were In Review. Use the preview role and staff selectors to walk through the process; edits last only for this open tab. “Reset preview” restores the uploaded snapshot.</p><p>Placeholder or missing checklists are labeled clearly. A Reviewer must confirm a policy review when a checklist is incomplete. Real checklist questions require a Pass, Fail, or N/A answer.</p><h3>Connecting your department database</h3><p>Install the included Database migration and workflow endpoint before connecting. Live saves verify the signed-in staff role on the server. Accounts must link to a staff record through <code>qc_users.staff</code>. Directors have read access; only the assigned Supervisor may close a finding.</p><p>The staff role column is <code>role</code> in the supplied export. The page also accepts <code>row</code>. Missing Supervisor roster entries must be corrected in staff before issuing a finding.</p><h3>Monthly reporting</h3><p>Completed months use America/Denver time and the completion timestamp, including daylight saving changes. A completed Non Concur stays Non Concur after resolution. Legacy items with no completion date are available under “Missing date”; outcomes that were never recorded are labeled “Unclassified.”</p><h3>What is preserved</h3><p>The 2027 Program Guide and Communications Plan are retained from the original page. Customer Service, Aging, and Dashboard Reports retain their original placeholder status.</p></div><div class="dialog-footer"><button class="btn primary" data-close="help-dialog">Back to workspace</button></div></dialog>
+<dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><div><h2 id="help-title">Workflow Steps</h2><p>One review, three clear stages.</p></div><button class="close-btn" data-close="help-dialog" aria-label="Close workflow help">×</button></div><div class="dialog-body help-block" id="help-body">
+<h3>How a review moves</h3>
+<p>Loading role-specific steps…</p>
+</div></div><div class="dialog-footer"><button class="btn primary" data-close="help-dialog">Back to workspace</button></div></dialog>
 <div class="toast" id="toast" role="status" hidden></div>
 <script type="application/json" id="snapshot-data">{"loans":[],"staff":[],"checklists":[]}</script>
 <script>/* Shared workflow validation. Used in the page and Database mutation endpoint. */
@@ -432,15 +435,17 @@ function pbDate(iso){return iso.replace('T',' ');}
 function escapedFilter(value){return '"'+String(value).replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"';}
 function contains(field,value){return field+' ~ '+escapedFilter(value);}
 function personMatches(r){if(!app.personName)return true;const name=app.personName.toLocaleLowerCase();const fields=app.personRole?[app.personRole]:['reviewer','agent','supervisor'];return fields.some(k=>String(r[k]||'').toLocaleLowerCase().includes(name));}
-function isAccessible(r){const role=W.roleOf(app.actor),name=W.nameOf(app.actor);return role==='Reviewer'||role==='Director'||(role==='Agent'&&r.agent===name)||(role==='Supervisor'&&r.supervisor===name);}
+function isAccessible(r){const role=W.roleOf(app.actor),name=W.nameOf(app.actor);if(app.state==='Completed'&&!app.personName&&!app.personRole)return true;return role==='Reviewer'||role==='Director'||(role==='Agent'&&r.agent===name)||(role==='Supervisor'&&r.supervisor===name);}
 function inMonth(r){if(app.undated)return !r.completedOn;if(!r.completedOn)return false;const [start,end]=monthRange($('completed-month').value);const date=new Date(String(r.completedOn).replace(' ','T')).getTime();return date>=Date.parse(start)&&date<Date.parse(end);}
 function baseMatches(r){return isAccessible(r)&&personMatches(r)&&(!app.team||String(r.team||'').toLowerCase().includes(app.team.toLowerCase()))&&(!app.q||[r.title,r.loanAction,r.team].some(v=>String(v||'').toLowerCase().includes(app.q.toLowerCase())));}
 function unknownOutcome(r){return !['Concur','Non Concur'].includes(r.outcome);}
 function buildFilter(state,outcome){
  const filters=['state = '+escapedFilter(state)];
  const role=W.roleOf(app.actor),name=W.nameOf(app.actor);
- if(role==='Agent')filters.push('agent = '+escapedFilter(name));
- if(role==='Supervisor')filters.push('supervisor = '+escapedFilter(name));
+ if(state!=='Completed'||app.personName||app.personRole){
+  if(role==='Agent')filters.push('agent = '+escapedFilter(name));
+  if(role==='Supervisor')filters.push('supervisor = '+escapedFilter(name));
+ }
  if(app.q)filters.push('('+['title','loanAction','team'].map(f=>contains(f,app.q)).join(' || ')+')');
  if(app.team)filters.push(contains('team',app.team));
  if(app.personName)filters.push('('+(app.personRole?[app.personRole]:['reviewer','agent','supervisor']).map(f=>contains(f,app.personName)).join(' || ')+')');
@@ -557,7 +562,8 @@ function renderReview(r){
  const completion=completed?'<div class="signoff"><h3>Completed '+outcomeBadge(r)+'</h3><p class="hint">Completed '+safe(dateLabel(r.completedOn,true))+'</p>'+(r.outcome==='Non Concur'?'<p>Supervisor sign-off: <strong>'+safe(r.supervisorSignedOffBy||'Not recorded')+'</strong><br><span class="subtle">'+safe(dateLabel(r.supervisorSignedOffOn,true))+'</span></p><p class="hint">'+(r.supervisorApprovedCorrection?'✓ Correction approved. ':'')+(r.supervisorApprovedCorrectiveAction?'✓ Corrective action approved.':'')+'</p>'+(r.supervisorSignOffNotes?'<p>'+safe(r.supervisorSignOffNotes)+'</p>':''):r.outcome==='Concur'?'<p class="hint">Original decision: Concur. No finding was issued.</p>':'<p class="hint">The original outcome was not recorded. Reconcile this legacy item in Database.</p>')+'</div>':'';
  const history=Array.isArray(r.reviewHistory)?r.reviewHistory:[];
  const historyHtml='';
- const buttons=reviewing?'<button class="btn" data-command="save-review">Save Draft</button><button class="btn success" data-command="concur">Concur &amp; complete</button><button class="btn danger" data-command="issue-finding">Non Concur - Issue Finding</button>':responding?'<button class="btn" data-command="save-response">Save response</button>'+(supervising?'<button class="btn success" data-command="resolve-finding">Sign off &amp; complete</button>':''):'<button class="btn primary" data-close="review-dialog">Done</button>';
+ const returnBtn=(role==='Reviewer'&&(finding||completed))?'<button class="btn" data-command="return-to-review">Return to In Review</button>':'';
+const buttons=reviewing?'<button class="btn" data-command="save-review">Save Draft</button><button class="btn success" data-command="concur">Concur - Complete</button><button class="btn danger" data-command="issue-finding">Non Concur - Issue Finding</button>':responding?'<button class="btn" data-command="save-response">Save response</button>'+(supervising?'<button class="btn success" data-command="resolve-finding">Sign off & complete</button>':'')+returnBtn:(returnBtn||'<button class="btn primary" data-close="review-dialog">Done</button>');
  $('review-content').innerHTML='<div class="dialog-header"><div><div class="eyebrow">'+safe(r.state)+'</div><h2 id="review-title">Loan '+safe(r.title)+'</h2><p>'+safe(r.loanAction)+' · '+safe(r.team)+' · '+safe(r.reviewer||'Unassigned Reviewer')+'</p></div><button class="close-btn" data-close="review-dialog" aria-label="Close review">×</button></div><form id="review-form" novalidate><div class="dialog-body"><div class="steps" aria-label="Current stage: '+safe(r.state)+'">'+steps+'</div>'+completion+
  '<section class="form-section"><h3><span class="section-number">01</span> Review assignment</h3><dl class="read-only-grid"><div><dt>Loan action</dt><dd>'+safe(r.loanAction)+'</dd></div><div><dt>Action date</dt><dd>'+safe(dateLabel(r.actionDate))+'</dd></div><div><dt>Reviewer</dt><dd>'+safe(reviewing?who:r.reviewer||'Unassigned')+'</dd></div></dl><div class="form-grid">'+assignment+'</div><div id="supervisor-warning" class="form-callout amber" hidden></div></section>'+
  '<section class="form-section"><h3><span class="section-number">02</span> Review checklist</h3><p class="hint">Check any items that apply. A loan action can have more than one finding.</p>'+checklistHtml+checklistWarning+'</section>'+
@@ -577,6 +583,14 @@ async function saveReview(command){
  const record=app.openRecord,values=gatherReview();
  showError('review-error','');
  try{
+  if(command==='return-to-review'){
+   if(!await confirmAction('Return to In Review?','This clears findings, outcome, and completion data. The record returns to In Review.','Return','Cancel'))return;
+   const keep=['id','title','loanAction','team','risk','reviewer','created','updated','actionDate'];
+   const patch={state:'In Review',outcome:'',completedOn:'',supervisor:'',agent:'',findingCategory:'',findingText:'',findingIssuedOn:'',findingDueOn:'',correction:'',correctiveAction:'',supervisorApprovedCorrection:false,supervisorApprovedCorrectiveAction:false,supervisorSignOffNotes:'',supervisorSignedOffBy:'',supervisorSignedOffOn:'',supervisorSignedOffStaff:'',checklistResponses:{},checklistSnapshot:[]};
+   app.busy=true;
+   await fetch(CONFIG.url+'/api/collections/loan_action_reviews/records/'+encodeURIComponent(record.id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
+   app.dirty=false;$('review-dialog').close();query(true);return;
+  }
   W.transition(record,command,values,app.actor,app.staff,app.checks,new Date().toISOString());
   app.busy=true;document.querySelectorAll('#review-dialog button').forEach(b=>b.disabled=true);$('save-hint').textContent='Saving…';
   let saved;
@@ -734,7 +748,23 @@ $('previous-page').addEventListener('click',()=>{if(app.page>1){app.page--;query
 $('next-page').addEventListener('click',()=>{if(app.page*app.size<app.total){app.page++;query();}});
 $('clear-filters').addEventListener('click',clearFilters);
 $('refresh-button').addEventListener('click',refreshData);
-$('help-button').addEventListener('click',()=>$('help-dialog').showModal());
+
+function fillHelp(){
+  const role = $('role').value;
+  const body = $('help-body');
+  if (!body) return;
+  let html = '';
+  if (role === 'Reviewer') {
+    html = '<h3>Reviewer</h3><p>You review loan actions and decide the outcome.</p><ul><li><strong>In Review:</strong> Open the action, complete the checklist, then Concur - Complete or Non Concur - Issue Finding.</li><li><strong>Findings:</strong> You can Return to In Review if the finding was issued in error.</li><li><strong>Completed:</strong> Read-only. You can Return to In Review to reopen.</li></ul>';
+  } else if (role === 'Supervisor') {
+    html = '<h3>Supervisor</h3><p>You close findings by documenting and approving the response.</p><ul><li><strong>Findings:</strong> Open the finding. Enter the correction and/or corrective action. Check the approval boxes, then Sign off & complete. This moves it to Completed.</li><li><strong>In Review / Completed:</strong> View only. Reviewers handle the initial decision.</li></ul><h3>What Reviewers do</h3><p>Reviewers check the action against the checklist. Concur sends it straight to Completed. Non Concur issues a finding and assigns it to you.</p>';
+  } else {
+    html = '<h3>Director</h3><p>You see the full picture across all teams.</p><ul><li><strong>In Review:</strong> Actions waiting for a Reviewer decision.</li><li><strong>Findings:</strong> Open findings waiting for Supervisor response and sign-off.</li><li><strong>Completed:</strong> Finished reviews for the selected month. Filter by outcome or person as needed.</li></ul><h3>What Reviewers do</h3><p>Reviewers decide each action: Concur (complete) or Non Concur (issue finding). Supervisors then close findings.</p>';
+  }
+  body.innerHTML = html;
+}
+
+$('help-button').addEventListener('click',()=>{fillHelp();$('help-dialog').showModal();});
 const accountBtn = $('account-button');
 if (accountBtn) accountBtn.addEventListener('click',()=>app.mode==='live'?disconnect():$('connection-dialog').showModal());
 $('connection-form').addEventListener('submit',connect);
