@@ -750,18 +750,9 @@ $('clear-filters').addEventListener('click',clearFilters);
 $('refresh-button').addEventListener('click',refreshData);
 
 function fillHelp(){
-  const role = $('role').value;
   const body = $('help-body');
   if (!body) return;
-  let html = '';
-  if (role === 'Reviewer') {
-    html = '<h3>Reviewer</h3><p>You review loan actions and decide the outcome.</p><ul><li><strong>In Review:</strong> Open the action, complete the checklist, then Concur - Complete or Non Concur - Issue Finding.</li><li><strong>Findings:</strong> You can Return to In Review if the finding was issued in error.</li><li><strong>Completed:</strong> Read-only. You can Return to In Review to reopen.</li></ul>';
-  } else if (role === 'Supervisor') {
-    html = '<h3>Supervisor</h3><p>You close findings by documenting and approving the response.</p><ul><li><strong>Findings:</strong> Open the finding. Enter the correction and/or corrective action. Check the approval boxes, then Sign off & complete. This moves it to Completed.</li><li><strong>In Review / Completed:</strong> View only. Reviewers handle the initial decision.</li></ul><h3>What Reviewers do</h3><p>Reviewers check the action against the checklist. Concur sends it straight to Completed. Non Concur issues a finding and assigns it to you.</p>';
-  } else {
-    html = '<h3>Director</h3><p>You see the full picture across all teams.</p><ul><li><strong>In Review:</strong> Actions waiting for a Reviewer decision.</li><li><strong>Findings:</strong> Open findings waiting for Supervisor response and sign-off.</li><li><strong>Completed:</strong> Finished reviews for the selected month. Filter by outcome or person as needed.</li></ul><h3>What Reviewers do</h3><p>Reviewers decide each action: Concur (complete) or Non Concur (issue finding). Supervisors then close findings.</p>';
-  }
-  body.innerHTML = html;
+  body.innerHTML = '<h3>Reviewer</h3><p>Reviewers decide the outcome of each loan action.</p><ul><li><strong>In Review:</strong> Open the action, complete the checklist, then Concur - Complete or Non Concur - Issue Finding.</li><li><strong>Findings:</strong> Can Return to In Review if the finding was issued in error.</li><li><strong>Completed:</strong> Read-only. Can Return to In Review to reopen.</li></ul><h3>Supervisor</h3><p>Supervisors close findings by documenting and approving the response.</p><ul><li><strong>Findings:</strong> Open the finding. Enter the correction and/or corrective action. Check the approval boxes, then Sign off & complete. This moves it to Completed.</li><li><strong>In Review / Completed:</strong> View only. Reviewers handle the initial decision.</li></ul><h3>Director</h3><p>Directors see the full picture across all teams.</p><ul><li><strong>In Review:</strong> Actions waiting for a Reviewer decision.</li><li><strong>Findings:</strong> Open findings waiting for Supervisor response and sign-off.</li><li><strong>Completed:</strong> Finished reviews for the selected month. Filter by outcome or person as needed.</li></ul>';
 }
 
 $('help-button').addEventListener('click',()=>{fillHelp();$('help-dialog').showModal();});
