@@ -41,7 +41,7 @@ body[data-width="full"]{--page-w:100%}
 <main id="main" tabindex="-1">
  <section id="section-loans">
   <div class="page-heading"><div><div class="eyebrow">Disaster Servicing &amp; Liquidation Center</div><h1>Loan Action Reviews</h1></div><div class="heading-actions"><button class="btn" id="help-button">Workflow Steps</button></div></div>
-  <div id="mode-notice" class="notice" hidden><span><strong>Preview workspace.</strong> Your uploaded records are loaded. Changes stay in this tab until you connect to PocketBase.</span><button class="btn link" id="reset-preview">Reset preview</button></div>
+  <div id="mode-notice" class="notice" hidden><span><strong>Preview workspace.</strong> Your uploaded records are loaded. Changes stay in this tab until you connect to Database.</span><button class="btn link" id="reset-preview">Reset preview</button></div>
   <div class="bins" role="tablist" aria-label="Filter reviews by state">
    <button class="bin" id="tab-in-review" data-state="In Review" role="tab" aria-selected="true" aria-controls="queue-panel" tabindex="0"><div class="bin-top"><span class="bin-label">In Review</span><span class="bin-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h3"/></svg></span></div><div class="bin-count" id="c-in">40</div><div class="bin-bottom"><span>Awaiting the loan action review</span><span class="bin-current">Viewing this bin</span></div></button>
    <button class="bin" id="tab-findings" data-state="Findings" role="tab" aria-selected="false" aria-controls="queue-panel" tabindex="-1"><div class="bin-top"><span class="bin-label">Findings</span><span class="bin-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v5m0 3h.01"/></svg></span></div><div class="bin-count" id="c-find">0</div><div class="bin-bottom"><span>Awaiting corrections and corrective actions</span><span class="bin-current">Viewing this bin</span></div></button>
@@ -56,7 +56,7 @@ body[data-width="full"]{--page-w:100%}
    </div>
    <div class="filters" aria-label="Review filters">
     <div class="field search-field"><label for="search">Search loan actions</label><input id="search" type="search" placeholder="Loan number, action, or team" autocomplete="off"></div>
-    <div class="field"><label for="person-role">Person’s role</label><select id="person-role"><option value="">Any role</option><option value="reviewer">Reviewer</option><option value="supervisor">Supervisor</option></select></div>
+    <div class="field"><label for="person-role">Person’s role</label><select id="person-role"><option value="">Any role</option><option value="reviewer" selected>Reviewer</option><option value="supervisor">Supervisor</option></select></div>
     <div class="field"><label for="person-name">Name</label><input id="person-name" list="name-options" placeholder="All names" autocomplete="off"><datalist id="name-options"></datalist></div>
     <div class="field"><label for="team-filter">Team</label><input id="team-filter" list="team-options" placeholder="All teams" autocomplete="off"><datalist id="team-options"></datalist></div>
     <div class="sort-wrap"><div class="field"><label for="sort-field">Sort by</label><select id="sort-field"></select></div><button class="btn icon-btn" id="sort-direction" aria-label="Reverse sort direction" title="Reverse sort direction"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4v16m-4-4 4 4 4-4M16 20V4m-4 4 4-4 4 4"/></svg></button></div>
@@ -286,11 +286,11 @@ body[data-width="full"]{--page-w:100%}
 </main>
 <dialog id="review-dialog" aria-labelledby="review-title"><div id="review-content"></div></dialog>
 <dialog id="confirm-dialog" class="small-dialog" aria-labelledby="confirm-title"><div class="dialog-header"><h2 id="confirm-title">Discard unsaved changes?</h2></div><div class="dialog-body"><p id="confirm-message">Your changes have not been saved.</p></div><div class="dialog-footer"><button class="btn" id="confirm-cancel">Keep editing</button><button class="btn primary" id="confirm-accept">Discard changes</button></div></dialog>
-<dialog id="connection-dialog" class="small-dialog" aria-labelledby="connect-title"><form id="connection-form"><div class="dialog-header"><div><h2 id="connect-title">Connect to PocketBase</h2><p>Use your department’s staff account.</p></div><button type="button" class="close-btn" data-close="connection-dialog" aria-label="Close connection dialog">×</button></div><div class="dialog-body"><div class="form-callout">Live roles come from your signed-in staff record. The preview role switcher is disabled while connected.</div><div class="field"><label for="server-url">PocketBase address</label><input type="url" id="server-url" value="http://155.138.240.74:8090" required></div><div class="form-grid"><div class="field full"><label for="login-email">Email</label><input id="login-email" type="email" autocomplete="username" required></div><div class="field full"><label for="login-password">Password</label><input id="login-password" type="password" autocomplete="current-password" required></div></div><div id="connection-error" class="inline-error" role="alert" hidden></div><p class="hint" style="margin-top:15px">The included setup package adds the workflow fields and links each account to its staff record.</p></div><div class="dialog-footer"><button type="button" class="btn" data-close="connection-dialog">Cancel</button><button type="submit" class="btn primary" id="login-submit">Connect &amp; sign in</button></div></form></dialog>
-<dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><div><h2 id="help-title">Workflow Steps</h2><p>One review, three clear stages.</p></div><button class="close-btn" data-close="help-dialog" aria-label="Close workflow help">×</button></div><div class="dialog-body help-block"><h3>How a review moves</h3><table><thead><tr><th>Bin</th><th>Action</th><th>Who completes it</th></tr></thead><tbody><tr><td>In Review</td><td>Concur → Completed. Non Concur → Findings.</td><td>Reviewer</td></tr><tr><td>Findings</td><td>Document a correction and/or corrective action. Sign off → Completed.</td><td>Assigned Supervisor</td></tr><tr><td>Completed</td><td>Read-only review history. Filter by completion month and original outcome.</td><td>All authorized staff</td></tr></tbody></table><h3>Correction and corrective action</h3><p><strong>Correction:</strong> the fix for this loan action. The assigned Agent or Supervisor can document it.</p><p><strong>Corrective action:</strong> what will help prevent the issue from happening again. The assigned Supervisor documents it.</p><p>A Supervisor must approve every response that is documented before closing a finding. At least one response is required.</p><h3>Working with the uploaded data</h3><p>The preview starts with the exact uploaded snapshot. All 40 loan actions were In Review. Use the preview role and staff selectors to walk through the process; edits last only for this open tab. “Reset preview” restores the uploaded snapshot.</p><p>Placeholder or missing checklists are labeled clearly. A Reviewer must confirm a policy review when a checklist is incomplete. Real checklist questions require a Pass, Fail, or N/A answer.</p><h3>Connecting your department database</h3><p>Install the included PocketBase migration and workflow endpoint before connecting. Live saves verify the signed-in staff role on the server. Accounts must link to a staff record through <code>qc_users.staff</code>. Directors have read access; only the assigned Supervisor may close a finding.</p><p>The staff role column is <code>role</code> in the supplied export. The page also accepts <code>row</code>. Missing Supervisor roster entries must be corrected in staff before issuing a finding.</p><h3>Monthly reporting</h3><p>Completed months use America/Denver time and the completion timestamp, including daylight saving changes. A completed Non Concur stays Non Concur after resolution. Legacy items with no completion date are available under “Missing date”; outcomes that were never recorded are labeled “Unclassified.”</p><h3>What is preserved</h3><p>The 2027 Program Guide and Communications Plan are retained from the original page. Customer Service, Aging, and Dashboard Reports retain their original placeholder status.</p></div><div class="dialog-footer"><button class="btn primary" data-close="help-dialog">Back to workspace</button></div></dialog>
+<dialog id="connection-dialog" class="small-dialog" aria-labelledby="connect-title"><form id="connection-form"><div class="dialog-header"><div><h2 id="connect-title">Connect to Database</h2><p>Use your department’s staff account.</p></div><button type="button" class="close-btn" data-close="connection-dialog" aria-label="Close connection dialog">×</button></div><div class="dialog-body"><div class="form-callout">Live roles come from your signed-in staff record. The preview role switcher is disabled while connected.</div><div class="field"><label for="server-url">Database address</label><input type="url" id="server-url" value="http://155.138.240.74:8090" required></div><div class="form-grid"><div class="field full"><label for="login-email">Email</label><input id="login-email" type="email" autocomplete="username" required></div><div class="field full"><label for="login-password">Password</label><input id="login-password" type="password" autocomplete="current-password" required></div></div><div id="connection-error" class="inline-error" role="alert" hidden></div><p class="hint" style="margin-top:15px">The included setup package adds the workflow fields and links each account to its staff record.</p></div><div class="dialog-footer"><button type="button" class="btn" data-close="connection-dialog">Cancel</button><button type="submit" class="btn primary" id="login-submit">Connect &amp; sign in</button></div></form></dialog>
+<dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><div><h2 id="help-title">Workflow Steps</h2><p>One review, three clear stages.</p></div><button class="close-btn" data-close="help-dialog" aria-label="Close workflow help">×</button></div><div class="dialog-body help-block"><h3>How a review moves</h3><table><thead><tr><th>Bin</th><th>Action</th><th>Who completes it</th></tr></thead><tbody><tr><td>In Review</td><td>Concur → Completed. Non Concur → Findings.</td><td>Reviewer</td></tr><tr><td>Findings</td><td>Document a correction and/or corrective action. Sign off → Completed.</td><td>Assigned Supervisor</td></tr><tr><td>Completed</td><td>Read-only review history. Filter by completion month and original outcome.</td><td>All authorized staff</td></tr></tbody></table><h3>Correction and corrective action</h3><p><strong>Correction:</strong> the fix for this loan action. The assigned Agent or Supervisor can document it.</p><p><strong>Corrective action:</strong> what will help prevent the issue from happening again. The assigned Supervisor documents it.</p><p>A Supervisor must approve every response that is documented before closing a finding. At least one response is required.</p><h3>Working with the uploaded data</h3><p>The preview starts with the exact uploaded snapshot. All 40 loan actions were In Review. Use the preview role and staff selectors to walk through the process; edits last only for this open tab. “Reset preview” restores the uploaded snapshot.</p><p>Placeholder or missing checklists are labeled clearly. A Reviewer must confirm a policy review when a checklist is incomplete. Real checklist questions require a Pass, Fail, or N/A answer.</p><h3>Connecting your department database</h3><p>Install the included Database migration and workflow endpoint before connecting. Live saves verify the signed-in staff role on the server. Accounts must link to a staff record through <code>qc_users.staff</code>. Directors have read access; only the assigned Supervisor may close a finding.</p><p>The staff role column is <code>role</code> in the supplied export. The page also accepts <code>row</code>. Missing Supervisor roster entries must be corrected in staff before issuing a finding.</p><h3>Monthly reporting</h3><p>Completed months use America/Denver time and the completion timestamp, including daylight saving changes. A completed Non Concur stays Non Concur after resolution. Legacy items with no completion date are available under “Missing date”; outcomes that were never recorded are labeled “Unclassified.”</p><h3>What is preserved</h3><p>The 2027 Program Guide and Communications Plan are retained from the original page. Customer Service, Aging, and Dashboard Reports retain their original placeholder status.</p></div><div class="dialog-footer"><button class="btn primary" data-close="help-dialog">Back to workspace</button></div></dialog>
 <div class="toast" id="toast" role="status" hidden></div>
 <script type="application/json" id="snapshot-data">{"loans":[],"staff":[],"checklists":[]}</script>
-<script>/* Shared workflow validation. Used in the page and PocketBase mutation endpoint. */
+<script>/* Shared workflow validation. Used in the page and Database mutation endpoint. */
 (function (root) {
   'use strict';
   function roleOf(s) { return String((s && (s.role || s.row)) || '').trim(); }
@@ -456,7 +456,7 @@ async function api(path,options={}){
  const timeout=AbortSignal.timeout(20000);const signal=options.signal?AbortSignal.any([options.signal,timeout]):timeout;
  const response=await fetch(app.url.replace(/\/$/,'')+path,{...options,signal,headers:{...(app.token?{Authorization:app.token}:{}),...(options.body?{'Content-Type':'application/json'}:{}),...options.headers}});
  const data=await response.json().catch(()=>({}));
- if(!response.ok){const e=new Error(data.message||('PocketBase returned '+response.status+'.'));e.status=response.status;e.data=data;throw e;}
+ if(!response.ok){const e=new Error(data.message||('Database returned '+response.status+'.'));e.status=response.status;e.data=data;throw e;}
  return data;
 }
 async function getList(collection,filter='',page=1,size=25,sort='',signal){const qs=new URLSearchParams({page:String(page),perPage:String(size),filter,skipTotal:'false'});if(sort)qs.set('sort',sort);return api('/api/collections/'+encodeURIComponent(collection)+'/records?'+qs,{signal});}
@@ -493,10 +493,10 @@ function renderList(){
  return '<article class="review-item"><button class="review-row" data-review="'+safe(r.id)+'" aria-label="Open loan '+safe(r.title)+', '+safe(r.loanAction)+', '+safe(r.state)+'">'+
  '<div><div class="loan-title"><strong>'+safe(r.title||'Untitled loan')+'</strong></div><div class="row-action">'+safe(r.loanAction||'No action recorded')+(r.risk?' · Risk '+safe(r.risk):'')+'</div></div>'+
  '<div class="row-line row-team">'+safe(r.team||'Unassigned')+'</div><div class="row-line row-reviewer">'+safe(r.reviewer||'Unassigned')+'</div>'+
- '<div class="row-people"><div class="row-line">'+safe(r.agent||'Official not assigned')+'</div><div class="row-meta">Supervisor: '+safe(r.supervisor||'Awaiting assignment')+'</div></div>'+
+ '<div class="row-people"><div class="row-line">'+safe(r.agent||'Recommending Official TBD')+'</div><div class="row-meta">Supervisor: '+safe(r.supervisor||'Supervisor TBD')+'</div></div>'+
  '<div class="row-date"><div class="row-line '+(overdue?'overdue':'')+'">'+safe(dateText)+'</div><div class="row-meta">'+(overdue?'Overdue':r.state==='Findings'?'Awaiting sign-off':r.state==='Completed'?extra:'Action date')+'</div></div>'+
  '<span class="row-arrow row-open">'+ICONS.chevron+'</span></button>'+
- (r.state==='Findings'?'<div class="finding-preview"><div><b>Finding · '+safe(r.findingCategory||'Uncategorized')+'</b><p>'+safe(r.findingText||'Not documented')+'</p></div></div>':'')+'</article>';
+ '</article>';
  }).join('');
  $('queue-count').textContent=app.total+' '+(app.total===1?'review':'reviews');
  const pages=Math.max(1,Math.ceil(app.total/app.size));
@@ -520,7 +520,7 @@ async function query(reset=false){
   const data=responses[0];app.total=data.totalItems;app.records=data.items||[];
   const counts=responses.slice(1).map(v=>v.totalItems);app.counts={inReview:counts[0],findings:counts[1],completed:counts[2],concur:counts[3],non:counts[4],unknown:counts[5]};
   const pages=Math.max(1,data.totalPages);if(app.page>pages){app.page=pages;return query();}
-  renderCounts();renderList();if($('data-status'))$('data-status').textContent='PocketBase · updated '+new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit'}).format(new Date())+' · '+app.staff.length+' staff · '+app.checks.length+' checklist entries';
+  renderCounts();renderList();if($('data-status'))$('data-status').textContent='Database · updated '+new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit'}).format(new Date())+' · '+app.staff.length+' staff · '+app.checks.length+' checklist entries';
  }catch(e){if(e.name==='AbortError'||request!==app.request)return;app.loadFailed=true;app.records=[];app.total=0;renderList();['c-in','c-find','c-done','outcome-all','outcome-concur','outcome-non','outcome-unknown'].forEach(id=>$(id).textContent='—');showError('load-error',(e.status===401?'Your session expired. Reconnect to continue. ':e.status===400?'The database may need the included workflow fields and indexes. ':'')+e.message+' No data changes were made by this refresh.');}
  finally{if(request===app.request){$('loading-bar').hidden=true;$('list').setAttribute('aria-busy','false');}}
 }
@@ -535,7 +535,7 @@ function selectField(id,label,value,items){
   }).join('');
   return '<div class="field"><label for="'+id+'">'+label+'</label><select id="'+id+'">'+opts+'</select></div>';
 }
-function textField(id,label,value,readonly,help){return '<div class="field"><label for="'+id+'">'+label+'</label><textarea id="'+id+'"'+(readonly?' readonly':'')+'>'+safe(value||'')+'</textarea><small>'+help+'</small></div>';}
+function textField(id,label,value,readonly,help){return '<div class="field"><label for="'+id+'">'+label+'</label><textarea id="'+id+'"'+(readonly?' readonly':'')+'>'+safe(value||'')+'</textarea>'+(help?'<small>'+help+'</small>':'')+'</div>';}
 const commandLabels={'save-review':'Review draft saved','concur':'Concurred and completed','issue-finding':'Finding issued','save-response':'Finding response saved','resolve-finding':'Supervisor signed off and completed'};
 function renderReview(r){
  const role=W.roleOf(app.actor),who=W.nameOf(app.actor),inReview=r.state==='In Review',finding=r.state==='Findings',completed=r.state==='Completed';
@@ -554,7 +554,7 @@ function renderReview(r){
  '<div class="read-only-grid"><div><dt>Category</dt><dd>'+safe(r.findingCategory||'Not recorded')+'</dd></div><div><dt>Issued on</dt><dd>'+safe(dateLabel(r.findingIssuedOn))+'</dd></div><div><dt>Due on</dt><dd class="'+(isOverdue(r)?'overdue':'')+'">'+safe(dateLabel(r.findingDueOn))+'</dd></div></div><div class="issue-info" style="margin-top:14px">'+safe(r.findingText||'No finding details recorded.')+'</div>';
  const signoff=supervising?'<div class="signoff"><h3>Supervisor sign-off</h3><p class="hint">Approve every documented response. At least one approval is required to complete this finding.</p><label class="checkbox-label"><input type="checkbox" id="approve-correction">I reviewed and approve the correction.</label><label class="checkbox-label"><input type="checkbox" id="approve-action">I reviewed and approve the corrective action.</label>'+textField('edit-signoff-notes','Sign-off notes (optional)',r.supervisorSignOffNotes,false,'Your name and sign-off timestamp will be recorded automatically.')+'</div>':'';
  const resolution=(finding||r.outcome==='Non Concur')?'<section class="form-section"><h3><span class="section-number">03</span> Correction &amp; corrective action</h3><p class="hint">A correction fixes this issue. A corrective action helps prevent it from happening again.</p><div class="form-grid">'+textField('edit-correction','Correction · the fix',r.correction,!responding,'Document what was fixed on this loan action.')+textField('edit-corrective-action','Corrective action · prevent recurrence',r.correctiveAction,!supervising,'Document the change in process, training, or controls to prevent a repeat.')+'</div>'+(!responding&&finding?'<div class="form-callout">Only the assigned Supervisor can update this response and sign off.</div>':'')+signoff+'</section>':'';
- const completion=completed?'<div class="signoff"><h3>Completed '+outcomeBadge(r)+'</h3><p class="hint">Completed '+safe(dateLabel(r.completedOn,true))+'</p>'+(r.outcome==='Non Concur'?'<p>Supervisor sign-off: <strong>'+safe(r.supervisorSignedOffBy||'Not recorded')+'</strong><br><span class="subtle">'+safe(dateLabel(r.supervisorSignedOffOn,true))+'</span></p><p class="hint">'+(r.supervisorApprovedCorrection?'✓ Correction approved. ':'')+(r.supervisorApprovedCorrectiveAction?'✓ Corrective action approved.':'')+'</p>'+(r.supervisorSignOffNotes?'<p>'+safe(r.supervisorSignOffNotes)+'</p>':''):r.outcome==='Concur'?'<p class="hint">Original decision: Concur. No finding was issued.</p>':'<p class="hint">The original outcome was not recorded. Reconcile this legacy item in PocketBase.</p>')+'</div>':'';
+ const completion=completed?'<div class="signoff"><h3>Completed '+outcomeBadge(r)+'</h3><p class="hint">Completed '+safe(dateLabel(r.completedOn,true))+'</p>'+(r.outcome==='Non Concur'?'<p>Supervisor sign-off: <strong>'+safe(r.supervisorSignedOffBy||'Not recorded')+'</strong><br><span class="subtle">'+safe(dateLabel(r.supervisorSignedOffOn,true))+'</span></p><p class="hint">'+(r.supervisorApprovedCorrection?'✓ Correction approved. ':'')+(r.supervisorApprovedCorrectiveAction?'✓ Corrective action approved.':'')+'</p>'+(r.supervisorSignOffNotes?'<p>'+safe(r.supervisorSignOffNotes)+'</p>':''):r.outcome==='Concur'?'<p class="hint">Original decision: Concur. No finding was issued.</p>':'<p class="hint">The original outcome was not recorded. Reconcile this legacy item in Database.</p>')+'</div>':'';
  const history=Array.isArray(r.reviewHistory)?r.reviewHistory:[];
  const historyHtml='';
  const buttons=reviewing?'<button class="btn" data-command="save-review">Save Draft</button><button class="btn success" data-command="concur">Concur &amp; complete</button><button class="btn danger" data-command="issue-finding">Non Concur - Issue Finding</button>':responding?'<button class="btn" data-command="save-response">Save response</button>'+(supervising?'<button class="btn success" data-command="resolve-finding">Sign off &amp; complete</button>':''):'<button class="btn primary" data-close="review-dialog">Done</button>';
@@ -583,7 +583,7 @@ async function saveReview(command){
   if(app.mode==='preview'){
    const current=app.snapshot.loans.find(r=>r.id===record.id);if(current.updated!==record.updated)throw new Error('This review changed. Close it and open the current version.');
    saved=W.transition(current,command,values,app.actor,app.staff,app.checks,new Date().toISOString());app.snapshot.loans[app.snapshot.loans.findIndex(r=>r.id===record.id)]=saved;
-   // Also write to live PocketBase when connected
+   // Also write to live Database when connected
    try {
      const patch = {};
      Object.keys(values).forEach(k=>{ if(values[k]!==undefined && values[k]!=='') patch[k]=values[k]; });
@@ -613,19 +613,19 @@ async function connect(e){
  const button=$('login-submit');button.disabled=true;button.textContent='Connecting…';
  const previous={mode:app.mode,token:app.token,url:app.url,staff:app.staff,checks:app.checks,actor:app.actor};
  try{
-  const url=new URL($('server-url').value);if(!['http:','https:'].includes(url.protocol)||url.username||url.password)throw new Error('Use a valid HTTP or HTTPS PocketBase address.');
+  const url=new URL($('server-url').value);if(!['http:','https:'].includes(url.protocol)||url.username||url.password)throw new Error('Use a valid HTTP or HTTPS Database address.');
   app.url=url.href.replace(/\/$/,'');app.token='';
   const auth=await api('/api/collections/'+CONFIG.authCollection+'/auth-with-password',{method:'POST',body:JSON.stringify({identity:$('login-email').value,password:$('login-password').value}),signal:AbortSignal.timeout(15000)});
   app.token=auth.token;
-  const account=auth.record;if(!account.staff)throw new Error('This account is not linked to a staff record. Set qc_users.staff in PocketBase first.');
+  const account=auth.record;if(!account.staff)throw new Error('This account is not linked to a staff record. Set qc_users.staff in Database first.');
   const [staffResult,checkResult]=await Promise.allSettled([allPages('staff'),allPages('checklists')]);
   if(staffResult.status!=='fulfilled')throw staffResult.reason;
   app.staff=staffResult.value;app.actor=app.staff.find(s=>s.id===account.staff);
   if(!app.actor||!['Reviewer','Supervisor','Agent','Director'].includes(W.roleOf(app.actor)))throw new Error('No supported staff role is linked to this account.');
   app.checks=checkResult.status==='fulfilled'?checkResult.value:[];
   app.checklistError=checkResult.status==='fulfilled'?'':'Checklist data could not be loaded. Reconnect before making a live decision.';
-  app.mode='live';$('role').value=W.roleOf(app.actor);$('identity').innerHTML='<option>'+safe(W.nameOf(app.actor))+'</option>';$('role').disabled=true;$('identity').disabled=true;document.querySelector('label[for="role"]').textContent='Signed-in role';$('identity-label').textContent='Signed-in staff';$('account-button').textContent='Disconnect';$('mode-notice').hidden=true;$('connection-status').classList.add('live');$('connection-status').innerHTML='<span class="dot"></span><span>Connected to PocketBase</span>';$('login-password').value='';$('connection-dialog').close();app.outcome='';fillSort();await query(true);renderChecklists();
- }catch(error){Object.assign(app,previous);$('login-password').value='';showError('connection-error',error.name==='TimeoutError'?'Connection timed out. Open this file on the department network and check the PocketBase address.':error.message);}
+  app.mode='live';$('role').value=W.roleOf(app.actor);$('identity').innerHTML='<option>'+safe(W.nameOf(app.actor))+'</option>';$('role').disabled=true;$('identity').disabled=true;document.querySelector('label[for="role"]').textContent='Signed-in role';$('identity-label').textContent='Signed-in staff';$('account-button').textContent='Disconnect';$('mode-notice').hidden=true;$('connection-status').classList.add('live');$('connection-status').innerHTML='<span class="dot"></span><span>Connected to Database</span>';$('login-password').value='';$('connection-dialog').close();app.outcome='';fillSort();await query(true);renderChecklists();
+ }catch(error){Object.assign(app,previous);$('login-password').value='';showError('connection-error',error.name==='TimeoutError'?'Connection timed out. Open this file on the department network and check the Database address.':error.message);}
  finally{button.disabled=false;button.textContent='Connect & sign in';}
 }
 
@@ -640,12 +640,12 @@ function disconnectedPresentation(){
  if($('identity'))$('identity').innerHTML='<option>Sign in to load staff</option>';
  if($('connection-status'))$('connection-status').innerHTML='<span class="dot"></span><span>Not connected</span>';
  const modeNotice=$('mode-notice');
- if(modeNotice&&modeNotice.querySelector('span'))modeNotice.querySelector('span').textContent='Connect to PocketBase to load your department’s reviews.';
+ if(modeNotice&&modeNotice.querySelector('span'))modeNotice.querySelector('span').textContent='Connect to Database to load your department’s reviews.';
  if($('reset-preview'))$('reset-preview').hidden=true;
  if($('data-status'))$('data-status').textContent='Not connected · sign in to load live reviews';
 }
 
-async function disconnect(){if(!await confirmAction('Disconnect from PocketBase?','Live changes already saved will remain in the database. The page will return to the uploaded preview.','Disconnect','Stay connected'))return;app.mode='preview';app.token='';app.staff=copy(originalSnapshot.staff);app.checks=copy(originalSnapshot.checklists);app.checklistError='';$('role').disabled=false;$('identity').disabled=false;document.querySelector('label[for="role"]').textContent='Preview role';$('identity-label').textContent='Staff identity';$('account-button').textContent='Connect';$('mode-notice').hidden=false;$('connection-status').classList.remove('live');$('connection-status').innerHTML='<span class="dot"></span><span>Uploaded data · preview</span>';fillIdentity();fillSort();await query(true);if($('data-status'))$('data-status').textContent='Uploaded snapshot · '+originalSnapshot.loans.length+' loans · '+app.staff.length+' staff · '+app.checks.length+' checklist entries';disconnectedPresentation();}
+async function disconnect(){if(!await confirmAction('Disconnect from Database?','Live changes already saved will remain in the database. The page will return to the uploaded preview.','Disconnect','Stay connected'))return;app.mode='preview';app.token='';app.staff=copy(originalSnapshot.staff);app.checks=copy(originalSnapshot.checklists);app.checklistError='';$('role').disabled=false;$('identity').disabled=false;document.querySelector('label[for="role"]').textContent='Preview role';$('identity-label').textContent='Staff identity';$('account-button').textContent='Connect';$('mode-notice').hidden=false;$('connection-status').classList.remove('live');$('connection-status').innerHTML='<span class="dot"></span><span>Uploaded data · preview</span>';fillIdentity();fillSort();await query(true);if($('data-status'))$('data-status').textContent='Uploaded snapshot · '+originalSnapshot.loans.length+' loans · '+app.staff.length+' staff · '+app.checks.length+' checklist entries';disconnectedPresentation();}
 
 async function refreshData(){
  if(app.mode==='preview'){query();return;}
@@ -660,6 +660,23 @@ async function refreshData(){
  finally{button.disabled=false;}
 }
 
+
+function syncFiltersFromTitle(){
+  const role = $('role').value;
+  const actor = app.actor;
+  if (role === 'Director' || !actor) {
+    app.personRole = '';
+    app.personName = '';
+    $('person-role').value = '';
+    $('person-name').value = '';
+  } else {
+    const map = {Reviewer:'reviewer', Supervisor:'supervisor', Agent:'agent'};
+    app.personRole = map[role] || '';
+    app.personName = actor ? W.nameOf(actor) : '';
+    $('person-role').value = app.personRole;
+    $('person-name').value = app.personName;
+  }
+}
 function clearFilters(){app.q='';app.personName='';app.personRole='';app.team='';$('search').value='';$('person-name').value='';$('person-role').value='';$('team-filter').value='';app.outcome='';fillPeople();query(true);}
 // Document-level event delegation keeps all record data out of inline JavaScript.
 document.addEventListener('click',async e=>{
@@ -672,9 +689,27 @@ document.addEventListener('click',async e=>{
  if(e.target.closest('[data-clear]'))clearFilters();
 });
 $('review-dialog').addEventListener('cancel',e=>{e.preventDefault();closeReview();});
-$('role').addEventListener('change',()=>{fillIdentity();app.sort=(SORTS[$('role').value]||SORTS.Reviewer)[0][0];fillSort();fillPeople();query(true);});
-$('identity').addEventListener('change',()=>{app.actor=app.staff.find(s=>s.id===$('identity').value);query(true);});
-$('person-role').addEventListener('change',()=>{app.personRole=$('person-role').value;fillPeople();query(true);});
+$('role').addEventListener('change',()=>{
+  fillIdentity();
+  localStorage.setItem('qbert_role', $('role').value);
+  app.sort=(SORTS[$('role').value]||SORTS.Reviewer)[0][0];
+  fillSort();
+  syncFiltersFromTitle();
+  fillPeople();
+  query(true);
+});
+$('identity').addEventListener('change',()=>{
+  app.actor=app.staff.find(s=>s.id===$('identity').value);
+  localStorage.setItem('qbert_identity', $('identity').value);
+  syncFiltersFromTitle();
+  query(true);
+});
+$('person-role').addEventListener('change',()=>{
+  app.personRole=$('person-role').value;
+  if (!app.personRole) { app.personName=''; $('person-name').value=''; }
+  fillPeople();
+  query(true);
+});
 [['search','q'],['person-name','personName'],['team-filter','team']].forEach(([id,key])=>$(id).addEventListener('input',()=>{app[key]=$(id).value.trim();scheduleQuery();}));
 $('sort-field').addEventListener('change',()=>{app.sort=$('sort-field').value;query(true);});
 $('sort-direction').addEventListener('click',()=>{app.direction*=-1;query(true);});
@@ -693,9 +728,15 @@ $('reset-preview').addEventListener('click',async()=>{if(await confirmAction('Re
 $('completed-month').value=localDay().slice(0,7);
 document.querySelector('.bins').addEventListener('keydown',e=>{const tabs=[...document.querySelectorAll('.bin')];const index=tabs.indexOf(document.activeElement);if(index<0)return;let next;if(e.key==='ArrowRight')next=(index+1)%3;if(e.key==='ArrowLeft')next=(index+2)%3;if(e.key==='Home')next=0;if(e.key==='End')next=2;if(next!==undefined){e.preventDefault();tabs[next].focus();tabs[next].click();}});
 window.addEventListener('beforeunload',e=>{if(app.dirty||app.busy){e.preventDefault();e.returnValue='';}});
-fillIdentity((app.staff.find(s=>W.roleOf(s)==='Reviewer'&&W.nameOf(s)==='Tonya Hayes')||{}).id);fillSort();fillPeople();showSection('loans');
+const cachedRole = localStorage.getItem('qbert_role');
+const cachedId = localStorage.getItem('qbert_identity');
+if (cachedRole) $('role').value = cachedRole;
+fillIdentity(cachedId);
+fillSort();
+fillPeople();
+showSection('loans');
 
-// Load live data from PocketBase (public collections)
+// Load live data from Database (public collections)
 (async function loadLive(){
   try {
     const [loanRes, staffRes, chkRes] = await Promise.all([
@@ -720,6 +761,7 @@ fillIdentity((app.staff.find(s=>W.roleOf(s)==='Reviewer'&&W.nameOf(s)==='Tonya H
     if ($('identity')) $('identity').disabled = false;
   } catch (e) { console.warn('Live load failed, using snapshot', e); }
   fillIdentity();
+  syncFiltersFromTitle();
   fillSort();
   fillPeople();
   query();
