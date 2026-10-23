@@ -586,9 +586,23 @@ async function saveReview(command){
    // Also write to live Database when connected
    try {
      const patch = {};
+     // Form values
      Object.keys(values).forEach(k=>{ if(values[k]!==undefined && values[k]!=='') patch[k]=values[k]; });
-     if(command==='concur'||command==='resolve-finding') patch.state='Completed';
-     if(command==='issue-finding') patch.state='Findings';
+     // Workflow fields set by transition
+     if(saved.supervisor) patch.supervisor = saved.supervisor;
+     if(saved.reviewer) patch.reviewer = saved.reviewer;
+     if(saved.agent) patch.agent = saved.agent;
+     if(saved.outcome) patch.outcome = saved.outcome;
+     if(saved.completedOn) patch.completedOn = saved.completedOn;
+     if(saved.findingCategory) patch.findingCategory = saved.findingCategory;
+     if(saved.findingText) patch.findingText = saved.findingText;
+     if(saved.findingIssuedOn) patch.findingIssuedOn = saved.findingIssuedOn;
+     if(saved.findingDueOn) patch.findingDueOn = saved.findingDueOn;
+     if(saved.supervisorSignedOffBy) patch.supervisorSignedOffBy = saved.supervisorSignedOffBy;
+     if(saved.supervisorSignedOffOn) patch.supervisorSignedOffOn = saved.supervisorSignedOffOn;
+     if(saved.supervisorSignedOffStaff) patch.supervisorSignedOffStaff = saved.supervisorSignedOffStaff;
+     if(saved.supervisorSignOffNotes) patch.supervisorSignOffNotes = saved.supervisorSignOffNotes;
+     if(saved.state) patch.state = saved.state;
      if(Object.keys(patch).length){
        await fetch(CONFIG.url+'/api/collections/loan_action_reviews/records/'+encodeURIComponent(record.id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
      }
