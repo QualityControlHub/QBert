@@ -72,7 +72,7 @@ body[data-width="full"]{--page-w:100%}
    <div id="list" aria-live="polite" aria-busy="false"></div>
    <div class="pagination"><span id="result-range">Loading reviews…</span><div class="page-actions"><label for="page-size">Rows <select id="page-size"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label><button class="btn" id="previous-page">← Previous</button><span id="page-label">Page 1 of 1</span><button class="btn" id="next-page">Next →</button></div></div>
   </div>
-  <div class="workspace-footer"><span class="version-note" id="version-note">Q-Bert 2.0</span></div>
+  <div class="workspace-footer"><span class="version-note" id="version-note">Q-Bert 2.0</span><br><a href="#reviewer-workspace" id="hidden-workspace-link" style="color:var(--bg);text-decoration:none;font-size:1px">.</a></div>
  </section>
  <div id="section-cs" class="placeholder" style="display:none">
   <h2>Customer Service Reviews</h2>
@@ -830,4 +830,66 @@ showSection('loans');
 disconnectedPresentation();
 
 </script>
-</body></html>
+
+<div id="reviewer-workspace" style="display:none;max-width:1100px;margin:40px auto;padding:24px">
+  <h1>Reviewer Workspace</h1>
+  <nav style="display:flex;gap:12px;margin:16px 0;border-bottom:1px solid #ddd;padding-bottom:8px">
+    <button class="btn" data-ws="setup">Loan Setup</button>
+    <button class="btn" data-ws="import">Append Records</button>
+    <button class="btn" data-ws="checklists">QC Checklists</button>
+    <button class="btn" data-ws="report">Email Report</button>
+    <button class="btn" id="ws-close">Close</button>
+  </nav>
+  <div id="ws-setup">
+    <h2>Loans Picked for Review</h2>
+    <p>Add loan numbers and actions here before they enter the review queue.</p>
+    <textarea id="ws-loans" rows="8" style="width:100%;font-family:monospace" placeholder="title,loanAction,team,risk,actionDate&#10;123456,ROL,Resolution,1,2026-10-15"></textarea>
+    <button class="btn primary" id="ws-add-loans">Add to In Review</button>
+    <div id="ws-setup-status"></div>
+  </div>
+  <div id="ws-import" hidden>
+    <h2>Append Records</h2>
+    <p>Paste CSV to append to a collection.</p>
+    <select id="ws-collection"><option value="loan_action_reviews">loan_action_reviews</option><option value="checklists">checklists</option><option value="staff">staff</option></select>
+    <textarea id="ws-csv" rows="10" style="width:100%;font-family:monospace" placeholder="Paste CSV with headers"></textarea>
+    <button class="btn primary" id="ws-import-btn">Append</button>
+    <div id="ws-import-status"></div>
+  </div>
+  <div id="ws-checklists" hidden>
+    <h2>QC Checklists</h2>
+    <p>Edit check wording or add new checks.</p>
+    <div id="ws-checklist-table"></div>
+    <button class="btn" id="ws-add-check">Add Check</button>
+    <button class="btn primary" id="ws-save-checks">Save Changes</button>
+    <div id="ws-check-status"></div>
+  </div>
+  <div id="ws-report" hidden>
+    <h2>Email Report</h2>
+    <p>Generate an HTML report of current findings and completed reviews.</p>
+    <button class="btn primary" id="ws-gen-report">Generate Report</button>
+    <div id="ws-report-output"></div>
+  </div>
+</div>
+<script>
+// Reviewer workspace
+document.getElementById('hidden-workspace-link').addEventListener('click', e => {
+  e.preventDefault();
+  document.getElementById('reviewer-workspace').style.display = 'block';
+  document.querySelector('.app-header').style.display = 'none';
+  document.querySelector('.nav-shell').style.display = 'none';
+  document.getElementById('section-loans').style.display = 'none';
+});
+document.getElementById('ws-close').addEventListener('click', () => {
+  document.getElementById('reviewer-workspace').style.display = 'none';
+  document.querySelector('.app-header').style.display = '';
+  document.querySelector('.nav-shell').style.display = '';
+  document.getElementById('section-loans').style.display = '';
+});
+document.querySelectorAll('[data-ws]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    ['setup','import','checklists','report'].forEach(s => {
+      document.getElementById('ws-'+s).hidden = s !== btn.dataset.ws;
+    });
+  });
+});
+</script></body></html>
