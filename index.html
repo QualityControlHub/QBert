@@ -27,8 +27,8 @@ body[data-width="full"]{--page-w:100%}
 #section-checklists .guide h1{font-size:30px !important;margin-bottom:16px;font-family:var(--font-serif)}
 #section-checklists .checklist-group{margin:0 0 20px;padding:12px 14px;background:#f8f7fc;border-radius:8px}
 #section-checklists .checklist-group h2{font-size:16px !important;margin:0 0 8px;color:#6b4c9a;border-bottom:1px solid #e0dce8;padding-bottom:6px}
-#section-checklists .checklist-item{margin:3px 0;font-size:12px !important;padding:2px 0}
-#section-checklists .checklist-item strong{color:var(--navy);margin-right:6px}</style>
+#section-checklists .checklist-item{display:grid;grid-template-columns:70px 1fr;gap:8px;margin:2px 0;font-size:12px !important;padding:3px 0;border-bottom:1px solid #f0f0f0}
+#section-checklists .checklist-item strong{color:var(--navy)}</style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to review workspace</a>
@@ -720,7 +720,7 @@ async function saveReview(command){
  }catch(e){showError('review-error',(e.name==='TimeoutError'||e.name==='AbortError')?'The save could not be confirmed. Your draft is retained. Refresh before retrying; the server may already have saved it.':e.status===409?'Someone updated this review while you were editing it. Your draft is still here. Copy your edits, close this review, refresh, and reopen it before saving.':e.status===404?'Live workflow endpoint unavailable or this record is no longer accessible. Check the included setup package, then refresh.':e.message);$('review-error').focus();$('save-hint').textContent=app.dirty?'Unsaved changes':'Save did not complete';}
  finally{app.busy=false;document.querySelectorAll('#review-dialog button').forEach(b=>b.disabled=false);}
 }
-function renderChecklists(){const root=$('checklist-content');if(!root)return;if(!app.checks.length){root.innerHTML='<p>No checklist entries are loaded.</p>';return;}const categories=[...new Set(app.checks.map(c=>c.category||'Other'))].sort();root.innerHTML=categories.map(cat=>'<div class="checklist-group"><h2>'+safe(cat)+'</h2>'+app.checks.filter(c=>(c.category||'Other')===cat).sort((a,b)=>String(a.checkID).localeCompare(String(b.checkID))).map(c=>'<div class="checklist-item"><strong>'+safe(c.checkID||c.id)+'</strong> '+(W.isPlaceholder(c)?'<span class="badge outcome-non">Placeholder</span> ':'')+safe(c.check)+'</div>').join('')+'</div>').join('');}
+function renderChecklists(){const root=$('checklist-content');if(!root)return;if(!app.checks.length){root.innerHTML='<p>No checklist entries are loaded.</p>';return;}const categories=[...new Set(app.checks.map(c=>c.category||'Other'))].sort();root.innerHTML=categories.map(cat=>'<div class="checklist-group"><h2>'+safe(cat)+'</h2>'+app.checks.filter(c=>(c.category||'Other')===cat).sort((a,b)=>String(a.checkID).localeCompare(String(b.checkID))).map(c=>'<div class="checklist-item"><strong>'+safe(c.checkID||c.id)+'</strong><span>'+(W.isPlaceholder(c)?'<span class="badge outcome-non">Placeholder</span> ':'')+safe(c.check)+'</span></div>').join('')+'</div>').join('');}
 function showSection(name){document.querySelectorAll('.app-nav button').forEach(b=>{if(b.dataset.section===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});['loans','cs','aging','guide','comms','checklists','dash'].forEach(s=>{const section=$('section-'+s);if(section){section.hidden=s!==name;section.style.display='';}});if(name==='checklists')renderChecklists(); if(name==='aging')loadAging(); if(name==='dash')loadDash();}
 async function connect(e){
  e.preventDefault();showError('connection-error','');
