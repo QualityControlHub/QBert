@@ -839,7 +839,7 @@ disconnectedPresentation();
     <button class="btn" data-ws="csh">CSH Reviews</button>
     <button class="btn" data-ws="delinquency">Delinquency</button>
     <button class="btn" data-ws="dataedit">Data Edit</button>
-    <button class="btn" data-ws="checklists">Checklists</button>
+    <button class="btn" data-ws="guides">Program Guides</button>
     <button class="btn" data-ws="reports">Narrative Reports</button>
     <button class="btn" id="ws-close" style="margin-left:auto;background:#8b1e1e;color:white;border-color:#8b1e1e">Close</button>
   </nav>
@@ -908,13 +908,15 @@ disconnectedPresentation();
     <div id="de-table" style="overflow-x:auto;max-height:400px;border:1px solid #ddd;border-radius:6px"></div>
     <div id="de-status" style="margin-top:8px;font-size:12px"></div>
   </div>
-  <div id="ws-checklists" hidden>
-    <h2>QC Checklists</h2>
-    <p>Edit check wording or add new checks.</p>
-    <div id="ws-checklist-table"></div>
-    <button class="btn" id="ws-add-check">Add Check</button>
-    <button class="btn primary" id="ws-save-checks">Save Changes</button>
-    <div id="ws-check-status"></div>
+  <div id="ws-guides" hidden>
+    <h2>Program Guides</h2>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <select id="guide-type"><option value="program">Program Guide</option><option value="comms">Communications Plan</option></select>
+      <button class="btn" id="guide-load">Load</button>
+      <button class="btn primary" id="guide-add">Add Section</button>
+    </div>
+    <div id="guide-list"></div>
+    <div id="guide-status" style="margin-top:8px;font-size:12px"></div>
   </div>
   <div id="ws-reports" hidden>
     <h2>Narrative Reports</h2>
@@ -941,7 +943,7 @@ document.getElementById('ws-close').addEventListener('click', () => {
 });
 document.querySelectorAll('[data-ws]').forEach(btn => {
   btn.addEventListener('click', () => {
-    ['loans','genesys','csh','delinquency','dataedit','checklists','reports'].forEach(s => {
+    ['loans','genesys','csh','delinquency','dataedit','guides','reports'].forEach(s => {
       const el = document.getElementById('ws-'+s);
       if (el) el.hidden = s !== btn.dataset.ws;
     });
@@ -1173,5 +1175,50 @@ window.deleteRecord = async function(id) {
   await fetch(CONFIG.url + '/api/collections/' + col + '/records/' + id, { method: 'DELETE' });
   document.querySelector('[style*="position:fixed"]')?.remove();
   loadDataEdit();
+};
+
+// Program Guides editor
+let guideSections = [];
+document.getElementById('guide-load').addEventListener('click', loadGuides);
+document.getElementById('guide-type').addEventListener('change', loadGuides);
+document.getElementById('guide-add').addEventListener('click', () => editGuideSection(null));
+
+async function loadGuides() {
+  const type = document.getElementById('guide-type').value;
+  const status = document.getElementById('guide-status');
+  status.textContent = 'Loading…';
+  try {
+    const data = await fetch(CONFIG.url + '/api/collections/guide_sections/records?filter=type="' + type + '"&sort=order&perPage=100').then(r => r.json());
+    guideSections = data.items || [];
+    status.textContent = guideSections.length + ' sections';
+    renderGuides();
+  } catch { status.textContent = 'Failed. Create guide_sections collection first.'; }
+}
+
+function renderGuides() {
+  const list = document.getElementById('guide-list');
+  list.innerHTML = guideSections.map(s => '<div style="border:1px solid #ddd;padding:10px;margin:8px 0;border-radius:6px;display:flex;justify-content:space-between;align-items:center"><div><strong>' + (s.order || 0) + '. ' + (s.title || 'Untitled') + '</strong><br><small>' + (s.content || '').slice(0, 80) + '…</small></div><button class="btn" onclick="editGuideSection(\'' + s.id + '\')">Edit</button></div>').join('') || '<p>No sections yet.</p>';
+}
+
+window.editGuideSection = function(id) {
+  const s = id ? guideSections.find(x => x.id === id) : { order: guideSections.length + 1, title: '', content: '' };
+  const type = document.getElementById('guide-type').value;
+  const html = '<div style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:white;padding:20px;border-radius:8px;max-width:500px;width:90%;max-height:80vh;overflow:auto"><h3>' + (id ? 'Edit Section' : 'Add Section') + '</h3><div style="margin:8px 0"><label>Order</label><input id="gs-order" type="number" value="' + (s.order || 1) + '" style="width:80px"></div><div style="margin:8px 0"><label>Title</label><input id="gs-title" value="' + (s.title || '').replace(/"/g, '"') + '" style="width:100%"></div><div style="margin:8px 0"><label>Content</label><textarea id="gs-content" rows="8" style="width:100%">' + (s.content || '') + '</textarea></div><div style="margin-top:12px;display:flex;gap:8px"><button class="btn primary" onclick="saveGuideSection(\'' + (id||'') + '\',\'' + type + '\')">Save</button><button class="btn" onclick="this.closest(\'div[style]\').parentElement.remove()">Cancel</button>' + (id ? '<button class="btn" style="margin-left:auto;background:#8b1e1e;color:white" onclick="deleteGuideSection(\'' + id + '\')">Delete</button>' : '') + '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+};
+
+window.saveGuideSection = async function(id, type) {
+  const body = { type, order: Number(document.getElementById('gs-order').value), title: document.getElementById('gs-title').value, content: document.getElementById('gs-content').value };
+  const url = CONFIG.url + '/api/collections/guide_sections/records' + (id ? '/' + id : '');
+  const res = await fetch(url, { method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (res.ok) { document.querySelector('[style*="position:fixed"]')?.remove(); loadGuides(); }
+  else alert('Save failed');
+};
+
+window.deleteGuideSection = async function(id) {
+  if (!confirm('Delete this section?')) return;
+  await fetch(CONFIG.url + '/api/collections/guide_sections/records/' + id, { method: 'DELETE' });
+  document.querySelector('[style*="position:fixed"]')?.remove();
+  loadGuides();
 };
 </script></body></html>
