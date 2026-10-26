@@ -839,7 +839,6 @@ disconnectedPresentation();
     <button class="btn" data-ws="csh">CSH Reviews</button>
     <button class="btn" data-ws="delinquency">Delinquency</button>
     <button class="btn" data-ws="dataedit">Data Edit</button>
-    <button class="btn" data-ws="guides">Program Guides</button>
     <button class="btn" data-ws="reports">Narrative Reports</button>
     <button class="btn" id="ws-close" style="margin-left:auto;background:#8b1e1e;color:white;border-color:#8b1e1e">Close</button>
   </nav>
@@ -908,16 +907,6 @@ disconnectedPresentation();
     <div id="de-table" style="overflow-x:auto;max-height:400px;border:1px solid #ddd;border-radius:6px"></div>
     <div id="de-status" style="margin-top:8px;font-size:12px"></div>
   </div>
-  <div id="ws-guides" hidden>
-    <h2>Program Guides</h2>
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <select id="guide-type"><option value="program">Program Guide</option><option value="comms">Communications Plan</option></select>
-      <button class="btn" id="guide-load">Load</button>
-      <button class="btn primary" id="guide-add">Add Section</button>
-    </div>
-    <div id="guide-list"></div>
-    <div id="guide-status" style="margin-top:8px;font-size:12px"></div>
-  </div>
   <div id="ws-reports" hidden>
     <h2>Narrative Reports</h2>
     <p>Generate an HTML report of findings and completed reviews.</p>
@@ -943,7 +932,7 @@ document.getElementById('ws-close').addEventListener('click', () => {
 });
 document.querySelectorAll('[data-ws]').forEach(btn => {
   btn.addEventListener('click', () => {
-    ['loans','genesys','csh','delinquency','dataedit','guides','reports'].forEach(s => {
+    ['loans','genesys','csh','delinquency','dataedit','reports'].forEach(s => {
       const el = document.getElementById('ws-'+s);
       if (el) el.hidden = s !== btn.dataset.ws;
     });
