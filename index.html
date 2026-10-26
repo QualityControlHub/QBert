@@ -886,7 +886,17 @@ disconnectedPresentation();
     </form>
   </div>
   <div id="ws-csh" hidden><h2>CSH Reviews</h2><p>Placeholder.</p></div>
-  <div id="ws-delinquency" hidden><h2>Delinquency</h2><p>Placeholder.</p></div>
+  <div id="ws-delinquency" hidden>
+    <h2>Delinquency</h2>
+    <p>Paste the delinquency CSV. This replaces all records in the delinquency collection.</p>
+    <textarea id="del-csv" rows="6" style="width:100%;font-family:monospace;font-size:11px" placeholder="Paste CSV with headers"></textarea>
+    <div style="margin:10px 0;display:flex;gap:8px">
+      <button class="btn" id="del-replace">Replace Collection</button>
+      <button class="btn" id="del-sample">Select 10 Random</button>
+    </div>
+    <div id="del-status"></div>
+    <div id="del-sample-list"></div>
+  </div>
   <div id="ws-append" hidden>
     <h2>Append Records</h2>
     <p>Paste CSV to append to a collection.</p>
@@ -1046,4 +1056,61 @@ document.getElementById('g-save').addEventListener('click', async () => {
     if (res.ok) document.getElementById('genesys-form').reset();
   } catch { status.textContent = 'Save failed.'; }
 });
+
+// Delinquency
+document.getElementById('del-replace').addEventListener('click', async () => {
+  const text = document.getElementById('del-csv').value.trim();
+  if (!text) return;
+  if (!confirm('Replace all delinquency records?')) return;
+  const status = document.getElementById('del-status');
+  status.textContent = 'Clearing…';
+  // Delete existing
+  try {
+    const existing = await fetch(CONFIG.url + '/api/collections/delinquency/records?perPage=500').then(r => r.json());
+    for (const rec of (existing.items || [])) {
+      await fetch(CONFIG.url + '/api/collections/delinquency/records/' + rec.id, { method: 'DELETE' });
+    }
+  } catch {}
+  // Parse and insert
+  const lines = text.split('\n').filter(l => l.trim());
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z0-9]/g, ''));
+  const map = { loanNumber: 'loannumber', borrowerName: 'borrowername', daysPastDue: 'dayspastdue', delinquencyGroup: 'delinquencygroup', outstandingBalance: 'outstandingbalance', nextDueDate: 'nextduedate' };
+  let ok = 0;
+  for (const line of lines.slice(1)) {
+    const vals = line.split(',');
+    const obj = { qualityNotes: '' };
+    headers.forEach((h, i) => {
+      const key = Object.keys(map).find(k => map[k] === h) || h;
+      obj[key] = (vals[i] || '').trim().replace(/^"|"$/g, '');
+    });
+    try {
+      const res = await fetch(CONFIG.url + '/api/collections/delinquency/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) });
+      if (res.ok) ok++;
+    } catch {}
+  }
+  status.textContent = 'Replaced with ' + ok + ' records.';
+});
+
+document.getElementById('del-sample').addEventListener('click', async () => {
+  const status = document.getElementById('del-status');
+  status.textContent = 'Loading…';
+  try {
+    const data = await fetch(CONFIG.url + '/api/collections/delinquency/records?perPage=500').then(r => r.json());
+    const items = data.items || [];
+    const sample = items.sort(() => Math.random() - 0.5).slice(0, 10);
+    const list = document.getElementById('del-sample-list');
+    list.innerHTML = sample.map(r => '<div style="border:1px solid #ddd;padding:10px;margin:8px 0;border-radius:6px"><strong>' + (r.loanNumber || r.loannumber || '') + '</strong> — ' + (r.borrowerName || r.borrowername || '') + '<br><small>' + (r.daysPastDue || '') + ' days past due · ' + (r.delinquencyGroup || '') + '</small><br><textarea data-id="' + r.id + '" rows="2" style="width:100%;margin-top:6px" placeholder="Notes">' + (r.qualityNotes || '') + '</textarea><button class="btn" onclick="saveDelNote(this)" style="margin-top:4px">Save Notes</button></div>').join('');
+    status.textContent = sample.length + ' loans selected.';
+  } catch { status.textContent = 'Failed to load.'; }
+});
+
+window.saveDelNote = async function(btn) {
+  const ta = btn.previousElementSibling;
+  const id = ta.dataset.id;
+  btn.textContent = 'Saving…';
+  try {
+    await fetch(CONFIG.url + '/api/collections/delinquency/records/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ qualityNotes: ta.value }) });
+    btn.textContent = 'Saved';
+  } catch { btn.textContent = 'Failed'; }
+};
 </script></body></html>
