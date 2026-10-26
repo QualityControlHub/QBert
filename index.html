@@ -1197,13 +1197,15 @@ document.getElementById('csh-replace').addEventListener('click', async () => {
     const obj = {};
     headers.forEach((h, i) => {
       let v = (vals[i] || '').trim();
-      if (h === 'evaluations' || h === 'average' || h === 'averageCritical') v = v ? Number(v) : null;
-      obj[h] = v;
+      if (h === 'evaluations' || h === 'average' || h === 'averageCritical') {
+        if (v && !isNaN(Number(v))) obj[h] = Number(v);
+      } else if (v) obj[h] = v;
     });
     try {
       const res = await fetch(CONFIG.url + '/api/collections/genesys_reviews/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) });
-      if (res.ok) ok++; else fail++;
-    } catch { fail++; }
+      if (res.ok) ok++;
+      else { fail++; if (fail === 1) { const err = await res.text(); status.textContent = 'Error: ' + err.slice(0, 200); console.log(err); } }
+    } catch (e) { fail++; if (fail === 1) status.textContent = 'Error: ' + e.message; }
   }
   status.textContent = 'Added ' + ok + (fail ? ', failed ' + fail : '') + '.';
 });
