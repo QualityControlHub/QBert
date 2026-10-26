@@ -1448,14 +1448,15 @@ async function loadCS() {
     const reviewedNorm = new Set(withReviews.map(r => norm(r.agent)));
     const totalReviews = withReviews.reduce((s, r) => s + (r.evaluations || 0), 0);
     if (supDiv) {
-      supDiv.innerHTML = supervisors.map(sup => {
+      const supData = supervisors.map(sup => {
         const agents = agentMap[sup.agent] || [];
         const reviewed = agents.filter(a => reviewedNorm.has(norm(a)));
         const pending = agents.filter(a => !reviewedNorm.has(norm(a)));
         const reviewCount = withReviews.filter(r => agents.some(a => norm(a) === norm(r.agent))).reduce((s, r) => s + (r.evaluations || 0), 0);
         const status = pending.length === 0 && agents.length > 0 ? '<span style="color:#2e7d32;font-size:11px">All reviewed</span>' : pending.length > 0 ? '<span style="color:#c62828;font-size:11px">' + pending.length + ' pending</span>' : '<span style="color:#999;font-size:11px">No agents</span>';
-        return '<div style="background:white;border:1px solid #e0dce8;border-radius:8px;padding:12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center"><strong>' + sup.agent + '</strong> ' + status + '</div><div style="font-size:12px;color:#666;margin-top:4px">' + reviewed.length + ' of ' + agents.length + ' agents · ' + reviewCount + ' total reviews</div></div>';
-      }).join('');
+        return { html: '<div style="background:white;border:1px solid #e0dce8;border-radius:8px;padding:12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center"><strong>' + sup.agent + '</strong> ' + status + '</div><div style="font-size:12px;margin-top:4px">' + reviewed.length + ' of ' + agents.length + ' agents · <span style="color:' + (reviewCount === 0 ? '#c62828' : '#666') + '">' + reviewCount + ' total reviews</span></div></div>', count: reviewCount };
+      });
+      supDiv.innerHTML = supData.sort((a, b) => b.count - a.count).map(s => s.html).join('');
     }
   } catch { summary.innerHTML = '<p>Failed to load.</p>'; }
 }
