@@ -335,7 +335,7 @@ body[data-width="full"]{--page-w:100%}
       need(agent, 'Select a Recommending Official.');
       r.agent = nameOf(agent); r.supervisor = String(agent.supervisor || '').trim();
       need(r.supervisor, 'A Supervisor must be assigned. Select a Recommending Official who has a Supervisor.');
-      r.reviewer = who;
+      if (!r.reviewer) r.reviewer = who;
       const available = checklistFor(r, checks), answers = v.checklistResponses || {};
       r.checklistSnapshot = available;
       r.checklistResponses = {};
@@ -576,7 +576,7 @@ function renderReview(r){
  const returnBtn=(role==='Reviewer'&&(finding||completed))?'<button class="btn" data-command="return-to-review">Return to In Review</button>':'';
 const buttons=reviewing?'<button class="btn" data-command="save-review">Save Draft</button><button class="btn success" data-command="concur">Concur - Complete</button><button class="btn danger" data-command="issue-finding">Non Concur - Issue Finding</button>':responding?'<button class="btn" data-command="save-response">Save response</button>'+(supervising?'<button class="btn success" data-command="resolve-finding">Sign off & complete</button>':'')+returnBtn:(returnBtn||'<button class="btn primary" data-close="review-dialog">Done</button>');
  $('review-content').innerHTML='<div class="dialog-header"><div><div class="eyebrow">'+safe(r.state)+'</div><h2 id="review-title">Loan '+safe(r.title)+'</h2><p>'+safe(r.loanAction)+' · '+safe(r.team)+' · '+safe(r.reviewer||'Unassigned Reviewer')+'</p></div><button class="close-btn" data-close="review-dialog" aria-label="Close review">×</button></div><form id="review-form" novalidate><div class="dialog-body"><div class="steps" aria-label="Current stage: '+safe(r.state)+'">'+steps+'</div>'+completion+
- '<section class="form-section"><h3><span class="section-number">01</span> Review assignment</h3><dl class="read-only-grid"><div><dt>Loan action</dt><dd>'+safe(r.loanAction)+'</dd></div><div><dt>Action date</dt><dd>'+safe(dateLabel(r.actionDate))+'</dd></div><div><dt>Reviewer</dt><dd>'+safe(reviewing?who:r.reviewer||'Unassigned')+'</dd></div></dl><div class="form-grid">'+assignment+'</div><div id="supervisor-warning" class="form-callout amber" hidden></div></section>'+
+ '<section class="form-section"><h3><span class="section-number">01</span> Review assignment</h3><dl class="read-only-grid"><div><dt>Loan action</dt><dd>'+safe(r.loanAction)+'</dd></div><div><dt>Action date</dt><dd>'+safe(dateLabel(r.actionDate))+'</dd></div><div><dt>Reviewer</dt><dd>'+safe(r.reviewer||'Unassigned')+'</dd></div></dl><div class="form-grid">'+assignment+'</div><div id="supervisor-warning" class="form-callout amber" hidden></div></section>'+
  '<section class="form-section"><h3><span class="section-number">02</span> Review checklist</h3><p class="hint">Check any items that apply. A loan action can have more than one finding.</p>'+checklistHtml+checklistWarning+'</section>'+
  ((inReview||finding||r.outcome==='Non Concur')?'<section class="form-section"><h3>Findings and Notes'+(reviewing?' <span class="subtle" style="font-weight:400;font-size:11px">for Non Concur only</span>':'')+'</h3>'+findingInputs+'</section>':'')+resolution+'<div id="review-error" class="inline-error" role="alert" tabindex="-1" hidden></div></div><div class="dialog-footer"><span class="save-hint" id="save-hint">'+(app.mode==='preview'?'':'')+'</span>'+buttons+'</div></form>';
  if(reviewing)updateSupervisor();
