@@ -961,7 +961,15 @@ disconnectedPresentation();
       <div id="g-status"></div>
     </form>
   </div>
-  <div id="ws-csh" hidden><h2>CSH Reviews</h2><p>Placeholder.</p></div>
+  <div id="ws-csh" hidden>
+    <h2>CSH Reviews</h2>
+    <p>Paste the Genesys/CSH CSV. This replaces all records in genesys_reviews.</p>
+    <textarea id="csh-csv" rows="8" style="width:100%;font-family:monospace;font-size:11px" placeholder="agent,evaluations,average,averageCritical"></textarea>
+    <div style="margin:10px 0">
+      <button class="btn primary" id="csh-replace">Replace Collection</button>
+    </div>
+    <div id="csh-status"></div>
+  </div>
   <div id="ws-delinquency" hidden>
     <h2>Delinquency</h2>
     <p>Paste the delinquency CSV. This replaces all records in the delinquency collection.</p>
@@ -1360,4 +1368,36 @@ async function loadDash() {
     root.innerHTML = org + loans_html + del_html;
   } catch (e) { root.innerHTML = '<p>Failed to load dashboard.</p>'; }
 }
+
+document.getElementById('csh-replace').addEventListener('click', async () => {
+  const text = document.getElementById('csh-csv').value.trim();
+  if (!text) return;
+  if (!confirm('Replace all genesys_reviews records?')) return;
+  const status = document.getElementById('csh-status');
+  status.textContent = 'Clearing…';
+  try {
+    const existing = await fetch(CONFIG.url + '/api/collections/genesys_reviews/records?perPage=500').then(r => r.json());
+    for (const rec of (existing.items || [])) {
+      await fetch(CONFIG.url + '/api/collections/genesys_reviews/records/' + rec.id, { method: 'DELETE' });
+    }
+  } catch {}
+  const lines = text.split('\n').filter(l => l.trim());
+  const headers = lines[0].split(',').map(h => h.trim());
+  let ok = 0;
+  for (const line of lines.slice(1)) {
+    const vals = line.match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^(?=,))/g) || line.split(',');
+    const obj = {};
+    headers.forEach((h, i) => {
+      let v = (vals[i] || '').trim().replace(/^"|"$/g, '');
+      if (h === 'evaluations') v = v ? Number(v) : null;
+      if (h === 'average' || h === 'averageCritical') v = v ? Number(v) : null;
+      obj[h] = v;
+    });
+    try {
+      const res = await fetch(CONFIG.url + '/api/collections/genesys_reviews/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) });
+      if (res.ok) ok++;
+    } catch {}
+  }
+  status.textContent = 'Replaced with ' + ok + ' records.';
+});
 </script></body></html>
