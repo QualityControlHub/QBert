@@ -854,7 +854,37 @@ disconnectedPresentation();
     <div id="ws-sample-preview"></div>
     <div id="ws-loans-status"></div>
   </div>
-  <div id="ws-genesys" hidden><h2>Genesys Reviews</h2><p>Placeholder.</p></div>
+  <div id="ws-genesys" hidden>
+    <h2>Genesys Reviews</h2>
+    <form id="genesys-form" style="display:grid;gap:12px;max-width:600px">
+      <div class="field"><label>Communication type</label>
+        <select id="g-type"><option>Genesys</option><option>CSH</option></select>
+      </div>
+      <div class="field"><label>Agent Name</label>
+        <select id="g-agent"><option value="">Select agent…</option></select>
+      </div>
+      <div class="field"><label>Supervisor</label>
+        <input id="g-supervisor" readonly>
+      </div>
+      <div class="field"><label>Team</label>
+        <input id="g-team" readonly>
+      </div>
+      <div class="field"><label>Checklist</label>
+        <select id="g-checklist"><option value="">Select check…</option></select>
+      </div>
+      <div class="field"><label>Genesys Call ID / CSH Case Number</label>
+        <input id="g-csid">
+      </div>
+      <div class="field"><label>Loan Number</label>
+        <input id="g-loan">
+      </div>
+      <div class="field"><label>Finding</label>
+        <textarea id="g-finding" rows="3"></textarea>
+      </div>
+      <button type="button" class="btn primary" id="g-save">Save Review</button>
+      <div id="g-status"></div>
+    </form>
+  </div>
   <div id="ws-csh" hidden><h2>CSH Reviews</h2><p>Placeholder.</p></div>
   <div id="ws-delinquency" hidden><h2>Delinquency</h2><p>Placeholder.</p></div>
   <div id="ws-append" hidden>
@@ -885,7 +915,7 @@ disconnectedPresentation();
 // Reviewer workspace
 document.getElementById('hidden-workspace-link').addEventListener('click', e => {
   e.preventDefault();
-  document.getElementById('reviewer-workspace').style.display = 'block';
+  document.getElementById('reviewer-workspace').style.display = 'block'; loadGenesysLists();
   document.querySelector('.app-header').style.display = 'none';
   document.querySelector('.nav-shell').style.display = 'none';
   document.getElementById('section-loans').style.display = 'none';
@@ -964,4 +994,56 @@ document.getElementById('ws-append-sample').addEventListener('click', async () =
   document.getElementById('ws-append-sample').disabled = true;
 });
 
+
+// Genesys form setup
+async function loadGenesysLists() {
+  try {
+    const staffRes = await fetch(CONFIG.url + '/api/collections/staff/records?perPage=500');
+    const staffData = await staffRes.json();
+    const agentSel = document.getElementById('g-agent');
+    (staffData.items || []).sort((a,b) => (a.agent||'').localeCompare(b.agent||'')).forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = s.agent || s.name || '';
+      opt.dataset.supervisor = s.supervisor || '';
+      opt.dataset.team = s.team || '';
+      agentSel.appendChild(opt);
+    });
+    agentSel.addEventListener('change', () => {
+      const opt = agentSel.selectedOptions[0];
+      document.getElementById('g-supervisor').value = opt ? opt.dataset.supervisor : '';
+      document.getElementById('g-team').value = opt ? opt.dataset.team : '';
+    });
+    const checkRes = await fetch(CONFIG.url + '/api/collections/checklists/records?perPage=500');
+    const checkData = await checkRes.json();
+    const checkSel = document.getElementById('g-checklist');
+    (checkData.items || []).sort((a,b) => (a.checkID||'').localeCompare(b.checkID||'')).forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = (c.checkID || '') + ' — ' + (c.check || '').slice(0, 60);
+      checkSel.appendChild(opt);
+    });
+  } catch (e) { console.warn('Genesys lists failed', e); }
+}
+document.getElementById('g-save').addEventListener('click', async () => {
+  const status = document.getElementById('g-status');
+  status.textContent = 'Saving…';
+  const body = {
+    type: document.getElementById('g-type').value,
+    agent: document.getElementById('g-agent').selectedOptions[0]?.textContent || '',
+    supervisor: document.getElementById('g-supervisor').value,
+    team: document.getElementById('g-team').value,
+    checklist: document.getElementById('g-checklist').value,
+    cs_id: document.getElementById('g-csid').value,
+    loan_url: document.getElementById('g-loan').value,
+    reviewer_comments: document.getElementById('g-finding').value
+  };
+  try {
+    const res = await fetch(CONFIG.url + '/api/collections/genesys_reviews/records', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    status.textContent = res.ok ? 'Saved.' : 'Save failed (' + res.status + ').';
+    if (res.ok) document.getElementById('genesys-form').reset();
+  } catch { status.textContent = 'Save failed.'; }
+});
 </script></body></html>
