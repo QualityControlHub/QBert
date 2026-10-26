@@ -838,7 +838,7 @@ disconnectedPresentation();
     <button class="btn" data-ws="genesys">Genesys Reviews</button>
     <button class="btn" data-ws="csh">CSH Reviews</button>
     <button class="btn" data-ws="delinquency">Delinquency</button>
-    <button class="btn" data-ws="append">Append</button>
+    <button class="btn" data-ws="dataedit">Data Edit</button>
     <button class="btn" data-ws="checklists">Checklists</button>
     <button class="btn" data-ws="reports">Narrative Reports</button>
     <button class="btn" id="ws-close" style="margin-left:auto;background:#8b1e1e;color:white;border-color:#8b1e1e">Close</button>
@@ -897,13 +897,16 @@ disconnectedPresentation();
     <div id="del-status"></div>
     <div id="del-sample-list"></div>
   </div>
-  <div id="ws-append" hidden>
-    <h2>Append Records</h2>
-    <p>Paste CSV to append to a collection.</p>
-    <select id="ws-collection"><option value="loan_action_reviews">loan_action_reviews</option><option value="checklists">checklists</option><option value="staff">staff</option></select>
-    <textarea id="ws-csv" rows="10" style="width:100%;font-family:monospace" placeholder="Paste CSV with headers"></textarea>
-    <button class="btn primary" id="ws-import-btn">Append</button>
-    <div id="ws-import-status"></div>
+  <div id="ws-dataedit" hidden>
+    <h2>Data Edit</h2>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <select id="de-collection"><option value="checklists">checklists</option><option value="loan_action_reviews">loan_action_reviews</option><option value="staff">staff</option></select>
+      <button class="btn" id="de-load">Load</button>
+      <button class="btn primary" id="de-add">Add Record</button>
+      <input id="de-search" placeholder="Filter…" style="margin-left:auto;padding:6px 10px;border:1px solid #ccc;border-radius:4px">
+    </div>
+    <div id="de-table" style="overflow-x:auto;max-height:400px;border:1px solid #ddd;border-radius:6px"></div>
+    <div id="de-status" style="margin-top:8px;font-size:12px"></div>
   </div>
   <div id="ws-checklists" hidden>
     <h2>QC Checklists</h2>
@@ -938,7 +941,7 @@ document.getElementById('ws-close').addEventListener('click', () => {
 });
 document.querySelectorAll('[data-ws]').forEach(btn => {
   btn.addEventListener('click', () => {
-    ['loans','genesys','csh','delinquency','append','checklists','reports'].forEach(s => {
+    ['loans','genesys','csh','delinquency','dataedit','checklists','reports'].forEach(s => {
       const el = document.getElementById('ws-'+s);
       if (el) el.hidden = s !== btn.dataset.ws;
     });
@@ -1112,5 +1115,63 @@ window.saveDelNote = async function(btn) {
     await fetch(CONFIG.url + '/api/collections/delinquency/records/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ qualityNotes: ta.value }) });
     btn.textContent = 'Saved';
   } catch { btn.textContent = 'Failed'; }
+};
+
+// Data Edit CRUD
+let deRecords = [];
+document.getElementById('de-load').addEventListener('click', loadDataEdit);
+document.getElementById('de-collection').addEventListener('change', loadDataEdit);
+document.getElementById('de-search').addEventListener('input', renderDataEdit);
+document.getElementById('de-add').addEventListener('click', () => editRecord(null));
+
+async function loadDataEdit() {
+  const col = document.getElementById('de-collection').value;
+  const status = document.getElementById('de-status');
+  status.textContent = 'Loading…';
+  try {
+    const data = await fetch(CONFIG.url + '/api/collections/' + col + '/records?perPage=500').then(r => r.json());
+    deRecords = data.items || [];
+    status.textContent = deRecords.length + ' records';
+    renderDataEdit();
+  } catch { status.textContent = 'Failed to load.'; }
+}
+
+function renderDataEdit() {
+  const q = document.getElementById('de-search').value.toLowerCase();
+  const filtered = deRecords.filter(r => JSON.stringify(r).toLowerCase().includes(q));
+  const table = document.getElementById('de-table');
+  if (!filtered.length) { table.innerHTML = '<p style="padding:12px">No records.</p>'; return; }
+  const keys = Object.keys(filtered[0]).filter(k => !['collectionId','collectionName','expand'].includes(k));
+  table.innerHTML = '<table style="width:100%;font-size:11px;border-collapse:collapse"><tr>' + keys.map(k => '<th style="text-align:left;padding:6px;border-bottom:1px solid #ddd;background:#f5f5f5">' + k + '</th>').join('') + '<th></th></tr>' +
+    filtered.slice(0, 50).map(r => '<tr>' + keys.map(k => '<td style="padding:4px 6px;border-bottom:1px solid #eee;max-width:150px;overflow:hidden;text-overflow:ellipsis">' + (r[k] ?? '') + '</td>').join('') + '<td><button class="btn" onclick="editRecord(\'' + r.id + '\')" style="font-size:10px;padding:2px 6px">Edit</button></td></tr>').join('') + '</table>' +
+    (filtered.length > 50 ? '<p style="padding:8px;font-size:11px">Showing 50 of ' + filtered.length + '</p>' : '');
+}
+
+window.editRecord = function(id) {
+  const col = document.getElementById('de-collection').value;
+  const rec = id ? deRecords.find(r => r.id === id) : {};
+  const keys = id ? Object.keys(rec).filter(k => !['id','created','updated','collectionId','collectionName'].includes(k)) : ['title','name','agent','check','checkID','category'];
+  const form = keys.map(k => '<div style="margin:6px 0"><label style="font-size:11px">' + k + '</label><input id="de-f-' + k + '" value="' + (rec[k] ?? '').toString().replace(/"/g, '"') + '" style="width:100%;padding:4px"></div>').join('');
+  const html = '<div style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:white;padding:20px;border-radius:8px;max-width:400px;width:90%;max-height:80vh;overflow:auto"><h3>' + (id ? 'Edit' : 'Add') + '</h3>' + form + '<div style="margin-top:12px;display:flex;gap:8px"><button class="btn primary" onclick="saveRecord(\'' + (id||'') + '\')">Save</button><button class="btn" onclick="this.closest(\'div[style]\').parentElement.remove()">Cancel</button>' + (id ? '<button class="btn" style="margin-left:auto;background:#8b1e1e;color:white" onclick="deleteRecord(\'' + id + '\')">Delete</button>' : '') + '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+};
+
+window.saveRecord = async function(id) {
+  const col = document.getElementById('de-collection').value;
+  const inputs = document.querySelectorAll('[id^="de-f-"]');
+  const body = {};
+  inputs.forEach(inp => body[inp.id.replace('de-f-','')] = inp.value);
+  const url = CONFIG.url + '/api/collections/' + col + '/records' + (id ? '/' + id : '');
+  const res = await fetch(url, { method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (res.ok) { document.querySelector('[style*="position:fixed"]')?.remove(); loadDataEdit(); }
+  else alert('Save failed');
+};
+
+window.deleteRecord = async function(id) {
+  if (!confirm('Delete this record?')) return;
+  const col = document.getElementById('de-collection').value;
+  await fetch(CONFIG.url + '/api/collections/' + col + '/records/' + id, { method: 'DELETE' });
+  document.querySelector('[style*="position:fixed"]')?.remove();
+  loadDataEdit();
 };
 </script></body></html>
