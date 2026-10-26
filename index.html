@@ -1369,9 +1369,11 @@ async function loadDash() {
   } catch (e) { root.innerHTML = '<p>Failed to load dashboard.</p>'; }
 }
 
-document.getElementById('csh-replace').addEventListener('click', async () => {
+document.addEventListener('DOMContentLoaded', () => {
+const cshBtn = document.getElementById('csh-replace');
+if (cshBtn) cshBtn.addEventListener('click', async () => {
   const text = document.getElementById('csh-csv').value.trim();
-  if (!text) return;
+  if (!text) { alert('Paste CSV first'); return; }
   if (!confirm('Replace all genesys_reviews records?')) return;
   const status = document.getElementById('csh-status');
   status.textContent = 'Clearing…';
@@ -1380,24 +1382,31 @@ document.getElementById('csh-replace').addEventListener('click', async () => {
     for (const rec of (existing.items || [])) {
       await fetch(CONFIG.url + '/api/collections/genesys_reviews/records/' + rec.id, { method: 'DELETE' });
     }
-  } catch {}
-  const lines = text.split('\n').filter(l => l.trim());
-  const headers = lines[0].split(',').map(h => h.trim());
-  let ok = 0;
+  } catch (e) { console.warn(e); }
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  let ok = 0, fail = 0;
   for (const line of lines.slice(1)) {
-    const vals = line.match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^(?=,))/g) || line.split(',');
+    const vals = [];
+    let cur = '', inQ = false;
+    for (const c of line) {
+      if (c === '"') inQ = !inQ;
+      else if (c === ',' && !inQ) { vals.push(cur); cur = ''; }
+      else cur += c;
+    }
+    vals.push(cur);
     const obj = {};
     headers.forEach((h, i) => {
-      let v = (vals[i] || '').trim().replace(/^"|"$/g, '');
-      if (h === 'evaluations') v = v ? Number(v) : null;
-      if (h === 'average' || h === 'averageCritical') v = v ? Number(v) : null;
+      let v = (vals[i] || '').trim();
+      if (h === 'evaluations' || h === 'average' || h === 'averageCritical') v = v ? Number(v) : null;
       obj[h] = v;
     });
     try {
       const res = await fetch(CONFIG.url + '/api/collections/genesys_reviews/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) });
-      if (res.ok) ok++;
-    } catch {}
+      if (res.ok) ok++; else fail++;
+    } catch { fail++; }
   }
-  status.textContent = 'Replaced with ' + ok + ' records.';
+  status.textContent = 'Added ' + ok + (fail ? ', failed ' + fail : '') + '.';
+});
 });
 </script></body></html>
