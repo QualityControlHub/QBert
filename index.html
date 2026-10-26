@@ -1369,9 +1369,7 @@ async function loadDash() {
   } catch (e) { root.innerHTML = '<p>Failed to load dashboard.</p>'; }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-const cshBtn = document.getElementById('csh-replace');
-if (cshBtn) cshBtn.addEventListener('click', async () => {
+document.getElementById('csh-replace').addEventListener('click', async () => {
   const text = document.getElementById('csh-csv').value.trim();
   if (!text) { alert('Paste CSV first'); return; }
   if (!confirm('Replace all genesys_reviews records?')) return;
@@ -1407,6 +1405,5 @@ if (cshBtn) cshBtn.addEventListener('click', async () => {
     } catch { fail++; }
   }
   status.textContent = 'Added ' + ok + (fail ? ', failed ' + fail : '') + '.';
-});
 });
 </script></body></html>
