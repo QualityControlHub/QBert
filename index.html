@@ -833,21 +833,31 @@ disconnectedPresentation();
 
 <div id="reviewer-workspace" style="display:none;max-width:1100px;margin:40px auto;padding:24px">
   <h1>Reviewer Workspace</h1>
-  <nav style="display:flex;gap:12px;margin:16px 0;border-bottom:1px solid #ddd;padding-bottom:8px">
-    <button class="btn" data-ws="setup">Loan Setup</button>
-    <button class="btn" data-ws="import">Append Records</button>
-    <button class="btn" data-ws="checklists">QC Checklists</button>
-    <button class="btn" data-ws="report">Email Report</button>
+  <nav style="display:flex;gap:8px;margin:16px 0;border-bottom:1px solid #ddd;padding-bottom:8px;flex-wrap:wrap">
+    <button class="btn" data-ws="loans">Loan Reviews</button>
+    <button class="btn" data-ws="genesys">Genesys Reviews</button>
+    <button class="btn" data-ws="csh">CSH Reviews</button>
+    <button class="btn" data-ws="delinquency">Delinquency</button>
+    <button class="btn" data-ws="append">Append</button>
+    <button class="btn" data-ws="checklists">Checklists</button>
+    <button class="btn" data-ws="reports">Narrative Reports</button>
     <button class="btn" id="ws-close" style="margin-left:auto;background:#8b1e1e;color:white;border-color:#8b1e1e">Close</button>
   </nav>
-  <div id="ws-setup">
-    <h2>Loans Picked for Review</h2>
-    <p>Add loan numbers and actions here before they enter the review queue.</p>
-    <textarea id="ws-loans" rows="8" style="width:100%;font-family:monospace" placeholder="title,loanAction,team,risk,actionDate&#10;123456,ROL,Resolution,1,2026-10-15"></textarea>
-    <button class="btn primary" id="ws-add-loans">Add to In Review</button>
-    <div id="ws-setup-status"></div>
+  <div id="ws-loans">
+    <h2>Loan Reviews</h2>
+    <p>Paste production loans (CSV). Columns should match loan_action_reviews fields.</p>
+    <textarea id="ws-loans-input" rows="8" style="width:100%;font-family:monospace;font-size:12px" placeholder="title,loanAction,team,risk,actionDate,reviewer&#10;123456,ROL,Resolution,1,2026-10-15,"></textarea>
+    <div style="margin:10px 0;display:flex;gap:8px">
+      <button class="btn" id="ws-generate-sample">Generate 80-Loan Sample</button>
+      <button class="btn primary" id="ws-append-sample" disabled>Append Sample to Reviews</button>
+    </div>
+    <div id="ws-sample-preview"></div>
+    <div id="ws-loans-status"></div>
   </div>
-  <div id="ws-import" hidden>
+  <div id="ws-genesys" hidden><h2>Genesys Reviews</h2><p>Placeholder.</p></div>
+  <div id="ws-csh" hidden><h2>CSH Reviews</h2><p>Placeholder.</p></div>
+  <div id="ws-delinquency" hidden><h2>Delinquency</h2><p>Placeholder.</p></div>
+  <div id="ws-append" hidden>
     <h2>Append Records</h2>
     <p>Paste CSV to append to a collection.</p>
     <select id="ws-collection"><option value="loan_action_reviews">loan_action_reviews</option><option value="checklists">checklists</option><option value="staff">staff</option></select>
@@ -863,12 +873,13 @@ disconnectedPresentation();
     <button class="btn primary" id="ws-save-checks">Save Changes</button>
     <div id="ws-check-status"></div>
   </div>
-  <div id="ws-report" hidden>
-    <h2>Email Report</h2>
-    <p>Generate an HTML report of current findings and completed reviews.</p>
+  <div id="ws-reports" hidden>
+    <h2>Narrative Reports</h2>
+    <p>Generate an HTML report of findings and completed reviews.</p>
     <button class="btn primary" id="ws-gen-report">Generate Report</button>
     <div id="ws-report-output"></div>
   </div>
+</div>
 </div>
 <script>
 // Reviewer workspace
@@ -887,9 +898,70 @@ document.getElementById('ws-close').addEventListener('click', () => {
 });
 document.querySelectorAll('[data-ws]').forEach(btn => {
   btn.addEventListener('click', () => {
-    ['setup','import','checklists','report'].forEach(s => {
-      document.getElementById('ws-'+s).hidden = s !== btn.dataset.ws;
+    ['loans','genesys','csh','delinquency','append','checklists','reports'].forEach(s => {
+      const el = document.getElementById('ws-'+s);
+      if (el) el.hidden = s !== btn.dataset.ws;
     });
   });
 });
+
+// Loan sample generation
+let currentSample = [];
+document.getElementById('ws-generate-sample').addEventListener('click', () => {
+  const text = document.getElementById('ws-loans-input').value.trim();
+  if (!text) return;
+  const lines = text.split('\n').filter(l => l.trim());
+  const headers = lines[0].split(',').map(h => h.trim());
+  const rows = lines.slice(1).map(line => {
+    const vals = line.split(',');
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = (vals[i] || '').trim());
+    return obj;
+  });
+  // Weight by inverse risk (lower risk number = higher priority)
+  rows.forEach(r => r._weight = r.risk ? (20 - Number(r.risk)) : 1);
+  // Shuffle weighted
+  const weighted = [];
+  rows.forEach(r => { for (let i = 0; i < r._weight; i++) weighted.push(r); });
+  for (let i = weighted.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [weighted[i], weighted[j]] = [weighted[j], weighted[i]];
+  }
+  // Pick unique 80
+  const seen = new Set();
+  currentSample = [];
+  for (const r of weighted) {
+    const key = r.title + '|' + r.loanAction;
+    if (!seen.has(key)) { seen.add(key); currentSample.push(r); }
+    if (currentSample.length >= 80) break;
+  }
+  // Assign reviewers evenly
+  const reviewers = ['Robert Thompson', 'Tonya Hayes'];
+  currentSample.forEach((r, i) => { r.reviewer = reviewers[i % reviewers.length]; r.state = 'In Review'; });
+  // Preview
+  const preview = document.getElementById('ws-sample-preview');
+  preview.innerHTML = '<p><strong>' + currentSample.length + ' loans selected</strong></p><table style="width:100%;font-size:12px;border-collapse:collapse"><tr><th>Loan</th><th>Action</th><th>Team</th><th>Risk</th><th>Reviewer</th></tr>' +
+    currentSample.slice(0, 20).map(r => '<tr><td>' + r.title + '</td><td>' + r.loanAction + '</td><td>' + (r.team||'') + '</td><td>' + (r.risk||'') + '</td><td>' + r.reviewer + '</td></tr>').join('') +
+    (currentSample.length > 20 ? '<tr><td colspan="5">… and ' + (currentSample.length - 20) + ' more</td></tr>' : '') + '</table>';
+  document.getElementById('ws-append-sample').disabled = false;
+  document.getElementById('ws-loans-status').textContent = '';
+});
+
+document.getElementById('ws-append-sample').addEventListener('click', async () => {
+  if (!currentSample.length) return;
+  if (!confirm('Are you sure you want to add the sample for QC Reviews?')) return;
+  const status = document.getElementById('ws-loans-status');
+  status.textContent = 'Appending…';
+  let ok = 0, fail = 0;
+  for (const r of currentSample) {
+    const body = { title: r.title, loanAction: r.loanAction, team: r.team || '', risk: Number(r.risk) || 0, actionDate: r.actionDate || '', reviewer: r.reviewer, state: 'In Review' };
+    try {
+      const res = await fetch(CONFIG.url + '/api/collections/loan_action_reviews/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (res.ok) ok++; else fail++;
+    } catch { fail++; }
+  }
+  status.textContent = 'Added ' + ok + ' records' + (fail ? ', ' + fail + ' failed' : '') + '.';
+  document.getElementById('ws-append-sample').disabled = true;
+});
+
 </script></body></html>
