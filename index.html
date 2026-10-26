@@ -75,9 +75,12 @@ body[data-width="full"]{--page-w:100%}
   <div class="workspace-footer" style="display:flex;flex-direction:column;align-items:flex-end"><span class="version-note" id="version-note">Q-Bert 2.0</span><a href="#reviewer-workspace" id="hidden-workspace-link" style="display:block;width:40px;height:12px;color:transparent;text-decoration:none">&nbsp;</a></div>
  </section>
 <div id="section-cs" style="display:none">
-  <div class="page-heading"><div><h1>Customer Service Reviews</h1><p class="subtle">Genesys evaluation scores</p></div></div>
-  <div id="cs-summary" style="display:flex;gap:16px;margin-bottom:20px"></div>
+  <div class="page-heading"><div><h1>Month-to-Date Genesys Reviews</h1></div></div>
+  <div id="cs-summary" style="display:flex;gap:10px;margin-bottom:16px"></div>
+  <h2 style="font-size:16px;margin:16px 0 10px">Agent Scoring</h2>
   <div id="cs-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px"></div>
+  <h2 style="font-size:16px;margin:24px 0 10px">By Supervisor</h2>
+  <div id="cs-supervisors"></div>
 </div>
 
 <div id="section-aging" style="display:none">
@@ -1415,22 +1418,43 @@ async function loadDash() {
 async function loadCS() {
   const summary = document.getElementById('cs-summary');
   const list = document.getElementById('cs-list');
+  const supDiv = document.getElementById('cs-supervisors');
   if (!summary || !list) return;
   summary.innerHTML = '<p>Loading…</p>';
   list.innerHTML = '';
+  if (supDiv) supDiv.innerHTML = '';
   try {
-    const data = await fetch(CONFIG.url + '/api/collections/genesys_reviews/records?perPage=200&sort=agent').then(r => r.json());
-    const items = data.items || [];
+    const [gData, sData] = await Promise.all([
+      fetch(CONFIG.url + '/api/collections/genesys_reviews/records?perPage=200&sort=agent').then(r => r.json()),
+      fetch(CONFIG.url + '/api/collections/staff/records?perPage=200').then(r => r.json())
+    ]);
+    const items = gData.items || [];
+    const staff = sData.items || [];
     const withReviews = items.filter(r => r.evaluations && r.evaluations > 0);
     const singleReview = withReviews.filter(r => r.evaluations === 1);
     const noReview = items.filter(r => !r.evaluations || r.evaluations === 0);
     const avgScore = withReviews.length ? (withReviews.reduce((s, r) => s + (r.average || 0), 0) / withReviews.length * 100).toFixed(0) : 0;
-    summary.innerHTML = '<div style="flex:1;text-align:center;padding:16px;background:white;border-radius:10px;border:1px solid #e0dce8"><div style="font-size:28px;font-weight:700;color:#1e3a5f">' + withReviews.length + '</div><div style="font-size:12px;color:#666">Agents Reviewed</div></div><div style="flex:1;text-align:center;padding:16px;background:white;border-radius:10px;border:1px solid #e0dce8"><div style="font-size:28px;font-weight:700;color:#1e3a5f">' + singleReview.length + '</div><div style="font-size:12px;color:#666">Single Review</div></div><div style="flex:1;text-align:center;padding:16px;background:white;border-radius:10px;border:1px solid #e0dce8"><div style="font-size:28px;font-weight:700;color:#1e3a5f">' + noReview.length + '</div><div style="font-size:12px;color:#666">No Reviews</div></div><div style="flex:1;text-align:center;padding:16px;background:white;border-radius:10px;border:1px solid #e0dce8"><div style="font-size:28px;font-weight:700;color:#1e3a5f">' + avgScore + '%</div><div style="font-size:12px;color:#666">Avg Score</div></div>';
+    const card = (n, l) => '<div style="padding:8px 14px;background:#f8f7fc;border-radius:6px;text-align:center"><div style="font-size:18px;font-weight:700;color:#1e3a5f">' + n + '</div><div style="font-size:10px;color:#666">' + l + '</div></div>';
+    summary.innerHTML = card(withReviews.length, 'Reviewed') + card(singleReview.length, 'Single') + card(noReview.length, 'None') + card(avgScore + '%', 'Avg');
     list.innerHTML = withReviews.sort((a, b) => (b.average || 0) - (a.average || 0)).map(r => {
       const pct = Math.round((r.average || 0) * 100);
       const color = pct >= 90 ? '#2e7d32' : pct >= 80 ? '#f9a825' : '#c62828';
       return '<div style="background:white;border:1px solid #e0dce8;border-radius:8px;padding:12px"><div style="font-weight:600;margin-bottom:4px">' + (r.agent || '') + '</div><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:8px;background:#eee;border-radius:4px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:' + color + '"></div></div><span style="font-size:13px;font-weight:600">' + pct + '%</span></div><div style="font-size:11px;color:#666;margin-top:4px">' + (r.evaluations || 0) + ' review' + (r.evaluations === 1 ? '' : 's') + '</div></div>';
     }).join('');
+    // Supervisor rollup
+    const supervisors = staff.filter(s => (s.role || '').toLowerCase() === 'supervisor');
+    const agentMap = {};
+    staff.forEach(s => { if (s.supervisor) { if (!agentMap[s.supervisor]) agentMap[s.supervisor] = []; agentMap[s.supervisor].push(s.agent); } });
+    const reviewedAgents = new Set(withReviews.map(r => r.agent));
+    if (supDiv) {
+      supDiv.innerHTML = supervisors.map(sup => {
+        const agents = agentMap[sup.agent] || [];
+        const reviewed = agents.filter(a => reviewedAgents.has(a));
+        const pending = agents.filter(a => !reviewedAgents.has(a));
+        const status = pending.length === 0 && agents.length > 0 ? '<span style="color:#2e7d32;font-size:11px">All reviewed</span>' : pending.length > 0 ? '<span style="color:#c62828;font-size:11px">' + pending.length + ' pending</span>' : '<span style="color:#999;font-size:11px">No agents</span>';
+        return '<div style="background:white;border:1px solid #e0dce8;border-radius:8px;padding:12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center"><strong>' + sup.agent + '</strong> ' + status + '</div><div style="font-size:12px;color:#666;margin-top:4px">' + reviewed.length + ' of ' + agents.length + ' agents reviewed</div></div>';
+      }).join('');
+    }
   } catch { summary.innerHTML = '<p>Failed to load.</p>'; }
 }
 </script></body></html>
