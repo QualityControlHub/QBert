@@ -79,9 +79,9 @@ body[data-width="full"]{--page-w:100%}
   <p>Placeholder — this section will be built next.</p>
 </div>
 
-<div id="section-aging" class="placeholder" style="display:none">
-  <h2>Aging Reports</h2>
-  <p>Placeholder — this section will be built next.</p>
+<div id="section-aging" style="display:none">
+  <div class="page-heading"><div><h1>Aging Reports</h1><p class="subtle">Recent delinquency notes from the last 30 days</p></div></div>
+  <div id="aging-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px"></div>
 </div>
 
 <div id="section-guide" style="display:none">
@@ -647,7 +647,7 @@ async function saveReview(command){
  finally{app.busy=false;document.querySelectorAll('#review-dialog button').forEach(b=>b.disabled=false);}
 }
 function renderChecklists(){const root=$('checklist-content');if(!root)return;if(!app.checks.length){root.innerHTML='<p>No checklist entries are loaded.</p>';return;}const categories=[...new Set(app.checks.map(c=>c.category||'Other'))].sort();root.innerHTML=categories.map(cat=>'<div class="checklist-group"><h2>'+safe(cat)+'</h2>'+app.checks.filter(c=>(c.category||'Other')===cat).sort((a,b)=>String(a.checkID).localeCompare(String(b.checkID))).map(c=>'<div class="checklist-item"><strong>'+safe(c.checkID||c.id)+'</strong> '+(W.isPlaceholder(c)?'<span class="badge outcome-non">Placeholder</span> ':'')+safe(c.check)+'</div>').join('')+'</div>').join('');}
-function showSection(name){document.querySelectorAll('.app-nav button').forEach(b=>{if(b.dataset.section===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});['loans','cs','aging','guide','comms','checklists','dash'].forEach(s=>{const section=$('section-'+s);if(section){section.hidden=s!==name;section.style.display='';}});if(name==='checklists')renderChecklists();}
+function showSection(name){document.querySelectorAll('.app-nav button').forEach(b=>{if(b.dataset.section===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});['loans','cs','aging','guide','comms','checklists','dash'].forEach(s=>{const section=$('section-'+s);if(section){section.hidden=s!==name;section.style.display='';}});if(name==='checklists')renderChecklists(); if(name==='aging')loadAging();}
 async function connect(e){
  e.preventDefault();showError('connection-error','');
  const button=$('login-submit');button.disabled=true;button.textContent='Connecting…';
@@ -1210,4 +1210,18 @@ window.deleteGuideSection = async function(id) {
   document.querySelector('[style*="position:fixed"]')?.remove();
   loadGuides();
 };
+
+async function loadAging() {
+  const cards = document.getElementById('aging-cards');
+  if (!cards) return;
+  cards.innerHTML = '<p>Loading…</p>';
+  const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
+  const cutoff = monthAgo.toISOString().replace('T', ' ').slice(0, 19);
+  try {
+    const data = await fetch(CONFIG.url + '/api/collections/delinquency/records?filter=qualityNotes!=""&&updated>="' + cutoff + '"&sort=-updated&perPage=10').then(r => r.json());
+    const items = data.items || [];
+    if (!items.length) { cards.innerHTML = '<p>No recent notes.</p>'; return; }
+    cards.innerHTML = items.map(r => '<div style="background:white;border:1px solid #e0dce8;border-radius:10px;padding:16px;box-shadow:0 2px 8px #0001"><div style="font-size:11px;color:#666;margin-bottom:4px">' + (r.updated || '').slice(0, 10) + '</div><h3 style="margin:0 0 8px;font-size:16px">' + (r.loanNumber || '') + '</h3><p style="margin:0 0 4px;font-weight:600">' + (r.borrowerName || '') + '</p><p style="margin:0 0 8px;font-size:13px;color:#555">' + (r.daysPastDue || '') + ' days past due<br>Next due: ' + (r.nextDueDate || '').slice(0, 10) + '</p><p style="margin:0;font-size:13px;background:#f8f7fc;padding:10px;border-radius:6px">' + (r.qualityNotes || '') + '</p></div>').join('');
+  } catch { cards.innerHTML = '<p>Failed to load.</p>'; }
+}
 </script></body></html>
