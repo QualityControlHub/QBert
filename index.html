@@ -1093,17 +1093,20 @@ document.getElementById('del-sample').addEventListener('click', async () => {
     const items = data.items || [];
     const sample = items.sort(() => Math.random() - 0.5).slice(0, 10);
     const list = document.getElementById('del-sample-list');
-    list.innerHTML = sample.map(r => '<div style="border:1px solid #ddd;padding:10px;margin:8px 0;border-radius:6px"><strong>' + (r.loanNumber || r.loannumber || '') + '</strong> — ' + (r.borrowerName || r.borrowername || '') + '<br><small>' + (r.daysPastDue || '') + ' days past due · ' + (r.delinquencyGroup || '') + '</small><br><textarea data-id="' + r.id + '" rows="2" style="width:100%;margin-top:6px" placeholder="Notes">' + (r.qualityNotes || '') + '</textarea><button class="btn" onclick="saveDelNote(this)" style="margin-top:4px">Save Notes</button></div>').join('');
+    list.innerHTML = sample.map(r => '<div style="border:1px solid #ddd;padding:10px;margin:8px 0;border-radius:6px"><strong>' + (r.loanNumber || r.loannumber || '') + '</strong> — ' + (r.borrowerName || r.borrowername || '') + '<br><small>' + (r.daysPastDue || '') + ' days past due · ' + (r.delinquencyGroup || '') + '</small><br><textarea data-id="' + r.id + '" rows="2" style="width:100%;margin-top:6px" placeholder="Notes">' + (r.qualityNotes || '') + '</textarea><div style="margin-top:6px;display:flex;gap:12px;align-items:center"><label><input type="radio" name="concur-' + r.id + '" value="true"' + (r.qualityConcur === true ? ' checked' : '') + '> Concur</label><label><input type="radio" name="concur-' + r.id + '" value="false"' + (r.qualityConcur === false ? ' checked' : '') + '> Non Concur</label></div><button class="btn" onclick="saveDelNote(this)" style="margin-top:4px">Save</button></div>').join('');
     status.textContent = sample.length + ' loans selected.';
   } catch { status.textContent = 'Failed to load.'; }
 });
 
 window.saveDelNote = async function(btn) {
-  const ta = btn.previousElementSibling;
+  const div = btn.parentElement;
+  const ta = div.querySelector('textarea');
   const id = ta.dataset.id;
+  const concurRadio = div.querySelector('input[name="concur-' + id + '"]:checked');
+  const qualityConcur = concurRadio ? concurRadio.value === 'true' : null;
   btn.textContent = 'Saving…';
   try {
-    await fetch(CONFIG.url + '/api/collections/delinquency/records/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ qualityNotes: ta.value }) });
+    await fetch(CONFIG.url + '/api/collections/delinquency/records/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ qualityNotes: ta.value, qualityConcur }) });
     btn.textContent = 'Saved';
   } catch { btn.textContent = 'Failed'; }
 };
@@ -1221,7 +1224,10 @@ async function loadAging() {
     const data = await fetch(CONFIG.url + '/api/collections/delinquency/records?filter=qualityNotes!=""&&updated>="' + cutoff + '"&sort=-updated&perPage=10').then(r => r.json());
     const items = data.items || [];
     if (!items.length) { cards.innerHTML = '<p>No recent notes.</p>'; return; }
-    cards.innerHTML = items.map(r => '<div style="background:white;border:1px solid #e0dce8;border-radius:10px;padding:16px;box-shadow:0 2px 8px #0001"><div style="font-size:11px;color:#666;margin-bottom:4px">' + (r.updated || '').slice(0, 10) + '</div><h3 style="margin:0 0 8px;font-size:16px">' + (r.loanNumber || '') + '</h3><p style="margin:0 0 4px;font-weight:600">' + (r.borrowerName || '') + '</p><p style="margin:0 0 8px;font-size:13px;color:#555">' + (r.daysPastDue || '') + ' days past due<br>Next due: ' + (r.nextDueDate || '').slice(0, 10) + '</p><p style="margin:0;font-size:13px;background:#f8f7fc;padding:10px;border-radius:6px">' + (r.qualityNotes || '') + '</p></div>').join('');
+    cards.innerHTML = items.map(r => {
+  const bg = r.qualityConcur === true ? '#e8f5e9' : r.qualityConcur === false ? '#ffebee' : '#f8f7fc';
+  return '<div style="background:white;border:1px solid #e0dce8;border-radius:10px;padding:16px;box-shadow:0 2px 8px #0001"><div style="font-size:11px;color:#666;margin-bottom:4px">' + (r.updated || '').slice(0, 10) + '</div><h3 style="margin:0 0 8px;font-size:16px">' + (r.loanNumber || '') + '</h3><p style="margin:0 0 4px;font-weight:600">' + (r.borrowerName || '') + '</p><p style="margin:0 0 8px;font-size:13px;color:#555">' + (r.daysPastDue || '') + ' days past due<br>Next due: ' + (r.nextDueDate || '').slice(0, 10) + '</p><p style="margin:0;font-size:13px;background:' + bg + ';padding:10px;border-radius:6px">' + (r.qualityNotes || '') + '</p></div>';
+}).join('');
   } catch { cards.innerHTML = '<p>Failed to load.</p>'; }
 }
 </script></body></html>
