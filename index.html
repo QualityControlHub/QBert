@@ -72,7 +72,7 @@ body[data-width="full"]{--page-w:100%}
    <div id="list" aria-live="polite" aria-busy="false"></div>
    <div class="pagination"><span id="result-range">Loading reviews…</span><div class="page-actions"><label for="page-size">Rows <select id="page-size"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option></select></label><button class="btn" id="previous-page">← Previous</button><span id="page-label">Page 1 of 1</span><button class="btn" id="next-page">Next →</button></div></div>
   </div>
-  <div class="workspace-footer"><span class="version-note" id="version-note">Q-Bert 2.0</span><br><a href="#reviewer-workspace" id="hidden-workspace-link" style="display:inline-block;width:60px;height:16px;color:transparent;text-decoration:none">&nbsp;</a></div>
+  <div class="workspace-footer" style="display:flex;flex-direction:column;align-items:flex-end"><span class="version-note" id="version-note">Q-Bert 2.0</span><a href="#reviewer-workspace" id="hidden-workspace-link" style="display:block;width:40px;height:12px;color:transparent;text-decoration:none">&nbsp;</a></div>
  </section>
  <div id="section-cs" class="placeholder" style="display:none">
   <h2>Customer Service Reviews</h2>
@@ -838,7 +838,7 @@ disconnectedPresentation();
     <button class="btn" data-ws="import">Append Records</button>
     <button class="btn" data-ws="checklists">QC Checklists</button>
     <button class="btn" data-ws="report">Email Report</button>
-    <button class="btn" id="ws-close">Close</button>
+    <button class="btn" id="ws-close" style="margin-left:auto;background:#8b1e1e;color:white;border-color:#8b1e1e">Close</button>
   </nav>
   <div id="ws-setup">
     <h2>Loans Picked for Review</h2>
