@@ -832,7 +832,10 @@ disconnectedPresentation();
 </script>
 
 <div id="reviewer-workspace" style="display:none;max-width:1100px;margin:40px auto;padding:24px">
-  <h1>Reviewer Workspace</h1>
+  <div style="position:relative;height:120px;margin:-24px -24px 20px;border-radius:8px 8px 0 0;overflow:hidden">
+    <div style="position:absolute;inset:0;background:url('workspace-header.jpg') center/cover;opacity:0.35"></div>
+    <h1 style="position:relative;z-index:1;margin:0;padding:40px 24px;color:#1a1a2e">Reviewer Workspace</h1>
+  </div>
   <nav style="display:flex;gap:8px;margin:16px 0;border-bottom:1px solid #ddd;padding-bottom:8px;flex-wrap:wrap">
     <button class="btn" data-ws="loans">Loan Reviews</button>
     <button class="btn" data-ws="genesys">Genesys Reviews</button>
