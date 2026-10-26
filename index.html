@@ -1324,13 +1324,20 @@ async function loadDash() {
     // Org chart
     const director = s.find(x => (x.agent||'').includes('Sonya')) || {agent:'Sonya Hubbard'};
     const deputies = s.filter(x => (x.title||'').toLowerCase().includes('deputy') || (x.agent||'').match(/Rodgers|Narvaez|Mukiibi/));
-    const supervisors = s.filter(x => (x.title||'').match(/SLS|Supervisor/) && !(x.agent||'').includes('Sonya'));
-    const agents = s.filter(x => !supervisors.includes(x) && !deputies.includes(x) && x !== director && (x.agent||'').trim());
+    const supervisors = s.filter(x => (x.role||'').toLowerCase() === 'supervisor');
+    const agents = s.filter(x => (x.role||'').toLowerCase() === 'agent' || (!(x.role||'').match(/supervisor|director|deputy|reviewer/i) && (x.agent||'').trim() && x !== director));
     let org = '<div style="background:white;border-radius:10px;padding:20px;border:1px solid #e0dce8"><h2 style="margin:0 0 16px">Organization</h2>';
     org += '<div style="text-align:center;margin-bottom:16px"><div style="display:inline-block;background:#1e3a5f;color:white;padding:10px 20px;border-radius:8px;font-weight:600">' + (director.agent||'Director') + '</div></div>';
     org += '<div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">' + deputies.map(x => '<div style="background:#4a6fa5;color:white;padding:8px 14px;border-radius:6px;font-size:13px">' + x.agent + '</div>').join('') + '</div>';
-    org += '<details style="margin:8px 0"><summary style="cursor:pointer;font-weight:600;padding:8px;background:#f0edfa;border-radius:6px">Supervisors (' + supervisors.length + ')</summary><div style="display:flex;gap:8px;flex-wrap:wrap;padding:12px">' + supervisors.map(x => '<div style="background:#f8f7fc;padding:6px 10px;border-radius:4px;font-size:12px">' + x.agent + '<br><small>' + (x.team||'') + '</small></div>').join('') + '</div></details>';
-    org += '<details style="margin:8px 0"><summary style="cursor:pointer;font-weight:600;padding:8px;background:#f0edfa;border-radius:6px">Agents (' + agents.length + ')</summary><div style="display:flex;gap:6px;flex-wrap:wrap;padding:12px">' + agents.map(x => '<div style="background:#f8f7fc;padding:4px 8px;border-radius:4px;font-size:11px">' + x.agent + '</div>').join('') + '</div></details></div>';
+    // Group agents by supervisor
+    const bySup = {};
+    agents.forEach(a => { const sup = a.supervisor || 'Unassigned'; if (!bySup[sup]) bySup[sup] = []; bySup[sup].push(a); });
+    org += '<details open style="margin:8px 0"><summary style="cursor:pointer;font-weight:600;padding:8px;background:#f0edfa;border-radius:6px">Supervisors & Teams (' + supervisors.length + ')</summary><div style="padding:12px">';
+    supervisors.forEach(sup => {
+      const team = bySup[sup.agent] || [];
+      org += '<div style="margin-bottom:12px;padding:10px;background:#f8f7fc;border-radius:6px"><strong>' + sup.agent + '</strong> <small style="color:#666">' + (sup.team||'') + '</small><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">' + team.map(a => '<span style="background:white;padding:3px 8px;border-radius:4px;font-size:11px;border:1px solid #e0dce8">' + a.agent + '</span>').join('') + (team.length ? '' : '<span style="font-size:11px;color:#999">No agents listed</span>') + '</div></div>';
+    });
+    org += '</div></details></div>';
 
     // Loan review overview
     const byState = { 'In Review': 0, 'Findings': 0, 'Completed': 0 };
