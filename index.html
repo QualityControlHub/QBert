@@ -41,7 +41,7 @@ body[data-width="full"]{--page-w:100%}
  </div>
 </header>
 <div class="nav-shell"><nav class="app-nav" aria-label="Department sections">
- <button data-section="loans" aria-current="page">Loan Action Reviews</button><button data-section="cs">Customer Service</button><button data-section="aging">Aging Reports</button><button data-section="guide">2027 Program Guide</button><button data-section="comms">Communications Plan</button><button data-section="checklists">QC Checklists</button><button data-section="dash" class="dash">Dashboard Reports</button>
+ <button data-section="loans" aria-current="page">Loan Action Reviews</button><button data-section="cs">Customer Service</button><button data-section="aging">Aging Reports</button><button data-section="guide">QC Program Guide</button><button data-section="comms">Communications Plan</button><button data-section="checklists">QC Checklists</button><button data-section="dash" class="dash">Dashboard Reports</button>
 </nav></div>
 <main id="main" tabindex="-1">
  <section id="section-loans">
@@ -321,7 +321,7 @@ body[data-width="full"]{--page-w:100%}
       <li><strong>Loan Action Reviews</strong> — Three bins: In Review, Findings, and Completed. Reviewers decide outcomes; Supervisors close findings.</li>
       <li><strong>Customer Service</strong> — Placeholder for Genesys and CSH review results.</li>
       <li><strong>Aging Reports</strong> — Cards showing recent delinquency notes with concur status.</li>
-      <li><strong>2027 Program Guide</strong> — The Quality Control Program Guide for the fiscal year.</li>
+      <li><strong>QC Program Guide</strong> — The Quality Control Program Guide for the fiscal year.</li>
       <li><strong>Communications Plan</strong> — This document.</li>
       <li><strong>QC Checklists</strong> — The master list of checks by loan action, used during reviews.</li>
       <li><strong>Dashboard Reports</strong> — Charts and graphs of recent QC activity.</li>
@@ -1246,7 +1246,7 @@ window.deleteRecord = async function(id) {
   loadDataEdit();
 };
 
-// Program Guides editor
+// QC Program Guides editor
 let guideSections = [];
 document.getElementById('guide-load').addEventListener('click', loadGuides);
 document.getElementById('guide-type').addEventListener('change', loadGuides);
