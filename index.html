@@ -1605,18 +1605,33 @@ document.getElementById('nl-generate').addEventListener('click', () => {
 
 <div id="dm-workspace" style="display:none;max-width:800px;margin:40px auto;padding:24px">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-    <h1 style="margin:0">DM Workspace</h1>
+    <h1 style="margin:0;color:#4a6fa5">DM Workspace</h1>
     <button class="btn" id="dm-close" style="background:#8b1e1e;color:white;border-color:#8b1e1e">Close</button>
   </div>
-  <h2>Add Finding</h2>
-  <form id="dm-form" style="display:grid;gap:12px;max-width:500px;margin-bottom:24px">
-    <div class="field"><label>Loan Number (title)</label><input id="dm-title" required></div>
-    <div class="field"><label>Loan Action (loanAction)</label><input id="dm-action" required></div>
-    <div class="field"><label>Finding (findingText)</label><textarea id="dm-finding" rows="3" required></textarea></div>
-    <div class="field"><label>Action Date (actionDate)</label><input type="date" id="dm-date" required></div>
-    <button type="submit" class="btn primary">Submit</button>
-    <div id="dm-status" style="font-size:12px"></div>
-  </form>
+  <h1 style="margin:0 0 20px;color:#4a6fa5;font-size:24px">DM Workspace</h1>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px">
+    <div>
+      <h2 style="margin:0 0 12px;font-size:16px">Action Finding</h2>
+      <form id="dm-form" style="display:grid;gap:10px">
+        <div class="field"><label>Loan Number</label><input id="dm-title" required></div>
+        <div class="field"><label>Loan Action</label><select id="dm-action" required><option value="">Select…</option></select></div>
+        <div class="field"><label>Finding</label><textarea id="dm-finding" rows="3" required></textarea></div>
+        <div class="field"><label>Action Date</label><input type="date" id="dm-date" required></div>
+        <button type="submit" class="btn primary">Submit</button>
+        <div id="dm-status" style="font-size:12px"></div>
+      </form>
+    </div>
+    <div>
+      <h2 style="margin:0 0 12px;font-size:16px">Delinquency Finding</h2>
+      <form id="dm-delinq-form" style="display:grid;gap:10px">
+        <div class="field"><label>Loan Number</label><input id="dm-delinq-title" required></div>
+        <div class="field"><label>Finding</label><textarea id="dm-delinq-finding" rows="3" required></textarea></div>
+        <div class="field"><label>Review Date</label><input type="date" id="dm-delinq-date" required></div>
+        <button type="submit" class="btn primary">Submit</button>
+        <div id="dm-delinq-status" style="font-size:12px"></div>
+      </form>
+    </div>
+  </div>
   <h2>Records</h2>
   <div id="dm-records"></div>
 </div>
@@ -1652,6 +1667,35 @@ document.getElementById('dm-form').addEventListener('submit', async e => {
     else { const err = await res.text(); status.textContent = 'Failed: ' + err.slice(0, 100); }
   } catch (e) { status.textContent = 'Failed: ' + e.message; }
 });
+
+// Load loan actions for dropdown
+async function loadDMActions() {
+  try {
+    const data = await fetch(CONFIG.url + '/api/collections/checklists/records?perPage=500').then(r => r.json());
+    const actions = [...new Set((data.items || []).map(c => c.category).filter(Boolean))].sort();
+    const sel = document.getElementById('dm-action');
+    actions.forEach(a => { const o = document.createElement('option'); o.value = a; o.textContent = a; sel.appendChild(o); });
+  } catch {}
+}
+loadDMActions();
+
+document.getElementById('dm-delinq-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const status = document.getElementById('dm-delinq-status');
+  status.textContent = 'Saving…';
+  const body = {
+    title: document.getElementById('dm-delinq-title').value.trim(),
+    loanAction: 'Delinquency',
+    findingText: document.getElementById('dm-delinq-finding').value.trim(),
+    actionDate: document.getElementById('dm-delinq-date').value + ' 00:00:00.000Z'
+  };
+  try {
+    const res = await fetch(CONFIG.url + '/api/collections/dm_findings/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (res.ok) { status.textContent = 'Added.'; document.getElementById('dm-delinq-form').reset(); loadDMRecords(); }
+    else { const err = await res.text(); status.textContent = 'Failed: ' + err.slice(0, 100); }
+  } catch (e) { status.textContent = 'Failed: ' + e.message; }
+});
+
 async function loadDMRecords() {
   const div = document.getElementById('dm-records');
   try {
