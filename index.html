@@ -1010,19 +1010,12 @@ disconnectedPresentation();
   </div>
   <div id="ws-newsletter" hidden>
     <h2>Newsletter</h2>
-    <p>Quarterly newsletter sections. Edit content, then generate a PowerPoint.</p>
-    <div style="display:grid;gap:12px;max-width:600px">
-      <div class="field"><label>Month / Title</label><input id="nl-title" value="April 2026"></div>
-      <div class="field"><label>Observances</label><textarea id="nl-observances" rows="3" placeholder="Holidays, awareness months…"></textarea></div>
-      <div class="field"><label>Disaster Servicing Updates</label><textarea id="nl-updates" rows="4" placeholder="Office attendance, system releases, policy notes…"></textarea></div>
-      <div class="field"><label>Recognition</label><textarea id="nl-recognition" rows="2" placeholder="Kudos, awards…"></textarea></div>
-      <div class="field"><label>Employee Resources</label><textarea id="nl-resources" rows="2" placeholder="Reminders, deadlines…"></textarea></div>
-      <div class="field"><label>Work-Life & Wellness</label><textarea id="nl-wellness" rows="3" placeholder="Care talks, events…"></textarea></div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn" id="nl-load">Load</button>
+      <button class="btn primary" id="nl-add">Add Record</button>
     </div>
-    <div style="margin-top:16px">
-      <button class="btn primary" id="nl-generate">Generate PowerPoint</button>
-      <span id="nl-status" style="margin-left:12px;font-size:12px"></span>
-    </div>
+    <div id="nl-table" style="overflow-x:auto;max-height:400px;border:1px solid #ddd;border-radius:6px"></div>
+    <div id="nl-status" style="margin-top:8px;font-size:12px"></div>
   </div>
   <div id="ws-reports" hidden>
     <h2>Narrative Reports</h2>
