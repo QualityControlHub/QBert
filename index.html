@@ -1709,4 +1709,37 @@ window.deleteNL = async function(id) {
   loadNewsletter();
 };
 </script>
+
+<script>
+let nlData = [];
+async function loadFrontNewsletter() {
+  const sel = document.getElementById('nl-month-select');
+  const cards = document.getElementById('nl-cards');
+  if (!sel || !cards) return;
+  cards.innerHTML = '<p>Loading…</p>';
+  try {
+    const data = await fetch(CONFIG.url + '/api/collections/newsletter/records?perPage=200&sort=-month').then(r => r.json());
+    nlData = data.items || [];
+    const months = [...new Set(nlData.map(r => r.month).filter(Boolean))];
+    sel.innerHTML = months.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+    if (months.length) sel.value = months[0];
+    sel.onchange = renderNLCards;
+    renderNLCards();
+  } catch (e) { cards.innerHTML = '<p>Failed: ' + e.message + '</p>'; }
+}
+function renderNLCards() {
+  const month = document.getElementById('nl-month-select').value;
+  const cards = document.getElementById('nl-cards');
+  const items = nlData.filter(r => r.month === month);
+  const colors = ['#82B0B0', '#D4E5E1', '#FEEBE0', '#E1D5C9'];
+  const sections = [...new Set(items.map(r => r.sectionTitle))];
+  if (!sections.length) { cards.innerHTML = '<p>No items for this month.</p>'; return; }
+  cards.innerHTML = sections.map((sec, i) => {
+    const color = colors[i % colors.length];
+    const secItems = items.filter(r => r.sectionTitle === sec);
+    return '<div style="background:' + color + ';border-radius:10px;padding:16px"><h2 style="margin:0 0 12px;font-size:16px;color:#1a1a2e">' + sec + '</h2>' +
+      secItems.map(r => '<div style="background:white;border-radius:6px;padding:12px;margin-bottom:8px"><strong>' + (r.sectionSubTitle || '') + '</strong><p style="margin:6px 0 0;font-size:13px">' + (r.note || '') + '</p>' + (r.noteLink ? '<a href="' + r.noteLink + '" target="_blank" style="font-size:12px">Link</a>' : '') + '</div>').join('') + '</div>';
+  }).join('');
+}
+</script>
 </body></html>
