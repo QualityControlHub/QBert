@@ -1885,4 +1885,25 @@ document.querySelectorAll('[data-qc]').forEach(btn => {
   });
 });
 </script>
+
+<script>
+async function loadQCChecklists() {
+  const div = document.getElementById('qc-checklists');
+  if (!div) return;
+  div.innerHTML = '<p>Loading…</p>';
+  try {
+    const res = await fetch(CONFIG.url + '/api/collections/checklists/records?perPage=500&sort=category');
+    const data = await res.json();
+    const items = data.items || [];
+    if (!items.length) { div.innerHTML = '<p>No checklists found.</p>'; return; }
+    const categories = [...new Set(items.map(c => c.category || 'Other'))].sort();
+    div.innerHTML = '<div style="padding:16px"><h2>QC Checklists</h2>' + categories.map(cat =>
+      '<div style="margin-bottom:16px"><h3 style="color:#6b4c9a;margin:0 0 8px">' + cat + '</h3>' +
+      items.filter(c => (c.category || 'Other') === cat).map(c =>
+        '<div style="display:grid;grid-template-columns:80px 1fr;gap:8px;padding:4px 0;border-bottom:1px solid #eee"><strong style="font-size:12px">' + (c.checkID || '') + '</strong><span style="font-size:13px">' + (c.check || '') + '</span></div>'
+      ).join('') + '</div>'
+    ).join('') + '</div>';
+  } catch (e) { div.innerHTML = '<p>Error: ' + e.message + '</p>'; }
+}
+</script>
 </body></html>
