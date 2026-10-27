@@ -1000,12 +1000,12 @@ disconnectedPresentation();
     <h2>Newsletter</h2>
     <p>Quarterly newsletter sections. Edit content, then generate a PowerPoint.</p>
     <div style="display:grid;gap:12px;max-width:600px">
-      <div class="field"><label>Quarter / Title</label><input id="nl-title" value="Q1 FY2027 Quality Update"></div>
-      <div class="field"><label>Headline</label><input id="nl-headline" placeholder="Key message for the quarter"></div>
-      <div class="field"><label>Loan Reviews Summary</label><textarea id="nl-loans" rows="3" placeholder="Reviews completed, findings, trends…"></textarea></div>
-      <div class="field"><label>Customer Service Summary</label><textarea id="nl-cs" rows="3" placeholder="Genesys scores, coverage…"></textarea></div>
-      <div class="field"><label>Delinquency Notes</label><textarea id="nl-delinq" rows="3" placeholder="Aging highlights…"></textarea></div>
-      <div class="field"><label>Training & Focus</label><textarea id="nl-training" rows="3" placeholder="Upcoming training, quality focus…"></textarea></div>
+      <div class="field"><label>Month / Title</label><input id="nl-title" value="April 2026"></div>
+      <div class="field"><label>Observances</label><textarea id="nl-observances" rows="3" placeholder="Holidays, awareness months…"></textarea></div>
+      <div class="field"><label>Disaster Servicing Updates</label><textarea id="nl-updates" rows="4" placeholder="Office attendance, system releases, policy notes…"></textarea></div>
+      <div class="field"><label>Recognition</label><textarea id="nl-recognition" rows="2" placeholder="Kudos, awards…"></textarea></div>
+      <div class="field"><label>Employee Resources</label><textarea id="nl-resources" rows="2" placeholder="Reminders, deadlines…"></textarea></div>
+      <div class="field"><label>Work-Life & Wellness</label><textarea id="nl-wellness" rows="3" placeholder="Care talks, events…"></textarea></div>
     </div>
     <div style="margin-top:16px">
       <button class="btn primary" id="nl-generate">Generate PowerPoint</button>
@@ -1558,33 +1558,34 @@ document.getElementById('nl-generate').addEventListener('click', () => {
     const pptx = new PptxGenJS();
     pptx.defineLayout({ name: 'WIDE', width: 13.33, height: 7.5 });
     pptx.layout = 'WIDE';
-    const title = document.getElementById('nl-title').value || 'Quality Newsletter';
-    const headline = document.getElementById('nl-headline').value;
-    const loans = document.getElementById('nl-loans').value;
-    const cs = document.getElementById('nl-cs').value;
-    const delinq = document.getElementById('nl-delinq').value;
-    const training = document.getElementById('nl-training').value;
+    const title = document.getElementById('nl-title').value || 'Newsletter';
+    const observances = document.getElementById('nl-observances').value;
+    const updates = document.getElementById('nl-updates').value;
+    const recognition = document.getElementById('nl-recognition').value;
+    const resources = document.getElementById('nl-resources').value;
+    const wellness = document.getElementById('nl-wellness').value;
 
     // Title slide
     const s1 = pptx.addSlide();
     s1.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 0, w: '100%', h: '100%', fill: { color: '1E3A5F' } });
-    s1.addText(title, { x: 0.5, y: 2.5, w: 12, h: 1.5, fontSize: 36, color: 'FFFFFF', bold: true, align: 'center' });
-    s1.addText('Disaster Servicing and Liquidation Center', { x: 0.5, y: 4.2, w: 12, h: 0.5, fontSize: 16, color: 'CBD6F8', align: 'center' });
+    s1.addText('SBA Disaster Center', { x: 0.5, y: 2.2, w: 12, h: 0.6, fontSize: 20, color: 'CBD6F8', align: 'center' });
+    s1.addText('Monthly Newsletter', { x: 0.5, y: 2.9, w: 12, h: 1, fontSize: 36, color: 'FFFFFF', bold: true, align: 'center' });
+    s1.addText(title, { x: 0.5, y: 4.2, w: 12, h: 0.5, fontSize: 18, color: 'CBD6F8', align: 'center' });
 
-    // Content slide
-    const s2 = pptx.addSlide();
-    s2.addText(title, { x: 0.5, y: 0.3, w: 12, h: 0.6, fontSize: 24, color: '1E3A5F', bold: true });
-    if (headline) s2.addText(headline, { x: 0.5, y: 1, w: 12, h: 0.5, fontSize: 14, color: '6B4C9A', italic: true });
+    // Content slides
     const sections = [
-      { label: 'Loan Reviews', text: loans, y: 1.6 },
-      { label: 'Customer Service', text: cs, y: 2.8 },
-      { label: 'Delinquency', text: delinq, y: 4.0 },
-      { label: 'Training & Focus', text: training, y: 5.2 }
+      { label: 'Observances', text: observances },
+      { label: 'Disaster Servicing Updates', text: updates },
+      { label: 'Recognition', text: recognition },
+      { label: 'Employee Resources', text: resources },
+      { label: 'Work-Life & Wellness', text: wellness }
     ];
     sections.forEach(sec => {
       if (sec.text) {
-        s2.addText(sec.label, { x: 0.5, y: sec.y, w: 12, h: 0.3, fontSize: 12, color: '1E3A5F', bold: true });
-        s2.addText(sec.text, { x: 0.5, y: sec.y + 0.3, w: 12, h: 0.8, fontSize: 11, color: '333333' });
+        const s = pptx.addSlide();
+        s.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 0, w: '100%', h: 0.8, fill: { color: '1E3A5F' } });
+        s.addText(sec.label, { x: 0.5, y: 0.2, w: 12, h: 0.5, fontSize: 20, color: 'FFFFFF', bold: true });
+        s.addText(sec.text, { x: 0.5, y: 1.2, w: 12, h: 5.5, fontSize: 14, color: '333333', valign: 'top' });
       }
     });
 
