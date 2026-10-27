@@ -1478,12 +1478,14 @@ async function loadLoanForm() {
     window._checklists = checks.items || [];
   } catch (e) { console.warn(e); }
 }
-document.getElementById('la-add').addEventListener('click', async () => {
+const laBtn = document.getElementById('la-add');
+if (laBtn) laBtn.addEventListener('click', async () => {
   const title = document.getElementById('la-title').value.trim();
   const loanAction = document.getElementById('la-action').value;
   const reviewer = document.getElementById('la-reviewer').value;
   const actionDate = document.getElementById('la-date').value;
   if (!title || !loanAction || !reviewer || !actionDate) { alert('Fill all fields'); return; }
+  if (!confirm('Add this loan to reviews?\n\n' + title + ' · ' + loanAction + '\nReviewer: ' + reviewer)) return;
   const status = document.getElementById('la-status');
   status.textContent = 'Adding…';
   const checks = window._checklists || [];
