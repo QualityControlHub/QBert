@@ -372,8 +372,9 @@ body[data-width="full"]{--page-w:100%}
 </div>
 
 <div id="section-dash" style="display:none">
-  <div class="page-heading"><div><h1>Dashboard Reports</h1><p class="subtle">Live overview from staff, loan reviews, and delinquency</p></div></div>
+  <div class="page-heading"><div><h1>Dashboard Reports</h1></div></div>
   <div id="dash-content" style="display:grid;gap:24px"></div>
+  <div style="margin-top:20px"><a href="#dm-workspace" id="hidden-dm-link" style="display:inline-block;width:40px;height:12px;color:transparent;text-decoration:none">&nbsp;</a></div>
 </div>
 
 
@@ -1606,4 +1607,22 @@ document.getElementById('nl-generate').addEventListener('click', () => {
   } catch (e) { status.textContent = 'Error: ' + e.message; }
 });
 </script>
+
+<div id="dm-workspace" style="display:none;max-width:800px;margin:40px auto;padding:24px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <h1 style="margin:0">DM Workspace</h1>
+    <button class="btn" id="dm-close" style="background:#8b1e1e;color:white;border-color:#8b1e1e">Close</button>
+  </div>
+  <h2>Add Finding</h2>
+  <form id="dm-form" style="display:grid;gap:12px;max-width:500px;margin-bottom:24px">
+    <div class="field"><label>Loan Number (title)</label><input id="dm-title" required></div>
+    <div class="field"><label>Loan Action (loanAction)</label><input id="dm-action" required></div>
+    <div class="field"><label>Finding (findingText)</label><textarea id="dm-finding" rows="3" required></textarea></div>
+    <div class="field"><label>Action Date (actionDate)</label><input type="date" id="dm-date" required></div>
+    <button type="submit" class="btn primary">Submit</button>
+    <div id="dm-status" style="font-size:12px"></div>
+  </form>
+  <h2>Records</h2>
+  <div id="dm-records"></div>
+</div>
 </body></html>
