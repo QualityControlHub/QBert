@@ -1251,7 +1251,7 @@ document.getElementById('de-add').addEventListener('click', () => {
 });
 
 function showLoanAddForm() {
-  const html = '<div id="loan-modal" style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:white;padding:20px;border-radius:8px;max-width:400px;width:90%"><h3>Add Loan Review</h3><div style="display:grid;gap:10px"><div><label>Loan Number</label><input id="la-title" style="width:100%"></div><div><label>Loan Action</label><select id="la-action" style="width:100%"><option value="">Select…</option></select></div><div><label>Reviewer</label><select id="la-reviewer" style="width:100%"><option value="">Select…</option></select></div><div><label>Action Date</label><input type="date" id="la-date" style="width:100%"></div></div><div id="la-status" style="margin:10px 0;font-size:12px"></div><div style="display:flex;gap:8px"><button class="btn primary" onclick="submitLoanAdd()">Add</button><button class="btn" onclick="document.getElementById(\'loan-modal\').remove()">Cancel</button></div></div></div>';
+  const html = '<div id="loan-modal" style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:white;padding:20px;border-radius:8px;max-width:400px;width:90%"><h3>Add Loan Review</h3><div style="display:grid;gap:10px"><div><label>Loan Number</label><input id="la-title" style="width:100%"></div><div><label>Loan Action</label><select id="la-action" style="width:100%"><option value="">Select…</option></select></div><div><label>Reviewer</label><select id="la-reviewer" style="width:100%"><option value="">Select…</option></select></div><div><label>Team</label><select id="la-team" style="width:100%"><option value="">Select…</option></select></div><div><label>Action Date</label><input type="date" id="la-date" style="width:100%"></div></div><div id="la-status" style="margin:10px 0;font-size:12px"></div><div style="display:flex;gap:8px"><button class="btn primary" onclick="submitLoanAdd()">Add</button><button class="btn" onclick="document.getElementById(\'loan-modal\').remove()">Cancel</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
   loadLoanFormDropdowns();
 }
@@ -1268,6 +1268,9 @@ async function loadLoanFormDropdowns() {
     const reviewers = (staff.items || []).filter(s => (s.role || '').toLowerCase() === 'reviewer');
     const revSel = document.getElementById('la-reviewer');
     reviewers.forEach(r => { const o = document.createElement('option'); o.value = r.agent; o.textContent = r.agent; revSel.appendChild(o); });
+    const teams = [...new Set((staff.items || []).map(s => s.team).filter(Boolean))].sort();
+    const teamSel = document.getElementById('la-team');
+    teams.forEach(tm => { const o = document.createElement('option'); o.value = tm; o.textContent = tm; teamSel.appendChild(o); });
     window._checklists = checks.items || [];
   } catch (e) { console.warn(e); }
 }
@@ -1276,15 +1279,16 @@ window.submitLoanAdd = async function() {
   const title = document.getElementById('la-title').value.trim();
   const loanAction = document.getElementById('la-action').value;
   const reviewer = document.getElementById('la-reviewer').value;
+  const team = document.getElementById('la-team').value;
   const actionDate = document.getElementById('la-date').value;
-  if (!title || !loanAction || !reviewer || !actionDate) { alert('Fill all fields'); return; }
+  if (!title || !loanAction || !reviewer || !team || !actionDate) { alert('Fill all fields'); return; }
   if (!confirm('Add this loan to reviews?\n\n' + title + ' · ' + loanAction + '\nReviewer: ' + reviewer)) return;
   const status = document.getElementById('la-status');
   status.textContent = 'Adding…';
   const checks = window._checklists || [];
   const match = checks.find(c => (c.category || '').toLowerCase() === loanAction.toLowerCase());
   const risk = match ? (match.riskRating || 0) : 0;
-  const body = { title, loanAction, reviewer, actionDate: actionDate + ' 00:00:00.000Z', risk, state: 'In Review' };
+  const body = { title, loanAction, reviewer, team, actionDate: actionDate + ' 00:00:00.000Z', risk, state: 'In Review' };
   try {
     const res = await fetch(CONFIG.url + '/api/collections/loan_action_reviews/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (res.ok) { status.textContent = 'Added.'; setTimeout(() => document.getElementById('loan-modal')?.remove(), 800); }
@@ -1520,6 +1524,9 @@ async function loadLoanForm() {
     const reviewers = (staff.items || []).filter(s => (s.role || '').toLowerCase() === 'reviewer');
     const revSel = document.getElementById('la-reviewer');
     reviewers.forEach(r => { const o = document.createElement('option'); o.value = r.agent; o.textContent = r.agent; revSel.appendChild(o); });
+    const teams = [...new Set((staff.items || []).map(s => s.team).filter(Boolean))].sort();
+    const teamSel = document.getElementById('la-team');
+    teams.forEach(tm => { const o = document.createElement('option'); o.value = tm; o.textContent = tm; teamSel.appendChild(o); });
     window._checklists = checks.items || [];
   } catch (e) { console.warn(e); }
 }
