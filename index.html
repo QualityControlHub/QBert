@@ -1732,18 +1732,34 @@ async function loadFrontNewsletter() {
 
 document.getElementById('nl-print').addEventListener('click', async () => {
   const month = document.getElementById('nl-month-select').value;
-  const cards = document.getElementById('nl-cards');
   const btn = document.getElementById('nl-print');
   btn.textContent = 'Generating…';
   try {
-    const canvas = await html2canvas(cards, { scale: 2, backgroundColor: '#ffffff' });
-    const imgData = canvas.toDataURL('image/png');
+    const cardEls = document.querySelectorAll('#nl-cards > div');
+    const images = [];
+    for (const el of cardEls) {
+      const canvas = await html2canvas(el, { scale: 2, backgroundColor: null });
+      images.push(canvas.toDataURL('image/png'));
+    }
     const pptx = new PptxGenJS();
     pptx.defineLayout({ name: 'WIDE', width: 13.33, height: 7.5 });
     pptx.layout = 'WIDE';
     const slide = pptx.addSlide();
-    slide.addText('SBA Disaster Center Quarterly Newsletter — ' + month, { x: 0.3, y: 0.2, w: 12, h: 0.4, fontSize: 14, color: '1E3A5F', bold: true });
-    slide.addImage({ data: imgData, x: 0.3, y: 0.7, w: 12.7, h: 6.5 });
+    slide.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 0, w: '100%', h: 1.1, fill: { color: '1E3A5F' } });
+    slide.addText('SBA Disaster Center', { x: 0.4, y: 0.15, w: 12, h: 0.35, fontSize: 12, color: 'CBD6F8' });
+    slide.addText('Quarterly Newsletter', { x: 0.4, y: 0.45, w: 8, h: 0.45, fontSize: 22, color: 'FFFFFF', bold: true });
+    slide.addText(month, { x: 9, y: 0.5, w: 4, h: 0.4, fontSize: 16, color: 'FEEBE0', align: 'right' });
+    const cols = images.length <= 2 ? images.length : images.length <= 4 ? 2 : 3;
+    const rows = Math.ceil(images.length / cols);
+    const cardW = (12.5 / cols) - 0.2;
+    const cardH = (5.8 / rows) - 0.15;
+    images.forEach((img, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = 0.4 + col * (cardW + 0.2);
+      const y = 1.3 + row * (cardH + 0.15);
+      slide.addImage({ data: img, x, y, w: cardW, h: cardH });
+    });
     await pptx.writeFile({ fileName: 'Newsletter_' + month.replace(/\s+/g, '_') + '.pptx' });
   } catch (e) { alert('Error: ' + e.message); }
   btn.textContent = 'Download PowerPoint';
