@@ -34,10 +34,13 @@ body[data-width="full"]{--page-w:100%}
 <a class="skip" href="#main">Skip to review workspace</a>
 <header class="app-header">
  <div class="brand"><span class="brand-mark" aria-hidden="true">Q</span><div><div class="brand-title">Q-Bert<span style="color:var(--gold)">.</span></div><div class="brand-sub">DLSLC Quality Control Workspace</div></div></div>
- <div class="session-controls">
-  <div class="session-field" style="margin-top:22px"><label for="role">Role</label><select id="role"><option>Reviewer</option><option>Supervisor</option><option>Director</option></select></div>
-  <div class="session-field" style="margin-top:22px"><label for="identity" id="identity-label">Signed in as</label><select id="identity"></select></div>
-  <div class="session-field" style="margin-top:-8px"><a href="#" id="qc-docs-link" style="font-size:11px;color:#1e3a5f;background:#F1CC13;font-weight:600;text-decoration:none;display:inline-block;padding:4px 12px;border-radius:12px;margin-bottom:6px">QC Docs</a><label for="width">Layout</label><select id="width"><option value="comfortable">Comfortable</option><option value="wide">Wide</option><option value="full">Full width</option></select></div>
+ <div class="session-controls" style="flex-direction:column;align-items:flex-end;gap:6px">
+  <a href="#" id="qc-docs-link" style="font-size:10px;color:#1e3a5f;background:#F1CC13;font-weight:700;text-decoration:none;display:inline-block;padding:3px 10px;border-radius:10px;text-align:center">QC Docs</a>
+  <div style="display:flex;gap:10px;align-items:flex-end">
+    <div class="session-field"><label for="role">Role</label><select id="role"><option>Reviewer</option><option>Supervisor</option><option>Director</option></select></div>
+    <div class="session-field"><label for="identity" id="identity-label">Signed in as</label><select id="identity"></select></div>
+    <div class="session-field"><label for="width">Layout</label><select id="width"><option value="comfortable">Comfortable</option><option value="wide">Wide</option><option value="full">Full width</option></select></div>
+  </div>
  </div>
 </header>
 <div class="nav-shell"><nav class="app-nav" aria-label="Department sections">
