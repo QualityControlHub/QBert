@@ -364,7 +364,7 @@ body[data-width="full"]{--page-w:100%}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <h1 style="margin:0">SBA Disaster Center Quarterly Newsletter</h1>
       <select id="nl-month-select" style="padding:6px 12px;border-radius:6px;border:1px solid #ccc"></select>
-      <button class="btn" id="nl-print" style="margin-left:8px">Print</button>
+      <button class="btn" id="nl-print" style="margin-left:8px">Download PowerPoint</button>
     </div>
     <div id="nl-cards" style="display:grid;gap:12px"></div>
   </div>
@@ -1731,11 +1731,24 @@ async function loadFrontNewsletter() {
 
 document.getElementById('nl-print').addEventListener('click', () => {
   const month = document.getElementById('nl-month-select').value;
-  const cards = document.getElementById('nl-cards').innerHTML;
-  const win = window.open('', '_blank', 'width=800,height=600');
-  win.document.write('<html><head><title>' + month + ' Newsletter</title><style>body{font-family:sans-serif;padding:20px;max-width:800px;margin:auto}h1{font-size:20px;margin-bottom:16px}@media print{body{padding:0}}</style></head><body><h1>SBA Disaster Center Quarterly Newsletter — ' + month + '</h1>' + cards + '</body></html>');
-  win.document.close();
-  setTimeout(() => win.print(), 300);
+  const items = nlData.filter(r => r.month === month);
+  const pptx = new PptxGenJS();
+  pptx.defineLayout({ name: 'WIDE', width: 13.33, height: 7.5 });
+  pptx.layout = 'WIDE';
+  const slide = pptx.addSlide();
+  slide.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 0, w: '100%', h: 0.6, fill: { color: '1E3A5F' } });
+  slide.addText('SBA Disaster Center Quarterly Newsletter — ' + month, { x: 0.3, y: 0.1, w: 12, h: 0.4, fontSize: 16, color: 'FFFFFF', bold: true });
+  const sections = [...new Set(items.map(r => r.sectionTitle))];
+  const colors = ['82B0B0', 'D4E5E1', 'FEEBE0', 'E1D5C9'];
+  let y = 0.8;
+  sections.forEach((sec, i) => {
+    const secItems = items.filter(r => r.sectionTitle === sec);
+    const text = secItems.map(r => (r.sectionSubTitle ? r.sectionSubTitle + ': ' : '') + (r.note || '')).join('\n');
+    slide.addText(sec, { x: 0.3, y: y, w: 12, h: 0.3, fontSize: 12, color: '1E3A5F', bold: true });
+    slide.addText(text.slice(0, 400), { x: 0.3, y: y + 0.3, w: 12, h: 0.8, fontSize: 10, color: '333333' });
+    y += 1.2;
+  });
+  pptx.writeFile({ fileName: 'Newsletter_' + month.replace(/\s+/g, '_') + '.pptx' });
 });
 
 function renderNLCards() {
