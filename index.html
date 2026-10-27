@@ -372,7 +372,6 @@ body[data-width="full"]{--page-w:100%}
 </div>
 
 <div id="section-dash" style="display:none">
-  <div class="page-heading"><div><h1>Dashboard Reports</h1></div></div>
   <div id="dash-content" style="display:grid;gap:24px"></div>
   <div style="margin-top:20px"><a href="#dm-workspace" id="hidden-dm-link" style="display:inline-block;width:40px;height:12px;color:transparent;text-decoration:none">&nbsp;</a></div>
 </div>
@@ -1625,4 +1624,51 @@ document.getElementById('nl-generate').addEventListener('click', () => {
   <h2>Records</h2>
   <div id="dm-records"></div>
 </div>
+
+<script>
+document.getElementById('hidden-dm-link').addEventListener('click', e => {
+  e.preventDefault();
+  document.getElementById('dm-workspace').style.display = 'block';
+  document.querySelector('.app-header').style.display = 'none';
+  document.querySelector('.nav-shell').style.display = 'none';
+  document.querySelector('main').style.display = 'none';
+  loadDMRecords();
+});
+document.getElementById('dm-close').addEventListener('click', () => {
+  document.getElementById('dm-workspace').style.display = 'none';
+  document.querySelector('.app-header').style.display = '';
+  document.querySelector('.nav-shell').style.display = '';
+  document.querySelector('main').style.display = '';
+});
+document.getElementById('dm-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const status = document.getElementById('dm-status');
+  status.textContent = 'Saving…';
+  const body = {
+    title: document.getElementById('dm-title').value.trim(),
+    loanAction: document.getElementById('dm-action').value.trim(),
+    findingText: document.getElementById('dm-finding').value.trim(),
+    actionDate: document.getElementById('dm-date').value + ' 00:00:00.000Z'
+  };
+  try {
+    const res = await fetch(CONFIG.url + '/api/collections/dm_findings/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (res.ok) { status.textContent = 'Added.'; document.getElementById('dm-form').reset(); loadDMRecords(); }
+    else { const err = await res.text(); status.textContent = 'Failed: ' + err.slice(0, 100); }
+  } catch (e) { status.textContent = 'Failed: ' + e.message; }
+});
+async function loadDMRecords() {
+  const div = document.getElementById('dm-records');
+  try {
+    const data = await fetch(CONFIG.url + '/api/collections/dm_findings/records?perPage=100&sort=-created').then(r => r.json());
+    const items = data.items || [];
+    if (!items.length) { div.innerHTML = '<p>No records.</p>'; return; }
+    div.innerHTML = items.map(r => '<div style="border:1px solid #ddd;padding:10px;margin:8px 0;border-radius:6px;display:flex;justify-content:space-between;align-items:center"><div><strong>' + (r.title || '') + '</strong> — ' + (r.loanAction || '') + '<br><small>' + (r.findingText || '').slice(0, 80) + '</small></div><button class="btn" onclick="deleteDM(\'' + r.id + '\')" style="background:#8b1e1e;color:white;font-size:11px">Delete</button></div>').join('');
+  } catch { div.innerHTML = '<p>Failed to load.</p>'; }
+}
+window.deleteDM = async function(id) {
+  if (!confirm('Delete this record?')) return;
+  await fetch(CONFIG.url + '/api/collections/dm_findings/records/' + id, { method: 'DELETE' });
+  loadDMRecords();
+};
+</script>
 </body></html>
