@@ -1881,7 +1881,7 @@ document.querySelectorAll('[data-qc]').forEach(btn => {
     });
     if (btn.dataset.qc === 'guide') document.getElementById('qc-guide').innerHTML = document.getElementById('section-guide').innerHTML;
     if (btn.dataset.qc === 'comms') document.getElementById('qc-comms').innerHTML = document.getElementById('section-comms').innerHTML;
-    if (btn.dataset.qc === 'checklists') { document.getElementById('qc-checklists').innerHTML = document.getElementById('section-checklists').innerHTML; }
+    if (btn.dataset.qc === 'checklists') loadQCChecklists();
   });
 });
 </script>
