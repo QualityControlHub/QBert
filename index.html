@@ -919,6 +919,7 @@ disconnectedPresentation();
     <button class="btn" data-ws="csh">CSH Reviews</button>
     <button class="btn" data-ws="delinquency">Delinquency</button>
     <button class="btn" data-ws="dataedit">Data Edit</button>
+    <button class="btn" data-ws="newsletter">Newsletter</button>
     <button class="btn" data-ws="reports">Narrative Reports</button>
     <button class="btn" id="ws-close" style="margin-left:auto;background:#8b1e1e;color:white;border-color:#8b1e1e">Close</button>
   </nav>
@@ -995,6 +996,22 @@ disconnectedPresentation();
     <div id="de-table" style="overflow-x:auto;max-height:400px;border:1px solid #ddd;border-radius:6px"></div>
     <div id="de-status" style="margin-top:8px;font-size:12px"></div>
   </div>
+  <div id="ws-newsletter" hidden>
+    <h2>Newsletter</h2>
+    <p>Quarterly newsletter sections. Edit content, then generate a PowerPoint.</p>
+    <div style="display:grid;gap:12px;max-width:600px">
+      <div class="field"><label>Quarter / Title</label><input id="nl-title" value="Q1 FY2027 Quality Update"></div>
+      <div class="field"><label>Headline</label><input id="nl-headline" placeholder="Key message for the quarter"></div>
+      <div class="field"><label>Loan Reviews Summary</label><textarea id="nl-loans" rows="3" placeholder="Reviews completed, findings, trends…"></textarea></div>
+      <div class="field"><label>Customer Service Summary</label><textarea id="nl-cs" rows="3" placeholder="Genesys scores, coverage…"></textarea></div>
+      <div class="field"><label>Delinquency Notes</label><textarea id="nl-delinq" rows="3" placeholder="Aging highlights…"></textarea></div>
+      <div class="field"><label>Training & Focus</label><textarea id="nl-training" rows="3" placeholder="Upcoming training, quality focus…"></textarea></div>
+    </div>
+    <div style="margin-top:16px">
+      <button class="btn primary" id="nl-generate">Generate PowerPoint</button>
+      <span id="nl-status" style="margin-left:12px;font-size:12px"></span>
+    </div>
+  </div>
   <div id="ws-reports" hidden>
     <h2>Narrative Reports</h2>
     <p>Generate an HTML report of findings and completed reviews.</p>
@@ -1020,7 +1037,7 @@ document.getElementById('ws-close').addEventListener('click', () => {
 });
 document.querySelectorAll('[data-ws]').forEach(btn => {
   btn.addEventListener('click', () => {
-    ['loans','genesys','csh','delinquency','dataedit','reports'].forEach(s => {
+    ['loans','genesys','csh','delinquency','dataedit','newsletter','reports'].forEach(s => {
       const el = document.getElementById('ws-'+s);
       if (el) el.hidden = s !== btn.dataset.ws;
     });
@@ -1531,4 +1548,49 @@ async function loadLoanForm() {
   } catch (e) { console.warn(e); }
 }
 
-</script></body></html>
+</script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script>
+document.getElementById('nl-generate').addEventListener('click', () => {
+  const status = document.getElementById('nl-status');
+  status.textContent = 'Generating…';
+  try {
+    const pptx = new PptxGenJS();
+    pptx.defineLayout({ name: 'WIDE', width: 13.33, height: 7.5 });
+    pptx.layout = 'WIDE';
+    const title = document.getElementById('nl-title').value || 'Quality Newsletter';
+    const headline = document.getElementById('nl-headline').value;
+    const loans = document.getElementById('nl-loans').value;
+    const cs = document.getElementById('nl-cs').value;
+    const delinq = document.getElementById('nl-delinq').value;
+    const training = document.getElementById('nl-training').value;
+
+    // Title slide
+    const s1 = pptx.addSlide();
+    s1.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 0, w: '100%', h: '100%', fill: { color: '1E3A5F' } });
+    s1.addText(title, { x: 0.5, y: 2.5, w: 12, h: 1.5, fontSize: 36, color: 'FFFFFF', bold: true, align: 'center' });
+    s1.addText('Disaster Servicing and Liquidation Center', { x: 0.5, y: 4.2, w: 12, h: 0.5, fontSize: 16, color: 'CBD6F8', align: 'center' });
+
+    // Content slide
+    const s2 = pptx.addSlide();
+    s2.addText(title, { x: 0.5, y: 0.3, w: 12, h: 0.6, fontSize: 24, color: '1E3A5F', bold: true });
+    if (headline) s2.addText(headline, { x: 0.5, y: 1, w: 12, h: 0.5, fontSize: 14, color: '6B4C9A', italic: true });
+    const sections = [
+      { label: 'Loan Reviews', text: loans, y: 1.6 },
+      { label: 'Customer Service', text: cs, y: 2.8 },
+      { label: 'Delinquency', text: delinq, y: 4.0 },
+      { label: 'Training & Focus', text: training, y: 5.2 }
+    ];
+    sections.forEach(sec => {
+      if (sec.text) {
+        s2.addText(sec.label, { x: 0.5, y: sec.y, w: 12, h: 0.3, fontSize: 12, color: '1E3A5F', bold: true });
+        s2.addText(sec.text, { x: 0.5, y: sec.y + 0.3, w: 12, h: 0.8, fontSize: 11, color: '333333' });
+      }
+    });
+
+    pptx.writeFile({ fileName: title.replace(/\s+/g, '_') + '.pptx' });
+    status.textContent = 'Downloaded.';
+  } catch (e) { status.textContent = 'Error: ' + e.message; }
+});
+</script>
+</body></html>
