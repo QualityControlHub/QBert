@@ -364,6 +364,7 @@ body[data-width="full"]{--page-w:100%}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <h1 style="margin:0">SBA Disaster Center Quarterly Newsletter</h1>
       <select id="nl-month-select" style="padding:6px 12px;border-radius:6px;border:1px solid #ccc"></select>
+      <button class="btn" id="nl-print" style="margin-left:8px">Print</button>
     </div>
     <div id="nl-cards" style="display:grid;gap:12px"></div>
   </div>
@@ -1727,6 +1728,16 @@ async function loadFrontNewsletter() {
     renderNLCards();
   } catch (e) { cards.innerHTML = '<p>Failed: ' + e.message + '</p>'; }
 }
+
+document.getElementById('nl-print').addEventListener('click', () => {
+  const month = document.getElementById('nl-month-select').value;
+  const cards = document.getElementById('nl-cards').innerHTML;
+  const win = window.open('', '_blank', 'width=800,height=600');
+  win.document.write('<html><head><title>' + month + ' Newsletter</title><style>body{font-family:sans-serif;padding:20px;max-width:800px;margin:auto}h1{font-size:20px;margin-bottom:16px}@media print{body{padding:0}}</style></head><body><h1>SBA Disaster Center Quarterly Newsletter — ' + month + '</h1>' + cards + '</body></html>');
+  win.document.close();
+  setTimeout(() => win.print(), 300);
+});
+
 function renderNLCards() {
   const month = document.getElementById('nl-month-select').value;
   const cards = document.getElementById('nl-cards');
