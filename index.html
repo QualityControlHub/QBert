@@ -924,15 +924,14 @@ disconnectedPresentation();
   </nav>
   <div id="ws-loans">
     <h2>Loan Reviews</h2>
-    <p>Add a single loan action for review.</p>
-    <form id="loan-add-form" style="display:grid;gap:12px;max-width:400px">
-      <div class="field"><label>Loan Number</label><input id="la-title" required></div>
-      <div class="field"><label>Loan Action</label><select id="la-action" required><option value="">Select…</option></select></div>
-      <div class="field"><label>Reviewer</label><select id="la-reviewer" required><option value="">Select…</option></select></div>
-      <div class="field"><label>Action Date</label><input type="date" id="la-date" required></div>
-      <button type="button" class="btn primary" id="la-add">Add to Reviews</button>
-      <div id="la-status"></div>
-    </form>
+    <p>Paste production loans (CSV). Columns should match loan_action_reviews fields.</p>
+    <textarea id="ws-loans-input" rows="8" style="width:100%;font-family:monospace;font-size:12px" placeholder="title,loanAction,team,risk,actionDate,reviewer"></textarea>
+    <div style="margin:10px 0;display:flex;gap:8px">
+      <button class="btn" id="ws-generate-sample">Generate 80-Loan Sample</button>
+      <button class="btn primary" id="ws-append-sample" disabled>Append Sample to Reviews</button>
+    </div>
+    <div id="ws-sample-preview"></div>
+    <div id="ws-loans-status"></div>
   </div>
   <div id="ws-genesys" hidden>
     <h2>Genesys Reviews</h2>
@@ -1245,7 +1244,53 @@ let deRecords = [];
 document.getElementById('de-load').addEventListener('click', loadDataEdit);
 document.getElementById('de-collection').addEventListener('change', loadDataEdit);
 document.getElementById('de-search').addEventListener('input', renderDataEdit);
-document.getElementById('de-add').addEventListener('click', () => editRecord(null));
+document.getElementById('de-add').addEventListener('click', () => {
+  const col = document.getElementById('de-collection').value;
+  if (col === 'loan_action_reviews') showLoanAddForm();
+  else editRecord(null);
+});
+
+function showLoanAddForm() {
+  const html = '<div id="loan-modal" style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:white;padding:20px;border-radius:8px;max-width:400px;width:90%"><h3>Add Loan Review</h3><div style="display:grid;gap:10px"><div><label>Loan Number</label><input id="la-title" style="width:100%"></div><div><label>Loan Action</label><select id="la-action" style="width:100%"><option value="">Select…</option></select></div><div><label>Reviewer</label><select id="la-reviewer" style="width:100%"><option value="">Select…</option></select></div><div><label>Action Date</label><input type="date" id="la-date" style="width:100%"></div></div><div id="la-status" style="margin:10px 0;font-size:12px"></div><div style="display:flex;gap:8px"><button class="btn primary" onclick="submitLoanAdd()">Add</button><button class="btn" onclick="document.getElementById(\'loan-modal\').remove()">Cancel</button></div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  loadLoanFormDropdowns();
+}
+
+async function loadLoanFormDropdowns() {
+  try {
+    const [checks, staff] = await Promise.all([
+      fetch(CONFIG.url + '/api/collections/checklists/records?perPage=500').then(r => r.json()),
+      fetch(CONFIG.url + '/api/collections/staff/records?perPage=200').then(r => r.json())
+    ]);
+    const actions = [...new Set((checks.items || []).map(c => c.category).filter(Boolean))].sort();
+    const actionSel = document.getElementById('la-action');
+    actions.forEach(a => { const o = document.createElement('option'); o.value = a; o.textContent = a; actionSel.appendChild(o); });
+    const reviewers = (staff.items || []).filter(s => (s.role || '').toLowerCase() === 'reviewer');
+    const revSel = document.getElementById('la-reviewer');
+    reviewers.forEach(r => { const o = document.createElement('option'); o.value = r.agent; o.textContent = r.agent; revSel.appendChild(o); });
+    window._checklists = checks.items || [];
+  } catch (e) { console.warn(e); }
+}
+
+window.submitLoanAdd = async function() {
+  const title = document.getElementById('la-title').value.trim();
+  const loanAction = document.getElementById('la-action').value;
+  const reviewer = document.getElementById('la-reviewer').value;
+  const actionDate = document.getElementById('la-date').value;
+  if (!title || !loanAction || !reviewer || !actionDate) { alert('Fill all fields'); return; }
+  if (!confirm('Add this loan to reviews?\n\n' + title + ' · ' + loanAction + '\nReviewer: ' + reviewer)) return;
+  const status = document.getElementById('la-status');
+  status.textContent = 'Adding…';
+  const checks = window._checklists || [];
+  const match = checks.find(c => (c.category || '').toLowerCase() === loanAction.toLowerCase());
+  const risk = match ? (match.riskRating || 0) : 0;
+  const body = { title, loanAction, reviewer, actionDate: actionDate + ' 00:00:00.000Z', risk, state: 'In Review' };
+  try {
+    const res = await fetch(CONFIG.url + '/api/collections/loan_action_reviews/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (res.ok) { status.textContent = 'Added.'; setTimeout(() => document.getElementById('loan-modal')?.remove(), 800); }
+    else { const err = await res.text(); status.textContent = 'Failed: ' + err.slice(0, 150); }
+  } catch (e) { status.textContent = 'Failed: ' + e.message; }
+};
 
 async function loadDataEdit() {
   const col = document.getElementById('de-collection').value;
@@ -1478,24 +1523,5 @@ async function loadLoanForm() {
     window._checklists = checks.items || [];
   } catch (e) { console.warn(e); }
 }
-const laBtn = document.getElementById('la-add');
-if (laBtn) laBtn.addEventListener('click', async () => {
-  const title = document.getElementById('la-title').value.trim();
-  const loanAction = document.getElementById('la-action').value;
-  const reviewer = document.getElementById('la-reviewer').value;
-  const actionDate = document.getElementById('la-date').value;
-  if (!title || !loanAction || !reviewer || !actionDate) { alert('Fill all fields'); return; }
-  if (!confirm('Add this loan to reviews?\n\n' + title + ' · ' + loanAction + '\nReviewer: ' + reviewer)) return;
-  const status = document.getElementById('la-status');
-  status.textContent = 'Adding…';
-  const checks = window._checklists || [];
-  const match = checks.find(c => (c.category || '').toLowerCase() === loanAction.toLowerCase());
-  const risk = match ? (match.riskRating || match.categoryNumber || 0) : 0;
-  const body = { title, loanAction, reviewer, actionDate: actionDate + ' 00:00:00.000Z', risk, state: 'In Review' };
-  try {
-    const res = await fetch(CONFIG.url + '/api/collections/loan_action_reviews/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (res.ok) { status.textContent = 'Added.'; document.getElementById('loan-add-form').reset(); }
-    else { const err = await res.text(); status.textContent = 'Failed: ' + err.slice(0, 100); }
-  } catch (e) { status.textContent = 'Failed: ' + e.message; }
-});
+
 </script></body></html>
