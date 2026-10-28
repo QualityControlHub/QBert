@@ -1603,7 +1603,8 @@ async function loadCS() {
     metrics.filter(m => (m.range || '').toLowerCase() === 'month').forEach(m => { const d = slot(m.agent); if (d) d.metricsM = m; });
     metrics.filter(m => (m.range || '').toLowerCase() === 'last week').forEach(m => { const d = slot(m.agent); if (d) d.metricsW = m; });
     const teamColors = {};
-    const palette = ['#1e3a5f','#2c5282','#3182ce','#4299e1','#63b3ed','#4a6fa5'];
+    // Team shades: narrow lightness band, separated by hue, all safe for white text.
+    const palette = ['#24476B','#2B5070','#31496F','#215A63','#3A5580','#2A6072'];
     let colorIdx = 0;
     Object.values(scoreMap).forEach(d => { if (!teamColors[d.team]) teamColors[d.team] = palette[colorIdx++ % palette.length]; });
     const rows = Object.values(scoreMap).sort((a, b) => b.month - a.month || (b.week || 0) - (a.week || 0));
@@ -1617,9 +1618,16 @@ async function loadCS() {
       list.innerHTML = (notes.length ? '<div class="cs-note">' + notes.map(n => safe(n)).join('<br>') + '</div>' : '') + rows.map(data => {
         const mPct = Math.round(data.month * 100);
         const wPct = data.week !== null ? Math.round(data.week * 100) : null;
-        const fmtM = m => m ? '<span style="flex:1;text-align:center">Talk ' + ((m.avgTalk || 0) / 60000).toFixed(1) + 'm</span><span style="flex:1;text-align:center">Silence ' + Math.round((m.avgSilence || 0) * 100) + '%</span><span style="flex:1;text-align:center">Hold ' + ((m.avgHold || 0) / 60000).toFixed(1) + 'm</span>' : '';
-        const bg = teamColors[data.team] || '#3182ce';
-        return '<div style="background:' + bg + ';color:white;border:2px solid #F1CC13;border-radius:10px;padding:14px"><div style="font-weight:600;margin-bottom:8px;font-size:15px">' + safe(data.name) + '</div><div style="display:flex;gap:16px;font-size:13px;margin-bottom:6px"><div>Week: <strong>' + (wPct !== null ? wPct + '%' : '—') + '</strong></div><div>MTD: <strong>' + mPct + '%</strong></div></div><div style="font-size:11px;opacity:0.9;margin-bottom:8px">' + data.evals + ' quality reviews</div>' + (data.metricsW || data.metricsM ? '<div style="background:rgba(255,255,255,0.15);border-radius:6px;padding:8px;font-size:10px;color:#ffffff">' + (data.metricsW ? '<div style="display:flex;margin-bottom:4px"><strong style="width:32px">Week</strong>' + fmtM(data.metricsW) + '</div>' : '') + (data.metricsM ? '<div style="display:flex"><strong style="width:32px">MTD</strong>' + fmtM(data.metricsM) + '</div>' : '') + '</div>' : '') + '</div>';
+        const metricCell = (label, value) => '<span style="flex:1;text-align:center"><span style="color:#a9c9e3">' + label + '</span> ' + value + '</span>';
+        const fmtM = m => m ? metricCell('Talk', ((m.avgTalk || 0) / 60000).toFixed(1) + 'm') + metricCell('Silence', Math.round((m.avgSilence || 0) * 100) + '%') + metricCell('Hold', ((m.avgHold || 0) / 60000).toFixed(1) + 'm') : '';
+        const bg = teamColors[data.team] || '#2B5070';
+        return '<div style="background:' + bg + ';color:white;border:2px solid #F1CC13;border-radius:10px;padding:14px">' +
+          '<div style="font-weight:600;font-size:15px">' + safe(data.name) + '</div>' +
+          '<div style="font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:#a9c9e3;margin-bottom:8px">' + safe(data.team) + '</div>' +
+          '<div style="display:flex;gap:16px;font-size:13px;margin-bottom:6px"><div><span style="color:#a9c9e3">Week</span> <strong style="color:#F1CC13">' + (wPct !== null ? wPct + '%' : '—') + '</strong></div><div><span style="color:#a9c9e3">MTD</span> <strong style="color:#F1CC13">' + mPct + '%</strong></div></div>' +
+          '<div style="font-size:11px;color:#a9c9e3;margin-bottom:8px">' + data.evals + ' quality reviews</div>' +
+          (data.metricsW || data.metricsM ? '<div style="background:rgba(255,255,255,0.12);border-radius:6px;padding:8px;font-size:10px;color:#ffffff">' + (data.metricsW ? '<div style="display:flex;margin-bottom:4px"><strong style="width:32px;color:#F1CC13">Week</strong>' + fmtM(data.metricsW) + '</div>' : '') + (data.metricsM ? '<div style="display:flex"><strong style="width:32px;color:#F1CC13">MTD</strong>' + fmtM(data.metricsM) + '</div>' : '') + '</div>' : '') +
+          '</div>';
       }).join('');
     }
     const supervisors = allStaff.filter(s => (s.role || '').toLowerCase() === 'supervisor');
