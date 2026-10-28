@@ -1252,6 +1252,11 @@ document.getElementById('csh-replace').addEventListener('click', async () => {
       let v = (vals[i] || '').trim();
       if (h === 'evaluations' || h === 'average' || h === 'averageCritical') {
         if (v && !isNaN(Number(v))) obj[h] = Number(v);
+      } else if (h === 'intervalStart' || h === 'intervalEnd') {
+        if (v) {
+          const d = new Date(v);
+          if (!isNaN(d.getTime())) obj[h] = d.toISOString().replace('T', ' ').slice(0, 23) + 'Z';
+        }
       } else if (v) obj[h] = v;
     });
     try {
