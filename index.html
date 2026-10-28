@@ -1363,9 +1363,14 @@ function renderDataEdit() {
 window.editRecord = function(id) {
   const col = document.getElementById('de-collection').value;
   const rec = id ? deRecords.find(r => r.id === id) : {};
-  const keys = id ? Object.keys(rec).filter(k => !['id','created','updated','collectionId','collectionName'].includes(k)) : ['title','name','agent','check','checkID','category'];
+  const fieldSets = {
+    staff: ['agent','supervisor','team','role','title','inactive'],
+    checklists: ['checkID','category','check','riskRating'],
+    loan_action_reviews: ['title','loanAction','team','risk','reviewer','state','actionDate']
+  };
+  const keys = id ? Object.keys(rec).filter(k => !['id','created','updated','collectionId','collectionName'].includes(k)) : (fieldSets[col] || ['title']);
   const form = keys.map(k => '<div style="margin:6px 0"><label style="font-size:11px">' + k + '</label><input id="de-f-' + k + '" value="' + (rec[k] ?? '').toString().replace(/"/g, '"') + '" style="width:100%;padding:4px"></div>').join('');
-  const html = '<div style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:white;padding:20px;border-radius:8px;max-width:400px;width:90%;max-height:80vh;overflow:auto"><h3>' + (id ? 'Edit' : 'Add') + '</h3>' + form + '<div style="margin-top:12px;display:flex;gap:8px"><button class="btn primary" onclick="saveRecord(\'' + (id||'') + '\')">Save</button><button class="btn" onclick="this.closest(\'div[style]\').parentElement.remove()">Cancel</button>' + (id ? '<button class="btn" style="margin-left:auto;background:#8b1e1e;color:white" onclick="deleteRecord(\'' + id + '\')">Delete</button>' : '') + '</div></div></div>';
+  const html = '<div id="de-modal" style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:white;padding:20px;border-radius:8px;max-width:400px;width:90%;max-height:80vh;overflow:auto"><h3>' + (id ? 'Edit' : 'Add') + '</h3>' + form + '<div style="margin-top:12px;display:flex;gap:8px"><button class="btn primary" onclick="saveRecord(\'' + (id||'') + '\')">Save</button><button class="btn" onclick="this.closest(\'div[style]\').parentElement.remove()">Cancel</button>' + (id ? '<button class="btn" style="margin-left:auto;background:#8b1e1e;color:white" onclick="deleteRecord(\'' + id + '\')">Delete</button>' : '') + '</div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 };
 
@@ -1376,7 +1381,7 @@ window.saveRecord = async function(id) {
   inputs.forEach(inp => body[inp.id.replace('de-f-','')] = inp.value);
   const url = CONFIG.url + '/api/collections/' + col + '/records' + (id ? '/' + id : '');
   const res = await fetch(url, { method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  if (res.ok) { document.querySelector('[style*="position:fixed"]')?.remove(); loadDataEdit(); }
+  if (res.ok) { document.getElementById('de-modal')?.remove(); loadDataEdit(); }
   else alert('Save failed');
 };
 
@@ -1384,7 +1389,7 @@ window.deleteRecord = async function(id) {
   if (!confirm('Delete this record?')) return;
   const col = document.getElementById('de-collection').value;
   await fetch(CONFIG.url + '/api/collections/' + col + '/records/' + id, { method: 'DELETE' });
-  document.querySelector('[style*="position:fixed"]')?.remove();
+  document.getElementById('de-modal')?.remove();
   loadDataEdit();
 };
 
@@ -1414,7 +1419,7 @@ function renderGuides() {
 window.editGuideSection = function(id) {
   const s = id ? guideSections.find(x => x.id === id) : { order: guideSections.length + 1, title: '', content: '' };
   const type = document.getElementById('guide-type').value;
-  const html = '<div style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:white;padding:20px;border-radius:8px;max-width:500px;width:90%;max-height:80vh;overflow:auto"><h3>' + (id ? 'Edit Section' : 'Add Section') + '</h3><div style="margin:8px 0"><label>Order</label><input id="gs-order" type="number" value="' + (s.order || 1) + '" style="width:80px"></div><div style="margin:8px 0"><label>Title</label><input id="gs-title" value="' + (s.title || '').replace(/"/g, '"') + '" style="width:100%"></div><div style="margin:8px 0"><label>Content</label><textarea id="gs-content" rows="8" style="width:100%">' + (s.content || '') + '</textarea></div><div style="margin-top:12px;display:flex;gap:8px"><button class="btn primary" onclick="saveGuideSection(\'' + (id||'') + '\',\'' + type + '\')">Save</button><button class="btn" onclick="this.closest(\'div[style]\').parentElement.remove()">Cancel</button>' + (id ? '<button class="btn" style="margin-left:auto;background:#8b1e1e;color:white" onclick="deleteGuideSection(\'' + id + '\')">Delete</button>' : '') + '</div></div></div>';
+  const html = '<div id="de-modal" style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:white;padding:20px;border-radius:8px;max-width:500px;width:90%;max-height:80vh;overflow:auto"><h3>' + (id ? 'Edit Section' : 'Add Section') + '</h3><div style="margin:8px 0"><label>Order</label><input id="gs-order" type="number" value="' + (s.order || 1) + '" style="width:80px"></div><div style="margin:8px 0"><label>Title</label><input id="gs-title" value="' + (s.title || '').replace(/"/g, '"') + '" style="width:100%"></div><div style="margin:8px 0"><label>Content</label><textarea id="gs-content" rows="8" style="width:100%">' + (s.content || '') + '</textarea></div><div style="margin-top:12px;display:flex;gap:8px"><button class="btn primary" onclick="saveGuideSection(\'' + (id||'') + '\',\'' + type + '\')">Save</button><button class="btn" onclick="this.closest(\'div[style]\').parentElement.remove()">Cancel</button>' + (id ? '<button class="btn" style="margin-left:auto;background:#8b1e1e;color:white" onclick="deleteGuideSection(\'' + id + '\')">Delete</button>' : '') + '</div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 };
 
@@ -1422,14 +1427,14 @@ window.saveGuideSection = async function(id, type) {
   const body = { type, order: Number(document.getElementById('gs-order').value), title: document.getElementById('gs-title').value, content: document.getElementById('gs-content').value };
   const url = CONFIG.url + '/api/collections/guide_sections/records' + (id ? '/' + id : '');
   const res = await fetch(url, { method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  if (res.ok) { document.querySelector('[style*="position:fixed"]')?.remove(); loadGuides(); }
+  if (res.ok) { document.getElementById('de-modal')?.remove(); loadGuides(); }
   else alert('Save failed');
 };
 
 window.deleteGuideSection = async function(id) {
   if (!confirm('Delete this section?')) return;
   await fetch(CONFIG.url + '/api/collections/guide_sections/records/' + id, { method: 'DELETE' });
-  document.querySelector('[style*="position:fixed"]')?.remove();
+  document.getElementById('de-modal')?.remove();
   loadGuides();
 };
 
