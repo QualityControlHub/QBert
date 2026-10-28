@@ -1994,5 +1994,50 @@ document.getElementById('de-sync-teams')?.addEventListener('click', async () => 
     status.textContent = 'Updated ' + updated + ', failed ' + failed + '.';
   } catch (e) { status.textContent = 'Error: ' + e.message; }
 });
+
+const metricsBtn = document.getElementById('metrics-replace');
+if (metricsBtn) {
+  metricsBtn.addEventListener('click', async () => {
+    const text = document.getElementById('metrics-csv').value.trim();
+    const status = document.getElementById('metrics-status');
+    if (!text) { status.textContent = 'Paste CSV first.'; return; }
+    if (!confirm('Replace all genesys_metrics records?')) return;
+    status.textContent = 'Replacing…';
+    try {
+      const existing = await fetch(CONFIG.url + '/api/collections/genesys_metrics/records?perPage=500').then(r => r.json());
+      for (const rec of (existing.items || [])) {
+        await fetch(CONFIG.url + '/api/collections/genesys_metrics/records/' + rec.id, { method: 'DELETE' });
+      }
+    } catch (e) { console.warn(e); }
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) { status.textContent = 'No data rows.'; return; }
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    let ok = 0, fail = 0;
+    for (const line of lines.slice(1)) {
+      const vals = [];
+      let cur = '', inQ = false;
+      for (const c of line) {
+        if (c === '"') inQ = !inQ;
+        else if (c === ',' && !inQ) { vals.push(cur); cur = ''; }
+        else cur += c;
+      }
+      vals.push(cur);
+      const obj = {};
+      headers.forEach((h, i) => {
+        let v = (vals[i] || '').trim();
+        if (['evaluations','avgTalk','avgSilence','avgHold'].includes(h)) {
+          if (v && !isNaN(Number(v))) obj[h] = Number(v);
+        } else if (h === 'intervalStart' || h === 'intervalEnd') {
+          if (v) { const d = new Date(v); if (!isNaN(d.getTime())) obj[h] = d.toISOString().replace('T', ' ').slice(0, 23) + 'Z'; }
+        } else if (v) obj[h] = v;
+      });
+      try {
+        const res = await fetch(CONFIG.url + '/api/collections/genesys_metrics/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) });
+        if (res.ok) ok++; else fail++;
+      } catch { fail++; }
+    }
+    status.textContent = 'Added ' + ok + (fail ? ', failed ' + fail : '') + '.';
+  });
+}
 </script>
 </body></html>
