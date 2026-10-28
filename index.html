@@ -1542,49 +1542,46 @@ async function loadCS() {
   if (supDiv) supDiv.innerHTML = '';
   try {
     const [gData, sData] = await Promise.all([
-      fetch(CONFIG.url + '/api/collections/genesys_reviews/records?perPage=200&sort=agent').then(r => r.json()),
-      fetch(CONFIG.url + '/api/collections/staff/records?perPage=200').then(r => r.json())
+      fetch(CONFIG.url + '/api/collections/genesys_reviews/records?perPage=500&sort=agent').then(r => r.json()),
+      fetch(CONFIG.url + '/api/collections/staff/records?perPage=500').then(r => r.json())
     ]);
     const items = gData.items || [];
-    const staff = (sData.items || []).filter(s => !s.inactive);
-    const agents = staff.filter(s => (s.role || '').toLowerCase() === 'agent');
-    const agentNames = new Set(agents.map(a => (a.agent || '').toLowerCase().trim()));
+    const allStaff = (sData.items || []).filter(s => !s.inactive);
+    const allAgents = allStaff.filter(s => (s.role || '').toLowerCase() === 'agent');
     const monthItems = items.filter(r => (r.range || '').toLowerCase() === 'month');
     const weekItems = items.filter(r => (r.range || '').toLowerCase() === 'last week');
-    const reviewedAgents = new Set(monthItems.filter(r => r.evaluations > 0).map(r => (r.agent || '').toLowerCase().trim()));
-    const noneCount = agents.filter(a => !reviewedAgents.has((a.agent || '').toLowerCase().trim())).length;
-    const avgMonth = monthItems.length ? (monthItems.reduce((s, r) => s + (r.average || 0), 0) / monthItems.length * 100).toFixed(0) : 0;
-    const avgWeek = weekItems.length ? (weekItems.reduce((s, r) => s + (r.average || 0), 0) / weekItems.length * 100).toFixed(0) : 0;
+    const reviewedSet = new Set(monthItems.filter(r => r.evaluations > 0).map(r => (r.agent || '').toLowerCase().trim()));
+    const noneCount = allAgents.filter(a => !reviewedSet.has((a.agent || '').toLowerCase().trim())).length;
+    const avgMonth = monthItems.length ? Math.round(monthItems.reduce((s, r) => s + (r.average || 0), 0) / monthItems.length * 100) : 0;
+    const avgWeek = weekItems.length ? Math.round(weekItems.reduce((s, r) => s + (r.average || 0), 0) / weekItems.length * 100) : 0;
     const card = (n, l) => '<div style="padding:10px 16px;background:#f0edfa;border-radius:6px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:#1e3a5f">' + n + '</div><div style="font-size:11px;color:#555">' + l + '</div></div>';
-    summary.innerHTML = card(agents.length, 'Total Agents') + card(reviewedAgents.size, 'Reviewed') + card(noneCount, 'None') + card(avgMonth + '%', 'Month Avg') + card(avgWeek + '%', 'Week Avg');
-    const agentMap = {};
-    monthItems.forEach(r => { agentMap[(r.agent || '').toLowerCase()] = { month: r, week: null }; });
-    weekItems.forEach(r => { const k = (r.agent || '').toLowerCase(); if (!agentMap[k]) agentMap[k] = {}; agentMap[k].week = r; });
-    list.innerHTML = Object.entries(agentMap).sort((a, b) => (b[1].month?.average || 0) - (a[1].month?.average || 0)).map(([name, data]) => {
-      const mPct = Math.round((data.month?.average || 0) * 100);
-      const wPct = data.week ? Math.round((data.week.average || 0) * 100) : null;
+    summary.innerHTML = card(allAgents.length, 'Total Agents') + card(reviewedSet.size, 'Reviewed') + card(noneCount, 'None') + card(avgMonth + '%', 'Month Avg') + card(avgWeek + '%', 'Week Avg');
+    const scoreMap = {};
+    monthItems.forEach(r => { scoreMap[(r.agent || '').toLowerCase()] = { name: r.agent, month: r.average || 0, week: null, evals: r.evaluations || 0 }; });
+    weekItems.forEach(r => { const k = (r.agent || '').toLowerCase(); if (!scoreMap[k]) scoreMap[k] = { name: r.agent, month: 0, week: null, evals: 0 }; scoreMap[k].week = r.average || 0; });
+    list.innerHTML = Object.values(scoreMap).sort((a, b) => b.month - a.month).map(data => {
+      const mPct = Math.round(data.month * 100);
+      const wPct = data.week !== null ? Math.round(data.week * 100) : null;
       const color = mPct >= 90 ? '#2e7d32' : mPct >= 80 ? '#f9a825' : '#c62828';
-      return '<div style="background:white;border:1px solid #e0dce8;border-radius:8px;padding:12px"><div style="font-weight:600;margin-bottom:6px">' + (data.month?.agent || name) + '</div><div style="display:flex;gap:16px;font-size:13px"><div><span style="color:#666">Month:</span> <strong style="color:' + color + '">' + mPct + '%</strong></div>' + (wPct !== null ? '<div><span style="color:#666">Week:</span> <strong>' + wPct + '%</strong></div>' : '') + '</div><div style="font-size:11px;color:#666;margin-top:4px">' + (data.month?.evaluations || 0) + ' reviews</div></div>';
+      return '<div style="background:white;border:1px solid #e0dce8;border-radius:8px;padding:12px"><div style="font-weight:600;margin-bottom:6px">' + data.name + '</div><div style="display:flex;gap:16px;font-size:13px"><div><span style="color:#666">Month:</span> <strong style="color:' + color + '">' + mPct + '%</strong></div>' + (wPct !== null ? '<div><span style="color:#666">Week:</span> <strong>' + wPct + '%</strong></div>' : '') + '</div><div style="font-size:11px;color:#666;margin-top:4px">' + data.evals + ' reviews</div></div>';
     }).join('');
-    // Supervisor rollup
-    const supervisors = staff.filter(s => (s.role || '').toLowerCase() === 'supervisor');
+    const supervisors = allStaff.filter(s => (s.role || '').toLowerCase() === 'supervisor');
     const norm = n => (n||'').toLowerCase().replace(/,/g,'').split(/\s+/).sort().join(' ');
-    const agentMap = {};
-    staff.forEach(s => { if (s.supervisor) { if (!agentMap[s.supervisor]) agentMap[s.supervisor] = []; agentMap[s.supervisor].push(s.agent); } });
+    const supAgentMap = {};
+    allStaff.forEach(s => { if (s.supervisor) { if (!supAgentMap[s.supervisor]) supAgentMap[s.supervisor] = []; supAgentMap[s.supervisor].push(s.agent); } });
     const reviewedNorm = new Set(monthItems.filter(r => r.evaluations > 0).map(r => norm(r.agent)));
-    const totalReviews = monthItems.reduce((s, r) => s + (r.evaluations || 0), 0);
     if (supDiv) {
       const supData = supervisors.map(sup => {
-        const agents = agentMap[sup.agent] || [];
-        const reviewed = agents.filter(a => reviewedNorm.has(norm(a)));
-        const pending = agents.filter(a => !reviewedNorm.has(norm(a)));
-        const reviewCount = monthItems.filter(r => agents.some(a => norm(a) === norm(r.agent))).reduce((s, r) => s + (r.evaluations || 0), 0);
-        const status = pending.length === 0 && agents.length > 0 ? '<span style="color:#2e7d32;font-size:11px">All reviewed</span>' : pending.length > 0 ? '<span style="color:#c62828;font-size:11px">' + pending.length + ' pending</span>' : '<span style="color:#999;font-size:11px">No agents</span>';
-        return { html: '<div style="background:white;border:1px solid #e0dce8;border-radius:8px;padding:12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center"><strong>' + sup.agent + '</strong> ' + status + '</div><div style="font-size:12px;margin-top:4px">' + reviewed.length + ' of ' + agents.length + ' agents · <span style="color:' + (reviewCount === 0 ? '#c62828' : '#666') + '">' + reviewCount + ' total reviews</span></div></div>', count: reviewCount };
+        const supAgents = supAgentMap[sup.agent] || [];
+        const reviewed = supAgents.filter(a => reviewedNorm.has(norm(a)));
+        const pending = supAgents.filter(a => !reviewedNorm.has(norm(a)));
+        const reviewCount = monthItems.filter(r => supAgents.some(a => norm(a) === norm(r.agent))).reduce((s, r) => s + (r.evaluations || 0), 0);
+        const status = pending.length === 0 && supAgents.length > 0 ? '<span style="color:#2e7d32;font-size:11px">All reviewed</span>' : pending.length > 0 ? '<span style="color:#c62828;font-size:11px">' + pending.length + ' pending</span>' : '<span style="color:#999;font-size:11px">No agents</span>';
+        return { html: '<div style="background:white;border:1px solid #e0dce8;border-radius:8px;padding:12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center"><strong>' + sup.agent + '</strong> ' + status + '</div><div style="font-size:12px;margin-top:4px">' + reviewed.length + ' of ' + supAgents.length + ' agents · <span style="color:' + (reviewCount === 0 ? '#c62828' : '#666') + '">' + reviewCount + ' total reviews</span></div></div>', count: reviewCount };
       });
       supDiv.innerHTML = supData.sort((a, b) => b.count - a.count).map(s => s.html).join('');
     }
-  } catch { summary.innerHTML = '<p>Failed to load.</p>'; }
+  } catch (e) { console.error(e); summary.innerHTML = '<p>Failed to load: ' + e.message + '</p>'; }
 }
 
 // Loan add form
