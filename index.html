@@ -57,6 +57,26 @@ body[data-width="full"]{--page-w:100%}
 .cov-name{font-size:12.5px;font-weight:600;overflow-wrap:anywhere}
 .cov-sub{font-size:10.5px;color:var(--muted);margin-top:1px}
 .cs-empty{margin:0;padding:18px 0;font-size:13px;color:var(--muted)}
+.chk-group{margin:0 0 20px}
+.chk-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:2px solid var(--gold);padding-bottom:6px;margin:0 0 9px}
+.chk-head h2{font-size:14px!important;margin:0;color:var(--header);text-transform:uppercase;letter-spacing:1.3px;font-family:var(--font-sans);font-weight:700}
+.chk-head .n{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chk-tools{margin-left:auto;display:flex;gap:6px}
+.chk-tools button{border:1px solid var(--line);background:white;color:var(--navy2);border-radius:6px;font-size:11px;padding:3px 9px;min-height:26px;font-weight:600}
+.chk-tools button:hover{background:#f0edfa}
+.chk-row{display:grid;grid-template-columns:84px 1fr;gap:10px;padding:5px 0;border-bottom:1px solid #f1f3ea;font-size:12.5px;align-items:start;line-height:1.45}
+.chk-row:last-child{border-bottom:0}
+.chk-row strong{color:var(--navy2);font-size:11.5px;font-variant-numeric:tabular-nums}
+.chk-tree{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:white}
+.chk-branch+.chk-branch{border-top:1px solid var(--line)}
+.chk-branch summary{cursor:pointer;padding:9px 13px;font-size:13px;font-weight:600;background:#f8f9f2;display:flex;align-items:center;gap:9px;list-style:none}
+.chk-branch summary::-webkit-details-marker{display:none}
+.chk-branch summary::before{content:"\25B8";color:var(--navy2);font-size:11px;transition:transform .12s}
+.chk-branch[open] summary::before{transform:rotate(90deg)}
+.chk-branch[open] summary{background:#eef1e4}
+.chk-branch summary .n{margin-left:auto;font-size:11px;color:var(--muted);font-weight:600}
+.chk-leaves{padding:4px 14px 10px}
+.chk-empty{margin:0;padding:10px 0;font-size:12.5px;color:var(--muted)}
 @media(max-width:850px){.sup-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:9px}.sup-count{text-align:left}.sup-metrics{justify-content:flex-start}}
 </style>
 </head>
@@ -119,7 +139,7 @@ body[data-width="full"]{--page-w:100%}
   <div class="page-heading"><div><h1>DCIA</h1><p class="subtle">Coming soon</p></div></div>
 </div>
 <div id="section-aging" style="display:none">
-  <div class="page-heading"><div><h1>Aging Reports</h1><p class="subtle">Recent delinquency notes from the last 30 days</p></div></div>
+  <div class="page-heading"><div><h1>Delinquency File Reviews</h1><p class="subtle">Delinquency file reviews from the last 30 days.</p></div></div>
   <div id="aging-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px"></div>
 </div>
 
@@ -790,7 +810,45 @@ async function saveReview(command){
  }catch(e){showError('review-error',(e.name==='TimeoutError'||e.name==='AbortError')?'The save could not be confirmed. Your draft is retained. Refresh before retrying; the server may already have saved it.':e.status===409?'Someone updated this review while you were editing it. Your draft is still here. Copy your edits, close this review, refresh, and reopen it before saving.':e.status===404?'Live workflow endpoint unavailable or this record is no longer accessible. Check the included setup package, then refresh.':e.message);$('review-error').focus();$('save-hint').textContent=app.dirty?'Unsaved changes':'Save did not complete';}
  finally{app.busy=false;document.querySelectorAll('#review-dialog button').forEach(b=>b.disabled=false);}
 }
-function renderChecklists(){const root=$('checklist-content');if(!root)return;if(!app.checks.length){root.innerHTML='<p>No checklist entries are loaded.</p>';return;}const categories=[...new Set(app.checks.map(c=>c.category||'Other'))].sort();root.innerHTML=categories.map(cat=>'<div class="checklist-group"><h2>'+safe(cat)+'</h2>'+app.checks.filter(c=>(c.category||'Other')===cat).sort((a,b)=>String(a.checkID).localeCompare(String(b.checkID))).map(c=>'<div class="checklist-item"><strong>'+safe(c.checkID||c.id)+'</strong><span>'+(W.isPlaceholder(c)?'<span class="badge outcome-non">Placeholder</span> ':'')+safe(c.check)+'</span></div>').join('')+'</div>').join('');}
+// Checklists group under four headings; everything that is not Delinquency,
+// Genesys or CSH is a loan action and goes in the collapsible tree.
+const CHECK_GROUPS = [
+ {label:'Delinquency', match:c=>/^delinquen/i.test(c)},
+ {label:'Genesys', match:c=>/^genesys/i.test(c)},
+ {label:'Customer Service Hub', match:c=>/^csh\b/i.test(c)||/customer\s*service\s*hub/i.test(c)}
+];
+function checklistHtml(items){
+ if(!items||!items.length)return '<p class="chk-empty">No checklist entries are loaded.</p>';
+ const byCat={};
+ items.forEach(c=>{const k=String(c.category||'Uncategorized').trim()||'Uncategorized';(byCat[k]=byCat[k]||[]).push(c);});
+ const byId=a=>a.slice().sort((x,y)=>String(x.checkID||x.id).localeCompare(String(y.checkID||y.id),undefined,{numeric:true}));
+ const row=c=>'<div class="chk-row"><strong>'+safe(c.checkID||c.id)+'</strong><span>'+(W.isPlaceholder(c)?'<span class="badge outcome-non">Placeholder</span> ':'')+safe(c.check)+'</span></div>';
+ const head=(label,n,tools)=>'<div class="chk-head"><h2>'+safe(label)+'</h2><span class="n">'+n+(n===1?' check':' checks')+'</span>'+(tools||'')+'</div>';
+ const used=new Set();
+ let out='';
+ CHECK_GROUPS.forEach(g=>{
+  const cats=Object.keys(byCat).filter(k=>g.match(k));
+  cats.forEach(k=>used.add(k));
+  let rows=[];cats.forEach(k=>{rows=rows.concat(byCat[k]);});
+  out+='<section class="chk-group">'+head(g.label,rows.length)+
+    (rows.length?byId(rows).map(row).join(''):'<p class="chk-empty">No checks recorded for this area yet.</p>')+'</section>';
+ });
+ const loanCats=Object.keys(byCat).filter(k=>!used.has(k)).sort((a,b)=>a.localeCompare(b));
+ let total=0;loanCats.forEach(k=>{total+=byCat[k].length;});
+ const tools=loanCats.length?'<div class="chk-tools"><button type="button" data-chk="expand">Expand all</button><button type="button" data-chk="collapse">Collapse all</button></div>':'';
+ out+='<section class="chk-group">'+head('Loan Actions',total,tools)+
+   (loanCats.length
+     ? '<div class="chk-tree">'+loanCats.map(k=>'<details class="chk-branch"><summary>'+safe(k)+'<span class="n">'+byCat[k].length+'</span></summary><div class="chk-leaves">'+byId(byCat[k]).map(row).join('')+'</div></details>').join('')+'</div>'
+     : '<p class="chk-empty">No loan action checks recorded.</p>')+'</section>';
+ return out;
+}
+document.addEventListener('click',e=>{
+ const t=e.target.closest('[data-chk]');if(!t)return;
+ const grp=t.closest('.chk-group');if(!grp)return;
+ grp.querySelectorAll('details.chk-branch').forEach(d=>{d.open=t.dataset.chk==='expand';});
+});
+function renderChecklists(){const root=$('checklist-content');if(!root)return;root.innerHTML=checklistHtml(app.checks);}
+
 function showSection(name){document.querySelectorAll('.app-nav button').forEach(b=>{if(b.dataset.section===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});['loans','cs','aging','dcia','newsletter','dash'].forEach(s=>{const section=$('section-'+s);if(section){section.hidden=s!==name;section.style.display='';}});if(name==='checklists')renderChecklists(); if(name==='aging')loadAging(); if(name==='dash')loadDash(); if(name==='cs')loadCS(); if(name==='newsletter')loadFrontNewsletter();}
 async function connect(e){
  e.preventDefault();showError('connection-error','');
@@ -983,7 +1041,7 @@ disconnectedPresentation();
   </div>
   <nav style="display:flex;gap:8px;margin:16px 0;border-bottom:1px solid #ddd;padding-bottom:8px;flex-wrap:wrap">
     <button class="btn" data-ws="loans">Loan Reviews</button>
-    <button class="btn" data-ws="genesys">Genesys Reviews</button>
+    <button class="btn" data-ws="genesys">Customer Service Reviews</button>
     <button class="btn" data-ws="csh">Genesys Dashboard</button>
     <button class="btn" data-ws="delinquency">Delinquency</button>
     <button class="btn" data-ws="dataedit">Data Edit</button>
@@ -1003,7 +1061,7 @@ disconnectedPresentation();
     <div id="ws-loans-status"></div>
   </div>
   <div id="ws-genesys" hidden>
-    <h2>Genesys Reviews</h2>
+    <h2>Customer Service Reviews</h2>
     <form id="genesys-form" style="display:grid;gap:12px;max-width:600px">
       <div class="field"><label>Communication type</label>
         <select id="g-type"><option>Genesys</option><option>CSH</option></select>
@@ -1175,11 +1233,35 @@ document.getElementById('ws-append-sample').addEventListener('click', async () =
 
 
 // Genesys form setup
+let gChecklists = [];
+
+// The Checklist dropdown follows the Communication type: Genesys shows the
+// GENESYS checks, CSH shows the CSH checks.
+function gFillChecklist() {
+  const sel = document.getElementById('g-checklist');
+  if (!sel) return;
+  const type = (document.getElementById('g-type') || {}).value || 'Genesys';
+  const want = /^csh$/i.test(type)
+    ? (c => /^csh\b/i.test(c) || /customer\s*service\s*hub/i.test(c))
+    : (c => /^genesys/i.test(c));
+  const list = gChecklists
+    .filter(c => want(String(c.category || '').trim()))
+    .sort((a, b) => String(a.checkID || '').localeCompare(String(b.checkID || ''), undefined, { numeric: true }));
+  sel.innerHTML = '<option value="">' + (list.length ? 'Select check…' : 'No ' + type + ' checks found') + '</option>';
+  list.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = (c.checkID || '') + ' — ' + (c.check || '').slice(0, 60);
+    sel.appendChild(opt);
+  });
+}
+
 async function loadGenesysLists() {
   try {
     const staffRes = await fetch(CONFIG.url + '/api/collections/staff/records?perPage=500');
     const staffData = await staffRes.json();
     const agentSel = document.getElementById('g-agent');
+    agentSel.innerHTML = '<option value="">Select agent…</option>';
     (staffData.items || []).sort((a,b) => (a.agent||'').localeCompare(b.agent||'')).forEach(s => {
       const opt = document.createElement('option');
       opt.value = s.id;
@@ -1188,21 +1270,17 @@ async function loadGenesysLists() {
       opt.dataset.team = s.team || '';
       agentSel.appendChild(opt);
     });
-    agentSel.addEventListener('change', () => {
+    agentSel.onchange = () => {
       const opt = agentSel.selectedOptions[0];
-      document.getElementById('g-supervisor').value = opt ? opt.dataset.supervisor : '';
-      document.getElementById('g-team').value = opt ? opt.dataset.team : '';
-    });
+      document.getElementById('g-supervisor').value = opt ? (opt.dataset.supervisor || '') : '';
+      document.getElementById('g-team').value = opt ? (opt.dataset.team || '') : '';
+    };
     const checkRes = await fetch(CONFIG.url + '/api/collections/checklists/records?perPage=500');
-    const checkData = await checkRes.json();
-    const checkSel = document.getElementById('g-checklist');
-    (checkData.items || []).sort((a,b) => (a.checkID||'').localeCompare(b.checkID||'')).forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = (c.checkID || '') + ' — ' + (c.check || '').slice(0, 60);
-      checkSel.appendChild(opt);
-    });
-  } catch (e) { console.warn('Genesys lists failed', e); }
+    gChecklists = checkRes.ok ? ((await checkRes.json()).items || []) : [];
+    const typeSel = document.getElementById('g-type');
+    if (typeSel) typeSel.onchange = gFillChecklist;
+    gFillChecklist();
+  } catch (e) { console.warn('Customer service lists failed', e); }
 }
 document.getElementById('g-save').addEventListener('click', async () => {
   const status = document.getElementById('g-status');
@@ -1421,7 +1499,7 @@ window.editRecord = function(id) {
   };
   const keys = id ? Object.keys(rec).filter(k => !['id','created','updated','collectionId','collectionName'].includes(k)) : (fieldSets[col] || ['title']);
   const form = keys.map(k => '<div style="margin:6px 0"><label style="font-size:11px">' + k + '</label><input id="de-f-' + k + '" value="' + (rec[k] ?? '').toString().replace(/"/g, '"') + '" style="width:100%;padding:4px"></div>').join('');
-  const html = '<div id="de-modal" style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:white;padding:20px;border-radius:8px;max-width:400px;width:90%;max-height:80vh;overflow:auto"><h3>' + (id ? 'Edit' : 'Add') + '</h3>' + form + '<div style="margin-top:12px;display:flex;gap:8px"><button class="btn primary" onclick="saveRecord(\'' + (id||'') + '\')">Save</button><button class="btn" onclick="this.closest(\'div[style]\').parentElement.remove()">Cancel</button>' + (id ? '<button class="btn" style="margin-left:auto;background:#8b1e1e;color:white" onclick="deleteRecord(\'' + id + '\')">Delete</button>' : '') + '</div></div></div>';
+  const html = '<div id="de-modal" style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:white;padding:20px;border-radius:8px;max-width:400px;width:90%;max-height:80vh;overflow:auto"><h3>' + (id ? 'Edit' : 'Add') + '</h3>' + form + '<div style="margin-top:12px;display:flex;gap:8px"><button class="btn primary" onclick="saveRecord(\'' + (id||'') + '\')">Save</button><button class="btn" onclick="document.getElementById(\'de-modal\').remove()">Cancel</button>' + (id ? '<button class="btn" style="margin-left:auto;background:#8b1e1e;color:white" onclick="deleteRecord(\'' + id + '\')">Delete</button>' : '') + '</div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 };
 
@@ -1470,7 +1548,7 @@ function renderGuides() {
 window.editGuideSection = function(id) {
   const s = id ? guideSections.find(x => x.id === id) : { order: guideSections.length + 1, title: '', content: '' };
   const type = document.getElementById('guide-type').value;
-  const html = '<div id="de-modal" style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:white;padding:20px;border-radius:8px;max-width:500px;width:90%;max-height:80vh;overflow:auto"><h3>' + (id ? 'Edit Section' : 'Add Section') + '</h3><div style="margin:8px 0"><label>Order</label><input id="gs-order" type="number" value="' + (s.order || 1) + '" style="width:80px"></div><div style="margin:8px 0"><label>Title</label><input id="gs-title" value="' + (s.title || '').replace(/"/g, '"') + '" style="width:100%"></div><div style="margin:8px 0"><label>Content</label><textarea id="gs-content" rows="8" style="width:100%">' + (s.content || '') + '</textarea></div><div style="margin-top:12px;display:flex;gap:8px"><button class="btn primary" onclick="saveGuideSection(\'' + (id||'') + '\',\'' + type + '\')">Save</button><button class="btn" onclick="this.closest(\'div[style]\').parentElement.remove()">Cancel</button>' + (id ? '<button class="btn" style="margin-left:auto;background:#8b1e1e;color:white" onclick="deleteGuideSection(\'' + id + '\')">Delete</button>' : '') + '</div></div></div>';
+  const html = '<div id="de-modal" style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:white;padding:20px;border-radius:8px;max-width:500px;width:90%;max-height:80vh;overflow:auto"><h3>' + (id ? 'Edit Section' : 'Add Section') + '</h3><div style="margin:8px 0"><label>Order</label><input id="gs-order" type="number" value="' + (s.order || 1) + '" style="width:80px"></div><div style="margin:8px 0"><label>Title</label><input id="gs-title" value="' + (s.title || '').replace(/"/g, '"') + '" style="width:100%"></div><div style="margin:8px 0"><label>Content</label><textarea id="gs-content" rows="8" style="width:100%">' + (s.content || '') + '</textarea></div><div style="margin-top:12px;display:flex;gap:8px"><button class="btn primary" onclick="saveGuideSection(\'' + (id||'') + '\',\'' + type + '\')">Save</button><button class="btn" onclick="document.getElementById(\'de-modal\').remove()">Cancel</button>' + (id ? '<button class="btn" style="margin-left:auto;background:#8b1e1e;color:white" onclick="deleteGuideSection(\'' + id + '\')">Delete</button>' : '') + '</div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 };
 
@@ -1560,7 +1638,7 @@ async function loadDash() {
     const totalBal = d.reduce((s,r) => s + (Number(r.outstandingBalance)||0), 0);
     const avgDays = d.length ? Math.round(d.reduce((s,r) => s + (Number(r.daysPastDue)||0), 0) / d.length) : 0;
     let del_html = '<div style="background:white;border-radius:10px;padding:12px;border:2px solid #c4bdd4;border-radius:14px"><h2 style="margin:0 0 10px;font-size:14px">Delinquency Snapshot</h2>';
-    del_html += '<div style="display:flex;gap:16px;margin-bottom:16px"><div style="flex:1;text-align:center;padding:12px;background:#f8f7fc;border-radius:8px"><div style="font-size:28px;font-weight:700;color:#1e3a5f">' + delinqTotal.toLocaleString() + '</div><div style="font-size:12px;color:#666">Total Loans</div></div><div style="flex:1;text-align:center;padding:12px;background:#f8f7fc;border-radius:8px"><div style="font-size:28px;font-weight:700;color:#1e3a5f">$' + Math.round(totalBal/1000) + 'k</div><div style="font-size:12px;color:#666">Outstanding</div></div><div style="flex:1;text-align:center;padding:12px;background:#f8f7fc;border-radius:8px"><div style="font-size:28px;font-weight:700;color:#1e3a5f">' + avgDays + '</div><div style="font-size:12px;color:#666">Avg Days Past Due</div></div></div>';
+    del_html += '<div style="display:flex;gap:16px;margin-bottom:16px"><div style="flex:1;text-align:center;padding:12px;background:#f8f7fc;border-radius:8px"><div style="font-size:28px;font-weight:700;color:#1e3a5f">' + delinqTotal.toLocaleString() + '</div><div style="font-size:12px;color:#666">Total Loans</div></div><div style="flex:1;text-align:center;padding:12px;background:#f8f7fc;border-radius:8px"><div style="font-size:28px;font-weight:700;color:#1e3a5f">$' + Math.round(totalBal/1000).toLocaleString('en-US') + 'k</div><div style="font-size:12px;color:#666">Outstanding</div></div><div style="flex:1;text-align:center;padding:12px;background:#f8f7fc;border-radius:8px"><div style="font-size:28px;font-weight:700;color:#1e3a5f">' + avgDays + '</div><div style="font-size:12px;color:#666">Avg Days Past Due</div></div></div>';
     del_html += '<p style="font-size:12px;color:#666;margin:0 0 8px">Aging breakdown (from loaded sample):</p><div style="display:flex;gap:8px;flex-wrap:wrap">' + Object.entries(groups).sort((a,b)=>b[1]-a[1]).map(([g,c]) => '<div style="background:#fff3e0;padding:8px 12px;border-radius:6px;font-size:13px"><strong>' + c + '</strong> loans in ' + g + '</div>').join('') + '</div></div>';
 
     root.innerHTML = '<div style="display:flex;gap:16px"><div style="flex:1">' + org + '</div><div style="flex:1">' + loans_html + '</div></div>' + del_html;
@@ -1949,10 +2027,10 @@ function nlDocHtml(month) {
   }).join('');
   return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<title>SBA Disaster Center Quarterly Newsletter — ' + safe(month) + '</title><style>' +
-    '@page{size:letter portrait;margin:0.45in}' +
+    '@page{size:letter portrait;margin:0}' +
     '*{box-sizing:border-box}' +
     'html,body{margin:0;padding:0;background:#f3f1e7;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
-    '.paper{width:7.6in;height:10.1in;margin:0 auto;background:#fffdf5;color:#15181d;padding:0.3in 0.34in 0.26in;' +
+    '.paper{width:8.5in;height:11in;margin:0 auto;background:#fffdf5;color:#15181d;padding:0.75in 0.79in 0.71in;' +
       'display:flex;flex-direction:column;font-family:Georgia,"Times New Roman",Times,serif;box-shadow:0 2px 14px #0000001a}' +
     '@media print{html,body{background:#fff}.paper{box-shadow:none;margin:0}}' +
     '.flag{display:flex;justify-content:space-between;align-items:center;font-family:"Segoe UI",Arial,sans-serif;' +
@@ -2112,17 +2190,10 @@ async function loadQCChecklists() {
   div.innerHTML = '<p>Loading…</p>';
   try {
     const res = await fetch(CONFIG.url + '/api/collections/checklists/records?perPage=500&sort=category');
-    const data = await res.json();
-    const items = data.items || [];
-    if (!items.length) { div.innerHTML = '<p>No checklists found.</p>'; return; }
-    const categories = [...new Set(items.map(c => c.category || 'Other'))].sort();
-    div.innerHTML = '<div style="padding:16px"><h2>QC Checklists</h2>' + categories.map(cat =>
-      '<div style="margin-bottom:16px"><h3 style="color:#6b4c9a;margin:0 0 8px">' + cat + '</h3>' +
-      items.filter(c => (c.category || 'Other') === cat).map(c =>
-        '<div style="display:grid;grid-template-columns:80px 1fr;gap:8px;padding:4px 0;border-bottom:1px solid #eee"><strong style="font-size:12px">' + (c.checkID || '') + '</strong><span style="font-size:13px">' + (c.check || '') + '</span></div>'
-      ).join('') + '</div>'
-    ).join('') + '</div>';
-  } catch (e) { div.innerHTML = '<p>Error: ' + e.message + '</p>'; }
+    if (!res.ok) throw new Error('checklists returned HTTP ' + res.status);
+    const items = (await res.json()).items || [];
+    div.innerHTML = '<div style="padding:16px"><h2 style="margin:0 0 14px">QC Checklists</h2>' + checklistHtml(items) + '</div>';
+  } catch (e) { div.innerHTML = '<p>Error: ' + safe(e.message) + '</p>'; }
 }
 </script>
 
