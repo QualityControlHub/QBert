@@ -1546,17 +1546,25 @@ async function loadCS() {
       fetch(CONFIG.url + '/api/collections/staff/records?perPage=200').then(r => r.json())
     ]);
     const items = gData.items || [];
-    const staff = sData.items || [];
-    const withReviews = items.filter(r => r.evaluations && r.evaluations > 0);
-    const singleReview = withReviews.filter(r => r.evaluations === 1);
-    const noReview = items.filter(r => !r.evaluations || r.evaluations === 0);
-    const avgScore = withReviews.length ? (withReviews.reduce((s, r) => s + (r.average || 0), 0) / withReviews.length * 100).toFixed(0) : 0;
+    const staff = (sData.items || []).filter(s => !s.inactive);
+    const agents = staff.filter(s => (s.role || '').toLowerCase() === 'agent');
+    const agentNames = new Set(agents.map(a => (a.agent || '').toLowerCase().trim()));
+    const monthItems = items.filter(r => (r.range || '').toLowerCase() === 'month');
+    const weekItems = items.filter(r => (r.range || '').toLowerCase() === 'last week');
+    const reviewedAgents = new Set(monthItems.filter(r => r.evaluations > 0).map(r => (r.agent || '').toLowerCase().trim()));
+    const noneCount = agents.filter(a => !reviewedAgents.has((a.agent || '').toLowerCase().trim())).length;
+    const avgMonth = monthItems.length ? (monthItems.reduce((s, r) => s + (r.average || 0), 0) / monthItems.length * 100).toFixed(0) : 0;
+    const avgWeek = weekItems.length ? (weekItems.reduce((s, r) => s + (r.average || 0), 0) / weekItems.length * 100).toFixed(0) : 0;
     const card = (n, l) => '<div style="padding:10px 16px;background:#f0edfa;border-radius:6px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:#1e3a5f">' + n + '</div><div style="font-size:11px;color:#555">' + l + '</div></div>';
-    summary.innerHTML = card(withReviews.length, 'Reviewed') + card(singleReview.length, 'Single') + card(noReview.length, 'None') + card(avgScore + '%', 'Avg');
-    list.innerHTML = withReviews.sort((a, b) => (b.average || 0) - (a.average || 0)).map(r => {
-      const pct = Math.round((r.average || 0) * 100);
-      const color = pct >= 90 ? '#2e7d32' : pct >= 80 ? '#f9a825' : '#c62828';
-      return '<div style="background:white;border:1px solid #e0dce8;border-radius:8px;padding:12px"><div style="font-weight:600;margin-bottom:4px">' + (r.agent || '') + '</div><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:8px;background:#eee;border-radius:4px;overflow:hidden"><div style="width:' + pct + '%;height:100%;background:' + color + '"></div></div><span style="font-size:13px;font-weight:600">' + pct + '%</span></div><div style="font-size:11px;color:#666;margin-top:4px">' + (r.evaluations || 0) + ' review' + (r.evaluations === 1 ? '' : 's') + '</div></div>';
+    summary.innerHTML = card(agents.length, 'Total Agents') + card(reviewedAgents.size, 'Reviewed') + card(noneCount, 'None') + card(avgMonth + '%', 'Month Avg') + card(avgWeek + '%', 'Week Avg');
+    const agentMap = {};
+    monthItems.forEach(r => { agentMap[(r.agent || '').toLowerCase()] = { month: r, week: null }; });
+    weekItems.forEach(r => { const k = (r.agent || '').toLowerCase(); if (!agentMap[k]) agentMap[k] = {}; agentMap[k].week = r; });
+    list.innerHTML = Object.entries(agentMap).sort((a, b) => (b[1].month?.average || 0) - (a[1].month?.average || 0)).map(([name, data]) => {
+      const mPct = Math.round((data.month?.average || 0) * 100);
+      const wPct = data.week ? Math.round((data.week.average || 0) * 100) : null;
+      const color = mPct >= 90 ? '#2e7d32' : mPct >= 80 ? '#f9a825' : '#c62828';
+      return '<div style="background:white;border:1px solid #e0dce8;border-radius:8px;padding:12px"><div style="font-weight:600;margin-bottom:6px">' + (data.month?.agent || name) + '</div><div style="display:flex;gap:16px;font-size:13px"><div><span style="color:#666">Month:</span> <strong style="color:' + color + '">' + mPct + '%</strong></div>' + (wPct !== null ? '<div><span style="color:#666">Week:</span> <strong>' + wPct + '%</strong></div>' : '') + '</div><div style="font-size:11px;color:#666;margin-top:4px">' + (data.month?.evaluations || 0) + ' reviews</div></div>';
     }).join('');
     // Supervisor rollup
     const supervisors = staff.filter(s => (s.role || '').toLowerCase() === 'supervisor');
