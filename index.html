@@ -1567,17 +1567,20 @@ async function loadCS() {
     const avgWeek = weekWithReviews.length ? Math.round(weekWithReviews.reduce((s, r) => s + (r.average || 0), 0) / weekWithReviews.length * 100) : 0;
     const card = (n, l) => '<div style="padding:10px 16px;background:#f0edfa;border-radius:6px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:#1e3a5f">' + n + '</div><div style="font-size:11px;color:#555">' + l + '</div></div>';
     summary.innerHTML = card(allAgents.length, 'Total Agents') + card(reviewedSet.size, 'Reviewed') + card(avgMonth + '%', 'Month Avg') + card(avgWeek + '%', 'Week Avg');
+    const agentNames = new Set(allAgents.map(a => (a.agent || '').toLowerCase().trim()));
     const scoreMap = {};
-    monthItems.forEach(r => { scoreMap[(r.agent || '').toLowerCase()] = { name: r.agent, month: r.average || 0, week: null, evals: r.evaluations || 0, metricsM: null, metricsW: null }; });
-    weekItems.forEach(r => { const k = (r.agent || '').toLowerCase(); if (!scoreMap[k]) scoreMap[k] = { name: r.agent, month: 0, week: null, evals: 0, metricsM: null, metricsW: null }; scoreMap[k].week = r.average || 0; });
-    metrics.filter(m => (m.range || '').toLowerCase() === 'month').forEach(m => { const k = (m.agent || '').toLowerCase(); if (!scoreMap[k]) scoreMap[k] = { name: m.agent, month: 0, week: null, evals: 0, metricsM: null, metricsW: null }; scoreMap[k].metricsM = m; });
-    metrics.filter(m => (m.range || '').toLowerCase() === 'last week').forEach(m => { const k = (m.agent || '').toLowerCase(); if (!scoreMap[k]) scoreMap[k] = { name: m.agent, month: 0, week: null, evals: 0, metricsM: null, metricsW: null }; scoreMap[k].metricsW = m; });
-    list.innerHTML = Object.values(scoreMap).sort((a, b) => b.month - a.month).map(data => {
+    monthItems.filter(r => agentNames.has((r.agent || '').toLowerCase().trim())).forEach(r => { scoreMap[(r.agent || '').toLowerCase()] = { name: r.agent, month: r.average || 0, week: null, evals: r.evaluations || 0, metricsM: null, metricsW: null }; });
+    weekItems.filter(r => agentNames.has((r.agent || '').toLowerCase().trim())).forEach(r => { const k = (r.agent || '').toLowerCase(); if (!scoreMap[k]) scoreMap[k] = { name: r.agent, month: 0, week: null, evals: 0, metricsM: null, metricsW: null }; scoreMap[k].week = r.average || 0; });
+    metrics.filter(m => agentNames.has((m.agent || '').toLowerCase().trim()) && (m.range || '').toLowerCase() === 'month').forEach(m => { const k = (m.agent || '').toLowerCase(); if (!scoreMap[k]) scoreMap[k] = { name: m.agent, month: 0, week: null, evals: 0, metricsM: null, metricsW: null }; scoreMap[k].metricsM = m; });
+    metrics.filter(m => agentNames.has((m.agent || '').toLowerCase().trim()) && (m.range || '').toLowerCase() === 'last week').forEach(m => { const k = (m.agent || '').toLowerCase(); if (!scoreMap[k]) scoreMap[k] = { name: m.agent, month: 0, week: null, evals: 0, metricsM: null, metricsW: null }; scoreMap[k].metricsW = m; });
+    const blues = ['#1e3a5f','#2c5282','#3182ce','#4299e1','#63b3ed','#90cdf4'];
+    list.innerHTML = Object.values(scoreMap).sort((a, b) => b.month - a.month).map((data, i) => {
       const mPct = Math.round(data.month * 100);
       const wPct = data.week !== null ? Math.round(data.week * 100) : null;
       const color = mPct >= 90 ? '#2e7d32' : mPct >= 80 ? '#f9a825' : '#c62828';
-      const fmtM = m => m ? 'Talk ' + ((m.avgTalk || 0) / 60000).toFixed(1) + 'm · Silence ' + Math.round((m.avgSilence || 0) * 100) + '% · Hold ' + ((m.avgHold || 0) / 60000).toFixed(1) + 'm' : '';
-      const colors = ['#82B0B0','#D4E5E1','#FEEBE0','#E1D5C9']; return '<div style="background:' + colors[Object.values(scoreMap).indexOf(data) % 4] + '22;border:1px solid #e0dce8;border-radius:8px;padding:12px"><div style="font-weight:600;margin-bottom:6px">' + data.name + '</div><div style="font-size:12px;margin-bottom:4px"><span style="color:#666">Last Week:</span> <strong>' + (wPct !== null ? wPct + '%' : '—') + '</strong></div><div style="font-size:12px;margin-bottom:6px"><span style="color:#666">MTD:</span> <strong style="color:' + color + '">' + mPct + '%</strong></div><div style="font-size:11px;color:#666">' + data.evals + ' quality reviews</div>' + (data.metricsW ? '<div style="font-size:10px;color:#888;margin-top:4px">Last Week: ' + fmtM(data.metricsW) + '</div>' : '') + (data.metricsM ? '<div style="font-size:10px;color:#888">MTD: ' + fmtM(data.metricsM) + '</div>' : '') + '</div>';
+      const fmtM = m => m ? '<span style="flex:1">Talk ' + ((m.avgTalk || 0) / 60000).toFixed(1) + 'm</span><span style="flex:1">Silence ' + Math.round((m.avgSilence || 0) * 100) + '%</span><span style="flex:1">Hold ' + ((m.avgHold || 0) / 60000).toFixed(1) + 'm</span>' : '';
+      const bg = blues[i % blues.length];
+      return '<div style="background:' + bg + ';color:white;border-radius:10px;padding:14px"><div style="font-weight:600;margin-bottom:8px;font-size:15px">' + data.name + '</div><div style="display:flex;gap:16px;font-size:13px;margin-bottom:6px"><div>Last Week: <strong>' + (wPct !== null ? wPct + '%' : '—') + '</strong></div><div>MTD: <strong>' + mPct + '%</strong></div></div><div style="font-size:11px;opacity:0.9;margin-bottom:8px">' + data.evals + ' quality reviews</div>' + (data.metricsW || data.metricsM ? '<div style="background:rgba(255,255,255,0.15);border-radius:6px;padding:8px;font-size:10px">' + (data.metricsW ? '<div style="display:flex;margin-bottom:4px"><strong style="width:60px">Last Week</strong>' + fmtM(data.metricsW) + '</div>' : '') + (data.metricsM ? '<div style="display:flex"><strong style="width:60px">MTD</strong>' + fmtM(data.metricsM) + '</div>' : '') + '</div>' : '') + '</div>';
     }).join('');
     const supervisors = allStaff.filter(s => (s.role || '').toLowerCase() === 'supervisor');
     const norm = n => (n||'').toLowerCase().replace(/,/g,'').split(/\s+/).sort().join(' ');
@@ -1585,21 +1588,22 @@ async function loadCS() {
     allStaff.forEach(s => { if (s.supervisor) { if (!supAgentMap[s.supervisor]) supAgentMap[s.supervisor] = []; supAgentMap[s.supervisor].push(s.agent); } });
     const reviewedNorm = new Set(monthItems.filter(r => r.evaluations > 0).map(r => norm(r.agent)));
     if (supDiv) {
+      const maxReviews = Math.max(1, ...supervisors.map(sup => {
+        const sa = supAgentMap[sup.agent] || [];
+        return monthItems.filter(r => sa.some(a => norm(a) === norm(r.agent))).reduce((s, r) => s + (r.evaluations || 0), 0);
+      }));
       const supData = supervisors.map(sup => {
         const supAgents = supAgentMap[sup.agent] || [];
         const reviewed = supAgents.filter(a => reviewedNorm.has(norm(a)));
-        const pending = supAgents.filter(a => !reviewedNorm.has(norm(a)));
         const monthCount = monthItems.filter(r => supAgents.some(a => norm(a) === norm(r.agent))).reduce((s, r) => s + (r.evaluations || 0), 0);
         const weekCount = weekItems.filter(r => supAgents.some(a => norm(a) === norm(r.agent))).reduce((s, r) => s + (r.evaluations || 0), 0);
         const teamMetricsM = metrics.filter(m => (m.range || '').toLowerCase() === 'month' && supAgents.some(a => norm(a) === norm(m.agent)));
-        const teamMetricsW = metrics.filter(m => (m.range || '').toLowerCase() === 'last week' && supAgents.some(a => norm(a) === norm(m.agent)));
-        const avgMet = arr => arr.length ? { talk: arr.reduce((s,m) => s + (m.avgTalk||0), 0) / arr.length, silence: arr.reduce((s,m) => s + (m.avgSilence||0), 0) / arr.length, hold: arr.reduce((s,m) => s + (m.avgHold||0), 0) / arr.length } : null;
-        const mAvg = avgMet(teamMetricsM), wAvg = avgMet(teamMetricsW);
-        const fmtAvg = a => a ? 'Talk ' + (a.talk/60000).toFixed(1) + 'm · Silence ' + Math.round(a.silence*100) + '% · Hold ' + (a.hold/60000).toFixed(1) + 'm' : '';
-        const status = pending.length === 0 && supAgents.length > 0 ? '<span style="color:#2e7d32;font-size:11px">All reviewed</span>' : pending.length > 0 ? '<span style="color:#c62828;font-size:11px">' + pending.length + ' pending</span>' : '<span style="color:#999;font-size:11px">No agents</span>';
-        return { html: '<div style="background:white;border:1px solid #e0dce8;border-radius:8px;padding:12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center"><strong>' + sup.agent + '</strong> ' + status + '</div><div style="font-size:12px;margin-top:4px">' + reviewed.length + ' of ' + supAgents.length + ' agents</div><div style="font-size:11px;color:#666;margin-top:4px">Last Week: ' + weekCount + ' quality reviews' + (wAvg ? ' · ' + fmtAvg(wAvg) : '') + '</div><div style="font-size:11px;color:#666">MTD: ' + monthCount + ' quality reviews' + (mAvg ? ' · ' + fmtAvg(mAvg) : '') + '</div></div>', count: monthCount };
+        const avgTalk = teamMetricsM.length ? teamMetricsM.reduce((s,m) => s + (m.avgTalk||0), 0) / teamMetricsM.length / 60000 : 0;
+        const avgSilence = teamMetricsM.length ? teamMetricsM.reduce((s,m) => s + (m.avgSilence||0), 0) / teamMetricsM.length * 100 : 0;
+        const barW = Math.round(monthCount / maxReviews * 100);
+        return { html: '<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><strong>' + sup.agent + '</strong><span>' + reviewed.length + ' of ' + supAgents.length + ' agents</span></div><div style="display:flex;gap:8px;align-items:center"><div style="flex:1;height:20px;background:#e8e8e8;border-radius:4px;overflow:hidden"><div style="width:' + barW + '%;height:100%;background:#3182ce"></div></div><span style="font-size:11px;min-width:80px">' + weekCount + ' / ' + monthCount + '</span></div><div style="font-size:10px;color:#666;margin-top:2px">Talk ' + avgTalk.toFixed(1) + 'm · Silence ' + Math.round(avgSilence) + '%</div></div>', count: monthCount };
       });
-      supDiv.innerHTML = supData.sort((a, b) => b.count - a.count).map(s => s.html).join('');
+      supDiv.innerHTML = '<div style="background:white;border:1px solid #e0dce8;border-radius:10px;padding:16px"><div style="font-size:11px;color:#666;margin-bottom:8px">Last Week / MTD quality reviews · MTD avg metrics</div>' + supData.sort((a, b) => b.count - a.count).map(s => s.html).join('') + '</div>';
     }
   } catch (e) { console.error(e); summary.innerHTML = '<p>Failed to load: ' + e.message + '</p>'; }
 }
