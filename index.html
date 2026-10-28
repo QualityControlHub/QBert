@@ -2120,21 +2120,62 @@ if (metricsBtn) {
 (function () {
   const btn = document.getElementById('cs-snapshot');
   if (!btn) return;
+
+  // Tune these three if the pasted image wants to be bigger, smaller or airier.
+  const TARGET_WIDTH = 900;                                   // final PNG width in pixels, margins included
+  const PAD = { top: 26, right: 34, bottom: 42, left: 34 };   // margin, in final pixels
+  const PAGE_BG = '#E8EBD2';
+
   const idle = btn.textContent;
   let resetTimer;
   function say(text, ms) { btn.textContent = text; clearTimeout(resetTimer); resetTimer = setTimeout(() => { btn.textContent = idle; btn.disabled = false; }, ms || 3000); }
+
+  // Lay the capture on a padded canvas and fade each margin out to white,
+  // so the image sits on the email's own white background without a hard edge.
+  function matte(shot, cssWidth) {
+    const inner = Math.min(TARGET_WIDTH - PAD.left - PAD.right, cssWidth);
+    const scale = inner / cssWidth;
+    const innerH = Math.round((shot.height / (shot.width / cssWidth)) * scale);
+    const out = document.createElement('canvas');
+    out.width = Math.round(inner + PAD.left + PAD.right);
+    out.height = Math.round(innerH + PAD.top + PAD.bottom);
+    const ctx = out.getContext('2d');
+    ctx.fillStyle = PAGE_BG;
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(shot, PAD.left, PAD.top, inner, innerH);
+    const fade = (x0, y0, x1, y1) => {
+      const g = ctx.createLinearGradient(x0, y0, x1, y1);
+      g.addColorStop(0, 'rgba(255,255,255,1)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      return g;
+    };
+    ctx.fillStyle = fade(0, 0, PAD.left, 0);
+    ctx.fillRect(0, 0, PAD.left, out.height);
+    ctx.fillStyle = fade(out.width, 0, out.width - PAD.right, 0);
+    ctx.fillRect(out.width - PAD.right, 0, PAD.right, out.height);
+    ctx.fillStyle = fade(0, 0, 0, PAD.top);
+    ctx.fillRect(0, 0, out.width, PAD.top);
+    ctx.fillStyle = fade(0, out.height, 0, out.height - PAD.bottom);
+    ctx.fillRect(0, out.height - PAD.bottom, out.width, PAD.bottom);
+    return out;
+  }
+
   btn.addEventListener('click', async () => {
     const target = document.getElementById('section-cs');
     if (!target || typeof html2canvas !== 'function') { say('Image tool unavailable'); return; }
-    btn.disabled = true; btn.textContent = 'Rendering\u2026';
+    btn.disabled = true; btn.textContent = 'Rendering…';
     try {
-      const canvas = await html2canvas(target, {
-        backgroundColor: '#E8EBD2',
+      const cssWidth = target.offsetWidth;
+      const shot = await html2canvas(target, {
+        backgroundColor: PAGE_BG,
         scale: 2,
         useCORS: true,
         ignoreElements: el => el.id === 'cs-snapshot'
       });
-      const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+      const out = matte(shot, cssWidth);
+      const blob = await new Promise(res => out.toBlob(res, 'image/png'));
       if (!blob) throw new Error('The tab could not be rendered.');
       let copied = false;
       try {
@@ -2143,14 +2184,14 @@ if (metricsBtn) {
           copied = true;
         }
       } catch (err) { console.warn('Clipboard copy unavailable, downloading instead', err); }
-      if (copied) { say('Copied \u2014 paste into your email'); return; }
+      if (copied) { say('Copied — paste into your email'); return; }
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = 'customer-service-' + new Date().toISOString().slice(0, 10) + '.png';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
-      say('Saved as PNG \u2014 attach or drag it in', 4000);
+      say('Saved as PNG — attach or drag it in', 4000);
     } catch (e) {
       console.error(e);
       say('Could not capture the tab', 4000);
