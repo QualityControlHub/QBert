@@ -78,7 +78,7 @@ body[data-width="full"]{--page-w:100%}
   <div class="workspace-footer" style="display:flex;flex-direction:column;align-items:flex-end"><span class="version-note" id="version-note">Q-Bert 2.0</span><a href="#reviewer-workspace" id="hidden-workspace-link" style="display:block;width:40px;height:12px;color:transparent;text-decoration:none">&nbsp;</a></div>
  </section>
 <div id="section-cs" style="display:none">
-  <div class="page-heading"><div><h1>Genesys Reviews and Metrics</h1></div></div>
+  <div class="page-heading"><div><h1>Genesys SLS Reviews and Quality Metrics</h1></div></div>
   <div style="display:flex;align-items:center;gap:16px;margin:16px 0 10px"><h2 style="font-size:16px;margin:0">Agent Scoring</h2><div id="cs-summary" style="display:flex;gap:8px"></div></div>
   <div id="cs-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px"></div>
   <h2 style="font-size:16px;margin:24px 0 10px">By Supervisor</h2>
@@ -1576,8 +1576,8 @@ async function loadCS() {
       const mPct = Math.round(data.month * 100);
       const wPct = data.week !== null ? Math.round(data.week * 100) : null;
       const color = mPct >= 90 ? '#2e7d32' : mPct >= 80 ? '#f9a825' : '#c62828';
-      const fmtM = m => m ? 'Talk ' + Math.round(m.avgTalk || 0) + 's · Silence ' + Math.round(m.avgSilence || 0) + 's · Hold ' + Math.round(m.avgHold || 0) + 's' : '';
-      return '<div style="background:white;border:1px solid #e0dce8;border-radius:8px;padding:12px"><div style="font-weight:600;margin-bottom:6px">' + data.name + '</div><div style="font-size:12px;margin-bottom:4px"><span style="color:#666">Last Week:</span> <strong>' + (wPct !== null ? wPct + '%' : '—') + '</strong></div><div style="font-size:12px;margin-bottom:6px"><span style="color:#666">MTD:</span> <strong style="color:' + color + '">' + mPct + '%</strong></div><div style="font-size:11px;color:#666">' + data.evals + ' quality reviews</div>' + (data.metricsW ? '<div style="font-size:10px;color:#888;margin-top:4px">Last Week: ' + fmtM(data.metricsW) + '</div>' : '') + (data.metricsM ? '<div style="font-size:10px;color:#888">MTD: ' + fmtM(data.metricsM) + '</div>' : '') + '</div>';
+      const fmtM = m => m ? 'Talk ' + ((m.avgTalk || 0) / 60000).toFixed(1) + 'm · Silence ' + Math.round((m.avgSilence || 0) * 100) + '% · Hold ' + ((m.avgHold || 0) / 60000).toFixed(1) + 'm' : '';
+      const colors = ['#82B0B0','#D4E5E1','#FEEBE0','#E1D5C9']; return '<div style="background:' + colors[Object.values(scoreMap).indexOf(data) % 4] + '22;border:1px solid #e0dce8;border-radius:8px;padding:12px"><div style="font-weight:600;margin-bottom:6px">' + data.name + '</div><div style="font-size:12px;margin-bottom:4px"><span style="color:#666">Last Week:</span> <strong>' + (wPct !== null ? wPct + '%' : '—') + '</strong></div><div style="font-size:12px;margin-bottom:6px"><span style="color:#666">MTD:</span> <strong style="color:' + color + '">' + mPct + '%</strong></div><div style="font-size:11px;color:#666">' + data.evals + ' quality reviews</div>' + (data.metricsW ? '<div style="font-size:10px;color:#888;margin-top:4px">Last Week: ' + fmtM(data.metricsW) + '</div>' : '') + (data.metricsM ? '<div style="font-size:10px;color:#888">MTD: ' + fmtM(data.metricsM) + '</div>' : '') + '</div>';
     }).join('');
     const supervisors = allStaff.filter(s => (s.role || '').toLowerCase() === 'supervisor');
     const norm = n => (n||'').toLowerCase().replace(/,/g,'').split(/\s+/).sort().join(' ');
@@ -1589,9 +1589,15 @@ async function loadCS() {
         const supAgents = supAgentMap[sup.agent] || [];
         const reviewed = supAgents.filter(a => reviewedNorm.has(norm(a)));
         const pending = supAgents.filter(a => !reviewedNorm.has(norm(a)));
-        const reviewCount = monthItems.filter(r => supAgents.some(a => norm(a) === norm(r.agent))).reduce((s, r) => s + (r.evaluations || 0), 0);
+        const monthCount = monthItems.filter(r => supAgents.some(a => norm(a) === norm(r.agent))).reduce((s, r) => s + (r.evaluations || 0), 0);
+        const weekCount = weekItems.filter(r => supAgents.some(a => norm(a) === norm(r.agent))).reduce((s, r) => s + (r.evaluations || 0), 0);
+        const teamMetricsM = metrics.filter(m => (m.range || '').toLowerCase() === 'month' && supAgents.some(a => norm(a) === norm(m.agent)));
+        const teamMetricsW = metrics.filter(m => (m.range || '').toLowerCase() === 'last week' && supAgents.some(a => norm(a) === norm(m.agent)));
+        const avgMet = arr => arr.length ? { talk: arr.reduce((s,m) => s + (m.avgTalk||0), 0) / arr.length, silence: arr.reduce((s,m) => s + (m.avgSilence||0), 0) / arr.length, hold: arr.reduce((s,m) => s + (m.avgHold||0), 0) / arr.length } : null;
+        const mAvg = avgMet(teamMetricsM), wAvg = avgMet(teamMetricsW);
+        const fmtAvg = a => a ? 'Talk ' + (a.talk/60000).toFixed(1) + 'm · Silence ' + Math.round(a.silence*100) + '% · Hold ' + (a.hold/60000).toFixed(1) + 'm' : '';
         const status = pending.length === 0 && supAgents.length > 0 ? '<span style="color:#2e7d32;font-size:11px">All reviewed</span>' : pending.length > 0 ? '<span style="color:#c62828;font-size:11px">' + pending.length + ' pending</span>' : '<span style="color:#999;font-size:11px">No agents</span>';
-        return { html: '<div style="background:white;border:1px solid #e0dce8;border-radius:8px;padding:12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center"><strong>' + sup.agent + '</strong> ' + status + '</div><div style="font-size:12px;margin-top:4px">' + reviewed.length + ' of ' + supAgents.length + ' agents · <span style="color:' + (reviewCount === 0 ? '#c62828' : '#666') + '">' + reviewCount + ' total reviews</span></div></div>', count: reviewCount };
+        return { html: '<div style="background:white;border:1px solid #e0dce8;border-radius:8px;padding:12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center"><strong>' + sup.agent + '</strong> ' + status + '</div><div style="font-size:12px;margin-top:4px">' + reviewed.length + ' of ' + supAgents.length + ' agents</div><div style="font-size:11px;color:#666;margin-top:4px">Last Week: ' + weekCount + ' quality reviews' + (wAvg ? ' · ' + fmtAvg(wAvg) : '') + '</div><div style="font-size:11px;color:#666">MTD: ' + monthCount + ' quality reviews' + (mAvg ? ' · ' + fmtAvg(mAvg) : '') + '</div></div>', count: monthCount };
       });
       supDiv.innerHTML = supData.sort((a, b) => b.count - a.count).map(s => s.html).join('');
     }
