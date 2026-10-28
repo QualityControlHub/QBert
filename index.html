@@ -78,7 +78,7 @@ body[data-width="full"]{--page-w:100%}
   <div class="workspace-footer" style="display:flex;flex-direction:column;align-items:flex-end"><span class="version-note" id="version-note">Q-Bert 2.0</span><a href="#reviewer-workspace" id="hidden-workspace-link" style="display:block;width:40px;height:12px;color:transparent;text-decoration:none">&nbsp;</a></div>
  </section>
 <div id="section-cs" style="display:none">
-  <div class="page-heading"><div><h1>Month-to-Date Genesys Reviews</h1></div></div>
+  <div class="page-heading"><div><h1>Genesys Reviews and Metrics</h1></div></div>
   <div style="display:flex;align-items:center;gap:16px;margin:16px 0 10px"><h2 style="font-size:16px;margin:0">Agent Scoring</h2><div id="cs-summary" style="display:flex;gap:8px"></div></div>
   <div id="cs-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px"></div>
   <h2 style="font-size:16px;margin:24px 0 10px">By Supervisor</h2>
@@ -1013,7 +1013,7 @@ disconnectedPresentation();
     <div id="csh-status"></div>
     <hr style="margin:24px 0;border:none;border-top:1px solid #ddd">
     <p>Paste the Genesys Metrics CSV. This replaces all records in genesys_metrics.</p>
-    <textarea id="metrics-csv" rows="8" style="width:100%;font-family:monospace;font-size:11px" placeholder="range,intervalStart,intervalEnd,agent,evaluations,avgTalk,avgSilence,avgHold"></textarea>
+    <textarea id="metrics-csv" rows="8" style="width:100%;font-family:monospace;font-size:11px" placeholder="range,intervalStart,intervalEnd,agent,calls,avgTalk,avgSilence,avgHold"></textarea>
     <div style="margin:10px 0">
       <button class="btn primary" id="metrics-replace">Replace Metrics</button>
     </div>
@@ -1548,11 +1548,13 @@ async function loadCS() {
   list.innerHTML = '';
   if (supDiv) supDiv.innerHTML = '';
   try {
-    const [gData, sData] = await Promise.all([
+    const [gData, sData, mData] = await Promise.all([
       fetch(CONFIG.url + '/api/collections/genesys_reviews/records?perPage=500&sort=agent').then(r => r.json()),
-      fetch(CONFIG.url + '/api/collections/staff/records?perPage=500').then(r => r.json())
+      fetch(CONFIG.url + '/api/collections/staff/records?perPage=500').then(r => r.json()),
+      fetch(CONFIG.url + '/api/collections/genesys_metrics/records?perPage=500').then(r => r.json())
     ]);
     const items = gData.items || [];
+    const metrics = mData.items || [];
     const allStaff = (sData.items || []).filter(s => !s.inactive);
     const allAgents = allStaff.filter(s => (s.role || '').toLowerCase() === 'agent');
     const monthItems = items.filter(r => (r.range || '').toLowerCase() === 'month');
@@ -1566,13 +1568,16 @@ async function loadCS() {
     const card = (n, l) => '<div style="padding:10px 16px;background:#f0edfa;border-radius:6px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:#1e3a5f">' + n + '</div><div style="font-size:11px;color:#555">' + l + '</div></div>';
     summary.innerHTML = card(allAgents.length, 'Total Agents') + card(reviewedSet.size, 'Reviewed') + card(avgMonth + '%', 'Month Avg') + card(avgWeek + '%', 'Week Avg');
     const scoreMap = {};
-    monthItems.forEach(r => { scoreMap[(r.agent || '').toLowerCase()] = { name: r.agent, month: r.average || 0, week: null, evals: r.evaluations || 0 }; });
-    weekItems.forEach(r => { const k = (r.agent || '').toLowerCase(); if (!scoreMap[k]) scoreMap[k] = { name: r.agent, month: 0, week: null, evals: 0 }; scoreMap[k].week = r.average || 0; });
+    monthItems.forEach(r => { scoreMap[(r.agent || '').toLowerCase()] = { name: r.agent, month: r.average || 0, week: null, evals: r.evaluations || 0, metricsM: null, metricsW: null }; });
+    weekItems.forEach(r => { const k = (r.agent || '').toLowerCase(); if (!scoreMap[k]) scoreMap[k] = { name: r.agent, month: 0, week: null, evals: 0, metricsM: null, metricsW: null }; scoreMap[k].week = r.average || 0; });
+    metrics.filter(m => (m.range || '').toLowerCase() === 'month').forEach(m => { const k = (m.agent || '').toLowerCase(); if (!scoreMap[k]) scoreMap[k] = { name: m.agent, month: 0, week: null, evals: 0, metricsM: null, metricsW: null }; scoreMap[k].metricsM = m; });
+    metrics.filter(m => (m.range || '').toLowerCase() === 'last week').forEach(m => { const k = (m.agent || '').toLowerCase(); if (!scoreMap[k]) scoreMap[k] = { name: m.agent, month: 0, week: null, evals: 0, metricsM: null, metricsW: null }; scoreMap[k].metricsW = m; });
     list.innerHTML = Object.values(scoreMap).sort((a, b) => b.month - a.month).map(data => {
       const mPct = Math.round(data.month * 100);
       const wPct = data.week !== null ? Math.round(data.week * 100) : null;
       const color = mPct >= 90 ? '#2e7d32' : mPct >= 80 ? '#f9a825' : '#c62828';
-      return '<div style="background:white;border:1px solid #e0dce8;border-radius:8px;padding:12px"><div style="font-weight:600;margin-bottom:6px">' + data.name + '</div><div style="display:flex;gap:16px;font-size:13px"><div><span style="color:#666">Month:</span> <strong style="color:' + color + '">' + mPct + '%</strong></div>' + (wPct !== null ? '<div><span style="color:#666">Week:</span> <strong>' + wPct + '%</strong></div>' : '') + '</div><div style="font-size:11px;color:#666;margin-top:4px">' + data.evals + ' reviews</div></div>';
+      const fmtM = m => m ? 'Talk ' + Math.round(m.avgTalk || 0) + 's · Silence ' + Math.round(m.avgSilence || 0) + 's · Hold ' + Math.round(m.avgHold || 0) + 's' : '';
+      return '<div style="background:white;border:1px solid #e0dce8;border-radius:8px;padding:12px"><div style="font-weight:600;margin-bottom:6px">' + data.name + '</div><div style="font-size:12px;margin-bottom:4px"><span style="color:#666">Last Week:</span> <strong>' + (wPct !== null ? wPct + '%' : '—') + '</strong></div><div style="font-size:12px;margin-bottom:6px"><span style="color:#666">MTD:</span> <strong style="color:' + color + '">' + mPct + '%</strong></div><div style="font-size:11px;color:#666">' + data.evals + ' quality reviews</div>' + (data.metricsW ? '<div style="font-size:10px;color:#888;margin-top:4px">Last Week: ' + fmtM(data.metricsW) + '</div>' : '') + (data.metricsM ? '<div style="font-size:10px;color:#888">MTD: ' + fmtM(data.metricsM) + '</div>' : '') + '</div>';
     }).join('');
     const supervisors = allStaff.filter(s => (s.role || '').toLowerCase() === 'supervisor');
     const norm = n => (n||'').toLowerCase().replace(/,/g,'').split(/\s+/).sort().join(' ');
@@ -2025,7 +2030,7 @@ if (metricsBtn) {
       const obj = {};
       headers.forEach((h, i) => {
         let v = (vals[i] || '').trim();
-        if (['evaluations','avgTalk','avgSilence','avgHold'].includes(h)) {
+        if (['calls','avgTalk','avgSilence','avgHold'].includes(h)) {
           if (v && !isNaN(Number(v))) obj[h] = Number(v);
         } else if (h === 'intervalStart' || h === 'intervalEnd') {
           if (v) { const d = new Date(v); if (!isNaN(d.getTime())) obj[h] = d.toISOString().replace('T', ' ').slice(0, 23) + 'Z'; }
