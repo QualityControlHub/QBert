@@ -954,7 +954,7 @@ disconnectedPresentation();
   <nav style="display:flex;gap:8px;margin:16px 0;border-bottom:1px solid #ddd;padding-bottom:8px;flex-wrap:wrap">
     <button class="btn" data-ws="loans">Loan Reviews</button>
     <button class="btn" data-ws="genesys">Genesys Reviews</button>
-    <button class="btn" data-ws="csh">CSH Reviews</button>
+    <button class="btn" data-ws="csh">Genesys Dashboard</button>
     <button class="btn" data-ws="delinquency">Delinquency</button>
     <button class="btn" data-ws="dataedit">Data Edit</button>
     <button class="btn" data-ws="newsletter">Newsletter</button>
@@ -1004,9 +1004,9 @@ disconnectedPresentation();
     </form>
   </div>
   <div id="ws-csh" hidden>
-    <h2>CSH Reviews</h2>
-    <p>Paste the Genesys/CSH CSV. This replaces all records in genesys_reviews.</p>
-    <textarea id="csh-csv" rows="8" style="width:100%;font-family:monospace;font-size:11px" placeholder="agent,evaluations,average,averageCritical"></textarea>
+    <h2>Genesys Dashboard</h2>
+    <p>Paste the Genesys Reviews CSV. This replaces all records in genesys_reviews.</p>
+    <textarea id="csh-csv" rows="8" style="width:100%;font-family:monospace;font-size:11px" placeholder="agent,evaluations,average,averageCritical,intervalStart,intervalEnd"></textarea>
     <div style="margin:10px 0">
       <button class="btn primary" id="csh-replace">Replace Collection</button>
     </div>
