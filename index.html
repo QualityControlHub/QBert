@@ -31,6 +31,33 @@ body[data-width="full"]{--page-w:100%}
 #section-checklists .checklist-item strong{color:var(--navy)}
 .cs-note{grid-column:1/-1;background:white;border:1px solid var(--line);border-radius:10px;padding:16px 18px;font-size:13px;line-height:1.6;color:var(--ink)}
 .cs-note code{background:#f3f1ea;padding:1px 5px;border-radius:4px;font-size:12px}
+.cs-section-title{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:28px 0 12px}
+.cs-section-title h2{font-size:18px}
+.cs-section-title span{font-size:11.5px;color:var(--muted)}
+.cs-panel{background:white;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:6px 20px}
+.sup-row{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(110px,1.9fr) 78px minmax(0,1.25fr);gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid #eef0e6}
+.sup-row:last-child{border-bottom:0}
+.sup-id{display:flex;align-items:center;gap:9px;min-width:0}
+.sup-dot{width:10px;height:10px;border-radius:3px;flex:none}
+.sup-name{font-size:13.5px;font-weight:600;letter-spacing:.1px}
+.sup-team{font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);margin-top:1px}
+.sup-track{height:10px;border-radius:99px;background:#edefe4;overflow:hidden}
+.sup-fill{height:100%;border-radius:99px;min-width:3px}
+.sup-count{text-align:right;font-variant-numeric:tabular-nums;line-height:1.15}
+.sup-count b{font-family:var(--font-serif);font-size:19px;font-weight:700}
+.sup-count span{display:block;font-size:9.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted)}
+.sup-metrics{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.sup-metrics span{font-size:10.5px;color:var(--muted);background:#f8f9f2;border:1px solid var(--line);border-radius:6px;padding:3px 7px;white-space:nowrap}
+.sup-metrics b{color:var(--ink);font-weight:600}
+.cov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:18px 12px;padding:16px 0 18px}
+.cov-item{text-align:center;min-width:0}
+.cov-ring{position:relative;width:76px;height:76px;margin:0 auto 7px}
+.cov-ring svg{display:block}
+.cov-pct{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font-serif);font-size:15px;font-weight:700}
+.cov-name{font-size:12.5px;font-weight:600;overflow-wrap:anywhere}
+.cov-sub{font-size:10.5px;color:var(--muted);margin-top:1px}
+.cs-empty{margin:0;padding:18px 0;font-size:13px;color:var(--muted)}
+@media(max-width:850px){.sup-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:9px}.sup-count{text-align:left}.sup-metrics{justify-content:flex-start}}
 </style>
 </head>
 <body>
@@ -1644,21 +1671,45 @@ async function loadCS() {
         const avgTalk = teamMetricsM.length ? teamMetricsM.reduce((s,m) => s + (m.avgTalk||0), 0) / teamMetricsM.length / 60000 : 0;
         const avgSilence = teamMetricsM.length ? teamMetricsM.reduce((s,m) => s + (m.avgSilence||0), 0) / teamMetricsM.length * 100 : 0;
         const avgHold = teamMetricsM.length ? teamMetricsM.reduce((s,m) => s + (m.avgHold||0), 0) / teamMetricsM.length / 60000 : 0;
-        return { name: sup.agent, reviewed: reviewed.length, total: supAgents.length, count: monthCount, talk: avgTalk, silence: avgSilence, hold: avgHold };
+        return { name: sup.agent, team: sup.team || '', reviewed: reviewed.length, total: supAgents.length, count: monthCount, talk: avgTalk, silence: avgSilence, hold: avgHold, metricRows: teamMetricsM.length };
       }).sort((a, b) => b.count - a.count);
       const maxCount = Math.max(1, ...supStats.map(s => s.count));
+      const supColor = t => teamColors[t] || '#2B5070';
+      const mins = v => (v || 0).toFixed(1) + 'm';
       const bars = supStats.map(s => {
-        const barW = Math.round(s.count / maxCount * 100);
-        return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><strong>' + safe(s.name) + '</strong><span style="color:#1e3a5f;font-weight:600">' + s.count + ' Reviewed</span></div><div style="height:18px;background:#e8e8e8;border-radius:4px;overflow:hidden"><div style="width:' + barW + '%;height:100%;background:#3182ce"></div></div></div>';
+        const barW = s.count ? Math.max(3, Math.round(s.count / maxCount * 100)) : 0;
+        const c = supColor(s.team);
+        const chips = s.metricRows
+          ? '<span>Talk <b>' + mins(s.talk) + '</b></span><span>Silence <b>' + Math.round(s.silence) + '%</b></span><span>Hold <b>' + mins(s.hold) + '</b></span>'
+          : '<span>No call metrics</span>';
+        return '<div class="sup-row">' +
+          '<div class="sup-id"><span class="sup-dot" style="background:' + c + '"></span><div><div class="sup-name">' + safe(s.name) + '</div><div class="sup-team">' + safe(s.team || 'Team not set') + '</div></div></div>' +
+          '<div class="sup-track"><div class="sup-fill" style="width:' + barW + '%;background:' + c + '"></div></div>' +
+          '<div class="sup-count"><b>' + s.count + '</b><span>reviews</span></div>' +
+          '<div class="sup-metrics">' + chips + '</div>' +
+        '</div>';
       }).join('');
+      const covReviewed = supStats.reduce((t, s) => t + s.reviewed, 0);
+      const covAgents = supStats.reduce((t, s) => t + s.total, 0);
+      const ringCirc = 2 * Math.PI * 30;
       const pies = supStats.slice().sort((a, b) => (b.total ? b.reviewed / b.total : 0) - (a.total ? a.reviewed / a.total : 0)).map(s => {
         const pct = s.total ? s.reviewed / s.total : 0;
-        const deg = Math.round(pct * 360);
-        const circ = 2 * Math.PI * 17.5;
-        const filled = (circ * pct).toFixed(2);
-        return '<div style="text-align:center"><svg width="70" height="70" viewBox="0 0 70 70" style="display:block;margin:0 auto 4px" role="img" aria-label="' + safe(s.reviewed + ' of ' + s.total + ' agents reviewed') + '"><circle cx="35" cy="35" r="35" fill="#e8e8e8"/><circle cx="35" cy="35" r="17.5" fill="none" stroke="#6b4c9a" stroke-width="35" stroke-dasharray="' + filled + ' ' + circ.toFixed(2) + '" transform="rotate(-90 35 35)"/></svg><div style="font-size:12px;font-weight:600">' + safe(String(s.name || '').split(' ')[0]) + '</div><div style="font-size:11px;color:#666">' + s.reviewed + '/' + s.total + '</div></div>';
+        const c = supColor(s.team);
+        const arc = pct > 0
+          ? '<circle cx="38" cy="38" r="30" fill="none" stroke="' + c + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + (ringCirc * pct).toFixed(2) + ' ' + ringCirc.toFixed(2) + '" transform="rotate(-90 38 38)"/>'
+          : '';
+        return '<div class="cov-item">' +
+          '<div class="cov-ring"><svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true"><circle cx="38" cy="38" r="30" fill="none" stroke="#edefe4" stroke-width="9"/>' + arc + '</svg>' +
+          '<span class="cov-pct" style="color:' + (pct > 0 ? c : '#9aa5b1') + '">' + Math.round(pct * 100) + '%</span></div>' +
+          '<div class="cov-name">' + safe(s.name) + '</div>' +
+          '<div class="cov-sub">' + s.reviewed + ' of ' + s.total + ' agents</div>' +
+        '</div>';
       }).join('');
-      supDiv.innerHTML = '<div style="width:80%;margin:24px auto 16px;background:white;border:1px solid #e0dce8;border-radius:10px;padding:16px"><div style="font-size:16px;font-weight:700;color:#1e3a5f;margin-bottom:12px">Quality Reviews by Supervisor</div>' + bars + '</div><div style="width:80%;margin:0 auto;background:white;border:1px solid #e0dce8;border-radius:10px;padding:16px"><div style="font-size:16px;font-weight:700;color:#6b4c9a;margin-bottom:12px">Agent Coverage</div><div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center">' + pies + '</div></div>';
+      supDiv.innerHTML =
+        '<div class="cs-section-title"><h2>Quality Reviews by Supervisor</h2><span>Month to date, by evaluations completed</span></div>' +
+        '<div class="cs-panel">' + (bars || '<p class="cs-empty">No supervisor records to summarize.</p>') + '</div>' +
+        '<div class="cs-section-title"><h2>Agent Coverage</h2><span>' + covReviewed + ' of ' + covAgents + ' agents reviewed this month</span></div>' +
+        '<div class="cs-panel">' + (pies ? '<div class="cov-grid">' + pies + '</div>' : '<p class="cs-empty">No agents are assigned to a supervisor yet.</p>') + '</div>';
     }
   } catch (e) {
     console.error(e);
