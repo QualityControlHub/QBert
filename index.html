@@ -2033,8 +2033,8 @@ if (metricsBtn) {
       });
       try {
         const res = await fetch(CONFIG.url + '/api/collections/genesys_metrics/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) });
-        if (res.ok) ok++; else fail++;
-      } catch { fail++; }
+        if (res.ok) ok++; else { fail++; if (fail === 1) { const err = await res.text(); status.textContent = 'Error: ' + err.slice(0, 300); return; } }
+      } catch (e) { fail++; if (fail === 1) { status.textContent = 'Error: ' + e.message; return; } }
     }
     status.textContent = 'Added ' + ok + (fail ? ', failed ' + fail : '') + '.';
   });
