@@ -1932,4 +1932,40 @@ async function loadQCChecklists() {
   } catch (e) { div.innerHTML = '<p>Error: ' + e.message + '</p>'; }
 }
 </script>
+
+<script>
+function closeModal() {
+  const modal = document.getElementById('de-modal') || document.getElementById('loan-modal') || document.getElementById('nl-modal');
+  if (modal) modal.remove();
+  // Also remove any leftover overlays
+  document.querySelectorAll('[style*="position:fixed"][style*="background:#000"]').forEach(el => el.remove());
+}
+
+document.getElementById('de-sync-teams')?.addEventListener('click', async () => {
+  if (!confirm('This will update team values in loan_action_reviews based on agent matching staff. Continue?')) return;
+  const status = document.getElementById('de-status');
+  status.textContent = 'Syncing…';
+  try {
+    const [loans, staff] = await Promise.all([
+      fetch(CONFIG.url + '/api/collections/loan_action_reviews/records?perPage=500').then(r => r.json()),
+      fetch(CONFIG.url + '/api/collections/staff/records?perPage=500').then(r => r.json())
+    ]);
+    const staffMap = {};
+    (staff.items || []).forEach(s => { if (s.agent) staffMap[s.agent.toLowerCase().trim()] = s.team || ''; });
+    let updated = 0, failed = 0;
+    for (const loan of (loans.items || [])) {
+      const agent = (loan.agent || '').toLowerCase().trim();
+      const team = staffMap[agent] || '';
+      try {
+        const res = await fetch(CONFIG.url + '/api/collections/loan_action_reviews/records/' + loan.id, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ team: team })
+        });
+        if (res.ok) updated++; else failed++;
+      } catch { failed++; }
+    }
+    status.textContent = 'Updated ' + updated + ', failed ' + failed + '.';
+  } catch (e) { status.textContent = 'Error: ' + e.message; }
+});
+</script>
 </body></html>
