@@ -668,7 +668,7 @@ function renderReview(r){
  let responses=r.checklistResponses||{};if(typeof responses==='string'){try{responses=JSON.parse(responses);}catch{responses={};}}
  const index=inReview?1:finding?2:3;
  const steps=['In Review',completed&&r.outcome==='Concur'?'No finding':'Findings','Completed'].map((label,i)=>'<div class="step '+(index===i+1?'active':index>i+1?'done':'')+'"><b>'+(index>i+1?'✓':i+1)+'</b>'+label+'</div>').join('');
- const assignment=reviewing?'<div class="field"><label for="edit-agent">Recommending Official</label><select id="edit-agent"><option value="">Select…</option>'+agentOptions.map(s=>'<option value="'+safe(W.nameOf(s))+'"'+(r.agent===W.nameOf(s)?' selected':'')+'>'+safe(W.nameOf(s))+'</option>').join('')+'</select><small>Supervisor is filled in automatically.</small></div>'+inputField('edit-supervisor','Supervisor',assignedSupervisor,'text',true,''):
+ const assignment=reviewing?'<div class="field"><label for="edit-agent">Recommending Official</label><select id="edit-agent"><option value="">Select…</option>'+agentOptions.map(s=>'<option value="'+safe(W.nameOf(s))+'"'+(r.agent===W.nameOf(s)?' selected':'')+'>'+safe(W.nameOf(s))+'</option>').join('')+'</select></div>'+inputField('edit-supervisor','Supervisor',assignedSupervisor,'text',true,'')+inputField('edit-team','Team',r.team||'','text',true,''):
  readonlyField('Recommending Official',r.agent)+readonlyField('Supervisor',r.supervisor);
  const checklistHtml=realChecks.map(c=>'<div class="check-item"><label><input type="checkbox" data-check="'+safe(c.id)+'"'+(responses[c.id]?' checked':'')+(!reviewing?' disabled':'')+'> <small>'+safe(c.checkID)+'</small> '+safe(c.check)+'</label></div>').join('');
  const checklistWarning=incomplete?'<div class="form-callout amber">'+(app.checklistError?safe(app.checklistError):checkItems.some(W.isPlaceholder)?'This action’s checklist includes a placeholder. It is not a complete review checklist.':'No finalized checklist was supplied for this action.')+'</div><label class="checkbox-label"><input type="checkbox" id="manual-confirm"'+(responses.__manualReviewConfirmed?' checked':'')+(!reviewing?' disabled':'')+'>I reviewed this action against the applicable policy and documentation requirements.</label>':'';
@@ -690,9 +690,17 @@ const buttons=reviewing?'<button class="btn" data-command="save-review">Save Dra
  $('review-form').addEventListener('input',()=>{app.dirty=true;$('save-hint').textContent='Unsaved changes';});
  $('review-form').addEventListener('change',e=>{app.dirty=true;$('save-hint').textContent='Unsaved changes';if(e.target.id==='edit-agent')updateSupervisor();});
 }
-function updateSupervisor(){const agent=app.staff.find(s=>W.roleOf(s)==='Agent'&&W.nameOf(s)===$('edit-agent').value);const name=agent?agent.supervisor||'':'';$('edit-supervisor').value=name;const valid=!name||app.staff.some(s=>W.roleOf(s)==='Supervisor'&&W.nameOf(s)===name);showError('supervisor-warning',agent&&name&&!valid?'The staff table lists '+(name)+' for this Agent, but no matching Supervisor record is available. Update the staff table before issuing a finding.':'');}
+function updateSupervisor(){
+  const agent=app.staff.find(s=>W.roleOf(s)==='Agent'&&W.nameOf(s)===$('edit-agent').value);
+  const name=agent?agent.supervisor||'':'';
+  const team=agent?agent.team||'':'';
+  if($('edit-supervisor'))$('edit-supervisor').value=name;
+  if($('edit-team'))$('edit-team').value=team;
+  const valid=!name||app.staff.some(s=>W.roleOf(s)==='Supervisor'&&W.nameOf(s)===name);
+  showError('supervisor-warning',agent&&name&&!valid?'The staff table lists '+(name)+' for this Agent, but no matching Supervisor record is available.':'');
+}
 async function openReview(id,trigger){let r=app.records.find(r=>r.id===id);if(!r)return;app.returnFocus=trigger;app.openRecord=copy(r);app.dirty=false;renderReview(app.openRecord);$('review-dialog').showModal();}
-function gatherReview(){const get=id=>$(id)?$(id).value.trim():'';const checked=id=>!!($(id)&&$(id).checked);const answers={};document.querySelectorAll('[data-check]').forEach(el=>{if(el.checked)answers[el.dataset.check]=true;});if(checked('manual-confirm'))answers.__manualReviewConfirmed=true;return {agent:get('edit-agent'),findingCategory:get('edit-category'),findingText:get('edit-finding'),findingIssuedOn:get('edit-issued'),findingDueOn:get('edit-due'),critical:get('edit-critical'),flag:checked('edit-flag'),checklistResponses:answers,correction:get('edit-correction'),correctiveAction:get('edit-corrective-action'),supervisorApprovedCorrection:checked('approve-correction'),supervisorApprovedCorrectiveAction:checked('approve-action'),supervisorSignOffNotes:get('edit-signoff-notes')};}
+function gatherReview(){const get=id=>$(id)?$(id).value.trim():'';const checked=id=>!!($(id)&&$(id).checked);const answers={};document.querySelectorAll('[data-check]').forEach(el=>{if(el.checked)answers[el.dataset.check]=true;});if(checked('manual-confirm'))answers.__manualReviewConfirmed=true;return {agent:get('edit-agent'),team:get('edit-team'),supervisor:get('edit-supervisor'),findingCategory:get('edit-category'),findingText:get('edit-finding'),findingIssuedOn:get('edit-issued'),findingDueOn:get('edit-due'),critical:get('edit-critical'),flag:checked('edit-flag'),checklistResponses:answers,correction:get('edit-correction'),correctiveAction:get('edit-corrective-action'),supervisorApprovedCorrection:checked('approve-correction'),supervisorApprovedCorrectiveAction:checked('approve-action'),supervisorSignOffNotes:get('edit-signoff-notes')};}
 async function confirmAction(title,message,accept='Continue',cancel='Cancel'){const dialog=$('confirm-dialog');$('confirm-title').textContent=title;$('confirm-message').textContent=message;$('confirm-accept').textContent=accept;$('confirm-cancel').textContent=cancel;dialog.showModal();return new Promise(resolve=>{function finish(value){dialog.close();$('confirm-accept').onclick=null;$('confirm-cancel').onclick=null;dialog.oncancel=null;resolve(value);}$('confirm-accept').onclick=()=>finish(true);$('confirm-cancel').onclick=()=>finish(false);dialog.oncancel=e=>{e.preventDefault();finish(false);};});}
 async function closeReview(){if(app.busy)return;if(app.dirty&&!await confirmAction('Discard unsaved changes?','Your edits have not been saved.','Discard changes','Keep editing'))return;$('review-dialog').close();app.openRecord=null;app.dirty=false;if(app.returnFocus&&document.contains(app.returnFocus))app.returnFocus.focus();else $('queue-title').scrollIntoView({block:'nearest'});}
 async function saveReview(command){
@@ -1021,7 +1029,7 @@ disconnectedPresentation();
       <select id="de-collection"><option value="checklists">checklists</option><option value="loan_action_reviews">loan_action_reviews</option><option value="staff">staff</option></select>
       <button class="btn" id="de-load">Load</button>
       <button class="btn primary" id="de-add">Add Record</button>
-      <button class="btn" id="de-sync-teams" style="margin-left:auto">Sync Teams from Staff</button>
+      
       <input id="de-search" placeholder="Filter…" style="margin-left:auto;padding:6px 10px;border:1px solid #ccc;border-radius:4px">
     </div>
     <div id="de-table" style="overflow-x:auto;max-height:400px;border:1px solid #ddd;border-radius:6px"></div>
