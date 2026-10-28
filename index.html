@@ -81,7 +81,7 @@ body[data-width="full"]{--page-w:100%}
   <div class="page-heading"><div><h1>Genesys SLS Reviews and Quality Metrics</h1></div></div>
   <div style="display:flex;align-items:center;gap:16px;margin:16px 0 10px"><h2 style="font-size:16px;margin:0">Agent Scoring</h2><div id="cs-summary" style="display:flex;gap:8px"></div></div>
   <div id="cs-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px"></div>
-  <h2 style="font-size:16px;margin:24px 0 10px">By Supervisor</h2>
+  
   <div id="cs-supervisors"></div>
 </div>
 
@@ -1567,12 +1567,11 @@ async function loadCS() {
     const avgWeek = weekWithReviews.length ? Math.round(weekWithReviews.reduce((s, r) => s + (r.average || 0), 0) / weekWithReviews.length * 100) : 0;
     const card = (n, l) => '<div style="padding:10px 16px;background:#f0edfa;border-radius:6px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:#1e3a5f">' + n + '</div><div style="font-size:11px;color:#555">' + l + '</div></div>';
     summary.innerHTML = card(allAgents.length, 'Total Agents') + card(reviewedSet.size, 'Reviewed') + card(avgMonth + '%', 'Month Avg') + card(avgWeek + '%', 'Week Avg');
-    const isAgent = name => allAgents.some(a => (a.agent || '').toLowerCase().trim() === (name || '').toLowerCase().trim());
     const scoreMap = {};
-    monthItems.filter(r => isAgent(r.agent)).forEach(r => { scoreMap[(r.agent || '').toLowerCase()] = { name: r.agent, month: r.average || 0, week: null, evals: r.evaluations || 0, metricsM: null, metricsW: null }; });
-    weekItems.filter(r => isAgent(r.agent)).forEach(r => { const k = (r.agent || '').toLowerCase(); if (!scoreMap[k]) scoreMap[k] = { name: r.agent, month: 0, week: null, evals: 0, metricsM: null, metricsW: null }; scoreMap[k].week = r.average || 0; });
-    metrics.filter(m => isAgent(m.agent) && (m.range || '').toLowerCase() === 'month').forEach(m => { const k = (m.agent || '').toLowerCase(); if (!scoreMap[k]) scoreMap[k] = { name: m.agent, month: 0, week: null, evals: 0, metricsM: null, metricsW: null }; scoreMap[k].metricsM = m; });
-    metrics.filter(m => isAgent(m.agent) && (m.range || '').toLowerCase() === 'last week').forEach(m => { const k = (m.agent || '').toLowerCase(); if (!scoreMap[k]) scoreMap[k] = { name: m.agent, month: 0, week: null, evals: 0, metricsM: null, metricsW: null }; scoreMap[k].metricsW = m; });
+    monthItems.forEach(r => { if (r.agent) scoreMap[(r.agent || '').toLowerCase()] = { name: r.agent, month: r.average || 0, week: null, evals: r.evaluations || 0, metricsM: null, metricsW: null }; });
+    weekItems.forEach(r => { const k = (r.agent || '').toLowerCase(); if (!r.agent) return; if (!scoreMap[k]) scoreMap[k] = { name: r.agent, month: 0, week: null, evals: 0, metricsM: null, metricsW: null }; scoreMap[k].week = r.average || 0; });
+    metrics.filter(m => (m.range || '').toLowerCase() === 'month').forEach(m => { const k = (m.agent || '').toLowerCase(); if (!scoreMap[k]) scoreMap[k] = { name: m.agent, month: 0, week: null, evals: 0, metricsM: null, metricsW: null }; scoreMap[k].metricsM = m; });
+    metrics.filter(m => (m.range || '').toLowerCase() === 'last week').forEach(m => { const k = (m.agent || '').toLowerCase(); if (!scoreMap[k]) scoreMap[k] = { name: m.agent, month: 0, week: null, evals: 0, metricsM: null, metricsW: null }; scoreMap[k].metricsW = m; });
     const blues = ['#1e3a5f','#2c5282','#3182ce','#4299e1','#63b3ed','#90cdf4'];
     list.innerHTML = Object.values(scoreMap).sort((a, b) => b.month - a.month).map((data, i) => {
       const mPct = Math.round(data.month * 100);
@@ -1601,15 +1600,14 @@ async function loadCS() {
       const maxCount = Math.max(1, ...supStats.map(s => s.count));
       const bars = supStats.map(s => {
         const barW = Math.round(s.count / maxCount * 100);
-        const pct = s.total ? Math.round(s.reviewed / s.total * 100) : 0;
-        return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><strong>' + s.name + '</strong><span style="color:#3182ce;font-weight:600">' + s.count + ' Reviewed</span></div><div style="height:16px;background:#e8e8e8;border-radius:4px;overflow:hidden"><div style="width:' + barW + '%;height:100%;background:#3182ce"></div></div><div style="font-size:10px;color:#666;margin-top:2px">Talk ' + s.talk.toFixed(1) + 'm · Silence ' + Math.round(s.silence) + '% · Hold ' + s.hold.toFixed(1) + 'm</div></div>';
+        return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><strong>' + s.name + '</strong><span style="color:#1e3a5f;font-weight:600">' + s.count + ' Reviewed</span></div><div style="height:18px;background:#e8e8e8;border-radius:4px;overflow:hidden"><div style="width:' + barW + '%;height:100%;background:#3182ce"></div></div></div>';
       }).join('');
       const pies = supStats.map(s => {
         const pct = s.total ? s.reviewed / s.total : 0;
         const deg = Math.round(pct * 360);
-        return '<div style="text-align:center"><div style="width:60px;height:60px;border-radius:50%;background:conic-gradient(#3182ce ' + deg + 'deg, #e8e8e8 ' + deg + 'deg);margin:0 auto 4px"></div><div style="font-size:11px;font-weight:600">' + s.name.split(' ')[0] + '</div><div style="font-size:10px;color:#666">' + s.reviewed + '/' + s.total + '</div></div>';
+        return '<div style="text-align:center"><div style="width:70px;height:70px;border-radius:50%;background:conic-gradient(#6b4c9a ' + deg + 'deg, #e8e8e8 ' + deg + 'deg);margin:0 auto 4px"></div><div style="font-size:12px;font-weight:600">' + s.name.split(' ')[0] + '</div><div style="font-size:11px;color:#666">' + s.reviewed + '/' + s.total + '</div></div>';
       }).join('');
-      supDiv.innerHTML = '<div style="background:white;border:1px solid #e0dce8;border-radius:10px;padding:16px;margin-bottom:16px"><div style="font-size:12px;font-weight:600;margin-bottom:10px">Quality Reviews by Supervisor</div>' + bars + '</div><div style="background:white;border:1px solid #e0dce8;border-radius:10px;padding:16px"><div style="font-size:12px;font-weight:600;margin-bottom:10px">Agent Coverage</div><div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center">' + pies + '</div></div>';
+      supDiv.innerHTML = '<div style="width:80%;margin:0 auto 16px;background:white;border:1px solid #e0dce8;border-radius:10px;padding:16px"><div style="font-size:16px;font-weight:700;color:#1e3a5f;margin-bottom:12px">Quality Reviews by Supervisor</div>' + bars + '</div><div style="width:65%;margin:0 auto;background:white;border:1px solid #e0dce8;border-radius:10px;padding:16px"><div style="font-size:16px;font-weight:700;color:#6b4c9a;margin-bottom:12px">Agent Coverage</div><div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center">' + pies + '</div></div>';
     }
   } catch (e) { console.error(e); summary.innerHTML = '<p>Failed to load: ' + e.message + '</p>'; }
 }
