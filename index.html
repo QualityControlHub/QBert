@@ -110,6 +110,28 @@ body[data-width="full"]{--page-w:100%}
 .rep tbody tr:last-child td{border-bottom:0}
 .rep tr.tot td{font-weight:700;border-top:2px solid var(--line);border-bottom:0}
 .rep .od{color:var(--danger);font-weight:700}
+.dcia-notice{max-width:860px;margin:0 0 18px;padding:12px 15px;border:1px solid #efc6d7;border-left:4px solid var(--danger);
+ border-radius:8px;background:#fdf1f5;color:#8e2b4f;font-size:10.5px;line-height:1.65;letter-spacing:.35px;text-transform:uppercase;font-weight:600}
+.del-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 18px;border-bottom:1px solid var(--line);padding-bottom:12px}
+.del-tabs button[aria-pressed=true]{background:var(--navy);border-color:var(--navy);color:white}
+.del-hint{font-size:12.5px;color:var(--muted);margin:0 0 10px}
+.del-card{background:white;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:0 0 12px;box-shadow:0 2px 8px #1e4d6b11}
+.del-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;border-bottom:1px solid #f0f2e8;padding-bottom:8px;margin-bottom:11px}
+.del-head h4{margin:0;font-size:15.5px;font-variant-numeric:tabular-nums}
+.del-head .who{font-weight:600;font-size:13px}
+.del-head .meta{margin-left:auto;font-size:11px;color:var(--muted);text-align:right;line-height:1.5}
+.del-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(152px,1fr));gap:10px;margin-bottom:11px}
+.del-f{min-width:0}
+.del-f label{display:block;font-size:10.5px;font-weight:600;color:#4b4475;letter-spacing:.3px;margin-bottom:3px}
+.del-f input,.del-f select,.del-f textarea{width:100%;padding:6px 8px;border:1px solid #cdc7e4;border-radius:6px;font:inherit;font-size:12.5px;background:white;color:var(--ink)}
+.del-f input[readonly]{background:#f5f3fb;color:#5d5680}
+.del-f textarea{resize:vertical;min-height:58px;line-height:1.5}
+.del-full{grid-column:1/-1}
+.del-concur{display:flex;gap:16px;align-items:center;padding-top:19px}
+.del-concur label{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink);margin:0}
+.del-concur input{width:15px;height:15px;accent-color:var(--navy)}
+.del-act{display:flex;align-items:center;gap:11px}
+.del-act .st{font-size:11.5px}
 @media(max-width:850px){.sup-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:9px}.sup-count{text-align:left}.sup-metrics{justify-content:flex-start}}
 </style>
 </head>
@@ -169,7 +191,9 @@ body[data-width="full"]{--page-w:100%}
 </div>
 
 <div id="section-dcia" style="display:none">
-  <div class="page-heading"><div><h1>DCIA</h1><p class="subtle">Coming soon</p></div></div>
+  <div class="page-heading"><div><h1>DCIA</h1></div></div>
+  <p class="dcia-notice">DCIA requires delinquent nontax debts to be referred to Treasury for appropriate collection action. Federal agencies must refer eligible debts that are 180 days delinquent to the U.S. Department of the Treasury’s Bureau of the Fiscal Service (BFS) for cross-servicing. The Digital Accountability and Transparency Act (DATA Act) amended the DCIA to require agencies to notify Fiscal Service of all debts delinquent 120 days or more for purposes of administrative offset.</p>
+  <p class="subtle">Coming soon</p>
 </div>
 <div id="section-aging" style="display:none">
   <div class="page-heading"><div><h1>Delinquency File Reviews</h1><p class="subtle">Delinquency file reviews from the last 30 days.</p></div></div>
@@ -1142,14 +1166,36 @@ disconnectedPresentation();
   </div>
   <div id="ws-delinquency" hidden>
     <h2>Delinquency</h2>
-    <p>Paste the delinquency CSV. This replaces all records in the delinquency collection.</p>
-    <textarea id="del-csv" rows="6" style="width:100%;font-family:monospace;font-size:11px" placeholder="Paste CSV with headers"></textarea>
-    <div style="margin:10px 0;display:flex;gap:8px">
-      <button class="btn" id="del-replace">Replace Collection</button>
-      <button class="btn" id="del-sample">Select 10 Random</button>
+    <div class="del-tabs">
+      <button class="btn" data-del="replace" aria-pressed="false">Replace Collection</button>
+      <button class="btn" data-del="review" aria-pressed="false">Delinquency Reviews</button>
+      <button class="btn" data-del="dcia" aria-pressed="false">DCIA Reviews</button>
     </div>
-    <div id="del-status"></div>
-    <div id="del-sample-list"></div>
+    <div id="del-pane-replace" hidden>
+      <p class="del-hint">Paste the delinquency CSV. Every record in the collection is deleted and replaced.
+        Columns: loanNumber, borrowerName, agent, team, supervisor, daysPastDue, nextDueDate, dateLastPay, qualityCheck, qualityNotes, qualityConcur.</p>
+      <textarea id="del-csv" rows="7" style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px" placeholder="Paste CSV with headers"></textarea>
+      <div style="margin:10px 0;display:flex;gap:8px;align-items:center">
+        <button class="btn danger" id="del-replace">Replace Collection</button>
+        <span id="del-status" style="font-size:12px"></span>
+      </div>
+    </div>
+    <div id="del-pane-review" hidden>
+      <p class="del-hint">A random five files with <strong>145–179 days past due</strong>. Complete the quality check, notes and outcome on each.</p>
+      <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
+        <button class="btn" id="del-review-pull">Pull 5 Files</button>
+        <span id="del-review-status" style="font-size:12px"></span>
+      </div>
+      <div id="del-review-list"></div>
+    </div>
+    <div id="del-pane-dcia" hidden>
+      <p class="del-hint">Every file at <strong>180 or more days past due</strong>, eligible for Treasury cross-servicing referral.</p>
+      <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
+        <button class="btn" id="del-dcia-pull">Load DCIA Files</button>
+        <span id="del-dcia-status" style="font-size:12px"></span>
+      </div>
+      <div id="del-dcia-list"></div>
+    </div>
   </div>
   <div id="ws-dataedit" hidden>
     <h2>Data Edit</h2>
@@ -1282,9 +1328,13 @@ function gFillChecklist() {
     .sort((a, b) => String(a.checkID || '').localeCompare(String(b.checkID || ''), undefined, { numeric: true }));
   sel.innerHTML = '<option value="">' + (list.length ? 'Select check…' : 'No ' + type + ' checks found') + '</option>';
   list.forEach(c => {
+    // checkFailed is a text field: store exactly the label the reviewer picked.
+    const label = (c.checkID || '') + ' — ' + (c.check || '');
     const opt = document.createElement('option');
-    opt.value = c.id;
-    opt.textContent = (c.checkID || '') + ' — ' + (c.check || '').slice(0, 60);
+    opt.value = label;
+    opt.textContent = label;
+    opt.dataset.checkId = c.checkID || '';
+    opt.dataset.recordId = c.id;
     sel.appendChild(opt);
   });
 }
@@ -1350,38 +1400,217 @@ document.getElementById('g-save').addEventListener('click', async () => {
   } catch (e) { status.textContent = 'Save failed: ' + e.message; status.style.color = '#a32f58'; }
 });
 
-// Delinquency
+// ---- Delinquency workspace: replace, reviews, DCIA ---------------------
+const DEL_FIELDS = ['loanNumber','borrowerName','agent','team','supervisor','daysPastDue','nextDueDate','dateLastPay','qualityCheck','qualityNotes','qualityConcur'];
+const DEL_NUM = ['daysPastDue'];
+const DEL_DATE = ['nextDueDate','dateLastPay'];
+const DEL_BOOL = ['qualityConcur'];
+let delStaff = [], delChecks = [], delRows = {};
+
+const delNorm = h => String(h || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+const DEL_LOOKUP = {};
+DEL_FIELDS.forEach(f => DEL_LOOKUP[delNorm(f)] = f);
+
+function delParseCsv(text) {
+  const lines = String(text).split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return { headers: [], rows: [] };
+  const split = line => {
+    const out = []; let cur = '', q = false;
+    for (const c of line) {
+      if (c === '"') q = !q;
+      else if (c === ',' && !q) { out.push(cur); cur = ''; }
+      else cur += c;
+    }
+    out.push(cur); return out.map(v => v.trim().replace(/^"|"$/g, ''));
+  };
+  const headers = split(lines[0]);
+  return { headers, rows: lines.slice(1).map(split) };
+}
+function delDate(v) {
+  const t = String(v || '').trim(); if (!t) return '';
+  let d;
+  const mdy = t.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (mdy) { let y = +mdy[3]; if (y < 100) y += 2000; d = new Date(Date.UTC(y, +mdy[1] - 1, +mdy[2])); }
+  else d = new Date(t);
+  return isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10) + ' 00:00:00.000Z';
+}
+function delBool(v) {
+  const t = String(v || '').trim().toLowerCase();
+  if (['true','yes','y','1','concur'].includes(t)) return true;
+  if (['false','no','n','0','non concur','nonconcur'].includes(t)) return false;
+  return null;
+}
+function delShowDate(v) {
+  const t = String(v || '').trim(); if (!t) return '—';
+  const d = new Date(t.replace(' ', 'T'));
+  return isNaN(d.getTime()) ? '—' : new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'numeric', day: 'numeric', year: 'numeric' }).format(d);
+}
+
+document.querySelectorAll('[data-del]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    ['replace','review','dcia'].forEach(k => {
+      const pane = document.getElementById('del-pane-' + k);
+      if (pane) pane.hidden = k !== btn.dataset.del;
+    });
+    document.querySelectorAll('[data-del]').forEach(b => b.setAttribute('aria-pressed', b === btn));
+  });
+});
+
+async function delLoadLists() {
+  if (delStaff.length && delChecks.length) return;
+  try {
+    const [st, ck] = await Promise.all([
+      fetch(CONFIG.url + '/api/collections/staff/records?perPage=500').then(r => r.json()),
+      fetch(CONFIG.url + '/api/collections/checklists/records?perPage=500').then(r => r.json())
+    ]);
+    delStaff = (st.items || []).filter(x => String(x.role || '').trim().toLowerCase() === 'agent');
+    delChecks = (ck.items || []).filter(c => /^delinquen/i.test(String(c.category || '').trim()))
+      .sort((a, b) => String(a.checkID || '').localeCompare(String(b.checkID || ''), undefined, { numeric: true }));
+  } catch (e) { console.warn('Delinquency lists failed', e); }
+}
+
+function delCard(r) {
+  const agentOpts = '<option value="">Select agent…</option>' + delStaff
+    .sort((a, b) => String(a.agent || '').localeCompare(String(b.agent || '')))
+    .map(sx => '<option value="' + safe(sx.agent) + '"' + (r.agent === sx.agent ? ' selected' : '') + '>' + safe(sx.agent) + '</option>').join('');
+  const checkOpts = '<option value="">Select check…</option>' + delChecks.map(c => {
+    const label = (c.checkID || '') + ' - ' + (c.check || '');
+    return '<option value="' + safe(label) + '"' + (r.qualityCheck === label ? ' selected' : '') + '>' + safe(label) + '</option>';
+  }).join('');
+  const i = id => 'd-' + id + '-' + r.id;
+  return '<div class="del-card" data-rec="' + safe(r.id) + '">' +
+    '<div class="del-head"><h4>' + safe(r.loanNumber || 'No loan number') + '</h4>' +
+      '<span class="who">' + safe(r.borrowerName || 'Name not recorded') + '</span>' +
+      '<span class="meta"><strong>' + safe(r.daysPastDue == null ? '—' : r.daysPastDue) + '</strong> days past due<br>' +
+      'Next due ' + safe(delShowDate(r.nextDueDate)) + ' · Last pay ' + safe(delShowDate(r.dateLastPay)) + '</span></div>' +
+    '<div class="del-grid">' +
+      '<div class="del-f"><label for="' + i('agent') + '">Agent</label><select id="' + i('agent') + '" data-agent>' + agentOpts + '</select></div>' +
+      '<div class="del-f"><label for="' + i('team') + '">Team</label><input id="' + i('team') + '" readonly value="' + safe(r.team || '') + '"></div>' +
+      '<div class="del-f"><label for="' + i('sup') + '">Supervisor</label><input id="' + i('sup') + '" readonly value="' + safe(r.supervisor || '') + '"></div>' +
+    '</div>' +
+    '<div class="del-grid">' +
+      '<div class="del-f del-full"><label for="' + i('check') + '">Quality Check</label><select id="' + i('check') + '">' + checkOpts + '</select></div>' +
+    '</div>' +
+    '<div class="del-grid">' +
+      '<div class="del-f del-full"><label for="' + i('notes') + '">Quality Notes</label><textarea id="' + i('notes') + '">' + safe(r.qualityNotes || '') + '</textarea></div>' +
+    '</div>' +
+    '<div class="del-act"><div class="del-concur">' +
+      '<label><input type="radio" name="' + i('concur') + '" value="true"' + (r.qualityConcur === true ? ' checked' : '') + '> Concur</label>' +
+      '<label><input type="radio" name="' + i('concur') + '" value="false"' + (r.qualityConcur === false ? ' checked' : '') + '> Non Concur</label>' +
+    '</div><button class="btn primary" onclick="delSave(this)">Save Review</button>' +
+    '<span class="st" id="' + i('st') + '"></span></div>' +
+  '</div>';
+}
+
+function delWire(listEl) {
+  listEl.querySelectorAll('[data-agent]').forEach(sel => {
+    sel.onchange = () => {
+      const st = delStaff.find(x => x.agent === sel.value) || {};
+      const card = sel.closest('.del-card');
+      card.querySelector('input[id^="d-team-"]').value = st.team || '';
+      card.querySelector('input[id^="d-sup-"]').value = st.supervisor || '';
+    };
+  });
+}
+
+window.delSave = async function (btn) {
+  const card = btn.closest('.del-card');
+  const id = card.dataset.rec;
+  const q = sel => card.querySelector(sel);
+  const st = q('[id^="d-st-"]');
+  const concur = card.querySelector('input[type=radio]:checked');
+  const body = {
+    agent: q('[data-agent]').value,
+    team: q('input[id^="d-team-"]').value,
+    supervisor: q('input[id^="d-sup-"]').value,
+    qualityCheck: q('select[id^="d-check-"]').value,
+    qualityNotes: q('textarea[id^="d-notes-"]').value.trim(),
+    qualityConcur: concur ? concur.value === 'true' : null
+  };
+  btn.disabled = true; st.textContent = 'Saving…'; st.style.color = '#5a6b80';
+  try {
+    const res = await fetch(CONFIG.url + '/api/collections/delinquency/records/' + encodeURIComponent(id),
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) { const t = await res.text(); throw new Error(t.slice(0, 160)); }
+    st.textContent = 'Saved.'; st.style.color = '#216b50';
+  } catch (e) { st.textContent = 'Failed: ' + e.message; st.style.color = '#a32f58'; }
+  btn.disabled = false;
+};
+
+async function delPull(kind) {
+  const isDcia = kind === 'dcia';
+  const listEl = document.getElementById(isDcia ? 'del-dcia-list' : 'del-review-list');
+  const stEl = document.getElementById(isDcia ? 'del-dcia-status' : 'del-review-status');
+  stEl.textContent = 'Loading…'; stEl.style.color = '#5a6b80';
+  listEl.innerHTML = '';
+  await delLoadLists();
+  const filter = isDcia ? 'daysPastDue >= 180' : '(daysPastDue >= 145 && daysPastDue <= 179)';
+  try {
+    const url = CONFIG.url + '/api/collections/delinquency/records?perPage=500&filter=' + encodeURIComponent(filter);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('delinquency returned HTTP ' + res.status);
+    let items = (await res.json()).items || [];
+    if (!isDcia) {
+      for (let i = items.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [items[i], items[j]] = [items[j], items[i]]; }
+      items = items.slice(0, 5);
+    } else {
+      items.sort((a, b) => (b.daysPastDue || 0) - (a.daysPastDue || 0));
+    }
+    if (!items.length) {
+      stEl.textContent = isDcia ? 'No files are 180 or more days past due.' : 'No files fall between 145 and 179 days past due.';
+      return;
+    }
+    delRows = {}; items.forEach(r => delRows[r.id] = r);
+    stEl.textContent = items.length + (items.length === 1 ? ' file' : ' files') +
+      (delChecks.length ? '' : ' · no DELINQUENCY checks found in checklists');
+    stEl.style.color = delChecks.length ? '#216b50' : '#8a5320';
+    listEl.innerHTML = items.map(delCard).join('');
+    delWire(listEl);
+  } catch (e) { stEl.textContent = 'Failed: ' + e.message; stEl.style.color = '#a32f58'; }
+}
+document.getElementById('del-review-pull').addEventListener('click', () => delPull('review'));
+document.getElementById('del-dcia-pull').addEventListener('click', () => delPull('dcia'));
+
 document.getElementById('del-replace').addEventListener('click', async () => {
   const text = document.getElementById('del-csv').value.trim();
-  if (!text) return;
-  if (!confirm('Replace all delinquency records?')) return;
   const status = document.getElementById('del-status');
-  status.textContent = 'Clearing…';
-  // Delete existing
+  if (!text) { status.textContent = 'Paste the CSV first.'; status.style.color = '#a32f58'; return; }
+  const { headers, rows } = delParseCsv(text);
+  if (!rows.length) { status.textContent = 'No data rows found.'; status.style.color = '#a32f58'; return; }
+  const mapped = headers.map(h => DEL_LOOKUP[delNorm(h)] || null);
+  const known = mapped.filter(Boolean);
+  if (!known.length) { status.textContent = 'No recognised columns. Expected: ' + DEL_FIELDS.join(', '); status.style.color = '#a32f58'; return; }
+  const unknown = headers.filter((h, i) => !mapped[i]);
+  if (!confirm('Replace all delinquency records with ' + rows.length + ' rows?\n\nMapped columns: ' + known.join(', ') +
+      (unknown.length ? '\nIgnored: ' + unknown.join(', ') : ''))) return;
+  status.textContent = 'Clearing…'; status.style.color = '#5a6b80';
   try {
     const existing = await fetch(CONFIG.url + '/api/collections/delinquency/records?perPage=500').then(r => r.json());
     for (const rec of (existing.items || [])) {
       await fetch(CONFIG.url + '/api/collections/delinquency/records/' + rec.id, { method: 'DELETE' });
     }
-  } catch {}
-  // Parse and insert
-  const lines = text.split('\n').filter(l => l.trim());
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z0-9]/g, ''));
-  const map = { loanNumber: 'loannumber', borrowerName: 'borrowername', daysPastDue: 'dayspastdue', delinquencyGroup: 'delinquencygroup', outstandingBalance: 'outstandingbalance', nextDueDate: 'nextduedate' };
-  let ok = 0;
-  for (const line of lines.slice(1)) {
-    const vals = line.split(',');
-    const obj = { qualityNotes: '' };
-    headers.forEach((h, i) => {
-      const key = Object.keys(map).find(k => map[k] === h) || h;
-      obj[key] = (vals[i] || '').trim().replace(/^"|"$/g, '');
+  } catch (e) { console.warn(e); }
+  let ok = 0, fail = 0, firstErr = '';
+  for (const vals of rows) {
+    const obj = {};
+    mapped.forEach((f, i) => {
+      if (!f) return;
+      const raw = vals[i] == null ? '' : vals[i];
+      if (DEL_NUM.includes(f)) { if (raw !== '' && !isNaN(Number(raw))) obj[f] = Number(raw); }
+      else if (DEL_DATE.includes(f)) { const d = delDate(raw); if (d) obj[f] = d; }
+      else if (DEL_BOOL.includes(f)) { const b = delBool(raw); if (b !== null) obj[f] = b; }
+      else if (raw !== '') obj[f] = raw;
     });
+    if (!Object.keys(obj).length) continue;
     try {
-      const res = await fetch(CONFIG.url + '/api/collections/delinquency/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) });
-      if (res.ok) ok++;
-    } catch {}
+      const res = await fetch(CONFIG.url + '/api/collections/delinquency/records',
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) });
+      if (res.ok) ok++; else { fail++; if (!firstErr) firstErr = (await res.text()).slice(0, 160); }
+    } catch (e) { fail++; if (!firstErr) firstErr = e.message; }
+    status.textContent = 'Adding… ' + ok + ' of ' + rows.length;
   }
-  status.textContent = 'Replaced with ' + ok + ' records.';
+  status.textContent = 'Replaced with ' + ok + ' records' + (fail ? ', ' + fail + ' failed — ' + firstErr : '') + '.';
+  status.style.color = fail ? '#a32f58' : '#216b50';
 });
 
 document.getElementById('csh-replace').addEventListener('click', async () => {
@@ -1428,32 +1657,6 @@ document.getElementById('csh-replace').addEventListener('click', async () => {
   }
   status.textContent = 'Added ' + ok + (fail ? ', failed ' + fail : '') + '.';
 });
-
-document.getElementById('del-sample').addEventListener('click', async () => {
-  const status = document.getElementById('del-status');
-  status.textContent = 'Loading…';
-  try {
-    const data = await fetch(CONFIG.url + '/api/collections/delinquency/records?perPage=500').then(r => r.json());
-    const items = data.items || [];
-    const sample = items.sort(() => Math.random() - 0.5).slice(0, 10);
-    const list = document.getElementById('del-sample-list');
-    list.innerHTML = sample.map(r => '<div style="border:1px solid #ddd;padding:10px;margin:8px 0;border-radius:6px"><strong>' + (r.loanNumber || r.loannumber || '') + '</strong> — ' + (r.borrowerName || r.borrowername || '') + '<br><small>' + (r.daysPastDue || '') + ' days past due · ' + (r.delinquencyGroup || '') + '</small><br><textarea data-id="' + r.id + '" rows="2" style="width:100%;margin-top:6px" placeholder="Notes">' + (r.qualityNotes || '') + '</textarea><div style="margin-top:6px;display:flex;gap:12px;align-items:center"><label><input type="radio" name="concur-' + r.id + '" value="true"' + (r.qualityConcur === true ? ' checked' : '') + '> Concur</label><label><input type="radio" name="concur-' + r.id + '" value="false"' + (r.qualityConcur === false ? ' checked' : '') + '> Non Concur</label></div><button class="btn" onclick="saveDelNote(this)" style="margin-top:4px">Save</button></div>').join('');
-    status.textContent = sample.length + ' loans selected.';
-  } catch { status.textContent = 'Failed to load.'; }
-});
-
-window.saveDelNote = async function(btn) {
-  const div = btn.parentElement;
-  const ta = div.querySelector('textarea');
-  const id = ta.dataset.id;
-  const concurRadio = div.querySelector('input[name="concur-' + id + '"]:checked');
-  const qualityConcur = concurRadio ? concurRadio.value === 'true' : null;
-  btn.textContent = 'Saving…';
-  try {
-    await fetch(CONFIG.url + '/api/collections/delinquency/records/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ qualityNotes: ta.value, qualityConcur }) });
-    btn.textContent = 'Saved';
-  } catch { btn.textContent = 'Failed'; }
-};
 
 // Data Edit CRUD
 let deRecords = [];
