@@ -1324,7 +1324,7 @@ document.getElementById('g-save').addEventListener('click', async () => {
   if (!recId) { status.textContent = 'Enter the Genesys Call ID / CSH Case Number.'; status.style.color = '#a32f58'; return; }
   if (!agent) { status.textContent = 'Select an agent.'; status.style.color = '#a32f58'; return; }
   const body = {
-    id: recId,
+    contactID: recId,
     type: val('g-type'),
     agent: agent,
     supervisor: val('g-supervisor'),
