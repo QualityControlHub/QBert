@@ -579,11 +579,16 @@ body[data-width="full"]{--page-w:100%}
       need(state === 'Findings', 'This action is available only in Findings.');
       const isAgent = role === 'Agent' && r.agent === who;
       const isSupervisor = role === 'Supervisor' && r.supervisor === who;
-      need(isAgent || isSupervisor, 'Only the assigned Agent or Supervisor may respond to this finding.');
+      // A Supervisor or Director who is not the assigned Supervisor may stand in,
+      // provided they record their own name against the sign-off.
+      const isStandIn = !isSupervisor && (role === 'Supervisor' || role === 'Director');
+      need(isAgent || isSupervisor || isStandIn, 'Only the assigned Agent or Supervisor, or a Supervisor or Director standing in, may respond to this finding.');
       r.correction = text('correction');
-      if (isSupervisor) r.correctiveAction = text('correctiveAction');
+      if (isSupervisor || isStandIn) r.correctiveAction = text('correctiveAction');
       if (command === 'resolve-finding') {
-        need(isSupervisor, 'Only the assigned Supervisor may sign off and complete a finding.');
+        need(isSupervisor || isStandIn, 'Only a Supervisor or Director may sign off and complete a finding.');
+        const standInName = text('signedOffBy');
+        need(isSupervisor || standInName, 'Enter the name of the person signing off on behalf of ' + (r.supervisor || 'the Supervisor') + '.');
         const approvedCorrection = v.supervisorApprovedCorrection === true;
         const approvedAction = v.supervisorApprovedCorrectiveAction === true;
         need(approvedCorrection || approvedAction, 'Approve the correction, the corrective action, or both.');
@@ -593,7 +598,9 @@ body[data-width="full"]{--page-w:100%}
         need(!r.correctiveAction || approvedAction, 'Approve the documented corrective action before completing the finding.');
         r.supervisorApprovedCorrection = approvedCorrection; r.supervisorApprovedCorrectiveAction = approvedAction;
         r.supervisorSignOffNotes = text('supervisorSignOffNotes');
-        r.supervisorSignedOffBy = who; r.supervisorSignedOffStaff = actor.id; r.supervisorSignedOffOn = at;
+        r.supervisorSignedOffBy = isSupervisor ? who : standInName;
+        r.supervisorSignedOffStaff = isSupervisor ? actor.id : '';
+        r.supervisorSignedOffOn = at;
         r.state = 'Completed'; r.outcome = 'Non Concur'; r.completedOn = at; r.flag = false;
       }
     } else throw new Error('Unknown workflow action.');
@@ -650,7 +657,10 @@ function pbDate(iso){return iso.replace('T',' ');}
 function escapedFilter(value){return '"'+String(value).replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"';}
 function contains(field,value){return field+' ~ '+escapedFilter(value);}
 function personMatches(r){if(!app.personName)return true;const name=app.personName.toLocaleLowerCase();const fields=app.personRole?[app.personRole]:['reviewer','agent','supervisor'];return fields.some(k=>String(r[k]||'').toLocaleLowerCase().includes(name));}
-function isAccessible(r){const role=W.roleOf(app.actor),name=W.nameOf(app.actor);if(app.state==='Completed'&&!app.personName&&!app.personRole)return true;return role==='Reviewer'||role==='Director'||(role==='Agent'&&r.agent===name)||(role==='Supervisor'&&r.supervisor===name);}
+function isAccessible(r){const role=W.roleOf(app.actor),name=W.nameOf(app.actor);if(app.state==='Completed'&&!app.personName&&!app.personRole)return true;
+ // Any Supervisor may open an outstanding finding so they can sign off for an absent colleague.
+ if(app.state==='Findings'&&role==='Supervisor')return true;
+ return role==='Reviewer'||role==='Director'||(role==='Agent'&&r.agent===name)||(role==='Supervisor'&&r.supervisor===name);}
 function inMonth(r){if(app.undated)return !r.completedOn;if(!r.completedOn)return false;const [start,end]=monthRange($('completed-month').value);const date=new Date(String(r.completedOn).replace(' ','T')).getTime();return date>=Date.parse(start)&&date<Date.parse(end);}
 function baseMatches(r){return isAccessible(r)&&personMatches(r)&&(!app.team||String(r.team||'').toLowerCase().includes(app.team.toLowerCase()))&&(!app.q||[r.title,r.loanAction,r.team].some(v=>String(v||'').toLowerCase().includes(app.q.toLowerCase())));}
 function unknownOutcome(r){return !['Concur','Non Concur'].includes(r.outcome);}
@@ -659,7 +669,7 @@ function buildFilter(state,outcome){
  const role=W.roleOf(app.actor),name=W.nameOf(app.actor);
  if(state!=='Completed'||app.personName||app.personRole){
   if(role==='Agent')filters.push('agent = '+escapedFilter(name));
-  if(role==='Supervisor')filters.push('supervisor = '+escapedFilter(name));
+  if(role==='Supervisor'&&state!=='Findings')filters.push('supervisor = '+escapedFilter(name));
  }
  if(app.q)filters.push('('+['title','loanAction','team'].map(f=>contains(f,app.q)).join(' || ')+')');
  if(app.team)filters.push(contains('team',app.team));
@@ -766,13 +776,33 @@ function selectField(id,label,value,items){
 }
 function textField(id,label,value,readonly,help){return '<div class="field"><label for="'+id+'">'+label+'</label><textarea id="'+id+'"'+(readonly?' readonly':'')+'>'+safe(value||'')+'</textarea>'+(help?'<small>'+help+'</small>':'')+'</div>';}
 const commandLabels={'save-review':'Review draft saved','concur':'Concurred and completed','issue-finding':'Finding issued','save-response':'Finding response saved','resolve-finding':'Supervisor signed off and completed'};
+// checklistResponses may arrive as an object, a JSON string, a double-encoded
+// string, an array of ids, or keyed by checkID instead of the record id.
+function readResponses(raw,items){
+ let v=raw||{};
+ for(let i=0;i<3&&typeof v==='string';i++){try{v=JSON.parse(v);}catch{v={};}}
+ if(Array.isArray(v)){const o={};v.forEach(k=>{if(k)o[k]=true;});v=o;}
+ if(!v||typeof v!=='object')v={};
+ const out={};
+ Object.keys(v).forEach(k=>{
+  if(!v[k])return;
+  if(k==='__manualReviewConfirmed'){out[k]=true;return;}
+  const hit=(items||[]).find(c=>String(c.id)===String(k))||(items||[]).find(c=>String(c.checkID)===String(k));
+  out[hit?hit.id:k]=true;
+ });
+ return out;
+}
 function renderReview(r){
  const role=W.roleOf(app.actor),who=W.nameOf(app.actor),inReview=r.state==='In Review',finding=r.state==='Findings',completed=r.state==='Completed';
- const reviewing=inReview&&role==='Reviewer',responding=finding&&((role==='Agent'&&r.agent===who)||(role==='Supervisor'&&r.supervisor===who)),supervising=responding&&role==='Supervisor';
+ const reviewing=inReview&&role==='Reviewer';
+ const isAssignedSup=role==='Supervisor'&&r.supervisor===who;
+ const isStandIn=finding&&!isAssignedSup&&(role==='Supervisor'||role==='Director');
+ const responding=finding&&((role==='Agent'&&r.agent===who)||isAssignedSup||isStandIn);
+ const supervising=finding&&(isAssignedSup||isStandIn);
  const agentOptions=app.staff.filter(s=>W.roleOf(s)==='Agent').sort((a,b)=>W.nameOf(a).localeCompare(W.nameOf(b)));
  const assignedSupervisor=r.agent?((app.staff.find(s=>W.roleOf(s)==='Agent'&&W.nameOf(s)===r.agent)||{}).supervisor||''):r.supervisor||'';
  const checkItems=W.checklistFor(r,app.checks),realChecks=checkItems.filter(c=>!W.isPlaceholder(c)),incomplete=!realChecks.length||checkItems.some(W.isPlaceholder);
- let responses=r.checklistResponses||{};if(typeof responses==='string'){try{responses=JSON.parse(responses);}catch{responses={};}}
+ const responses=readResponses(r.checklistResponses,checkItems);
  const index=inReview?1:finding?2:3;
  const steps=['In Review',completed&&r.outcome==='Concur'?'No finding':'Findings','Completed'].map((label,i)=>'<div class="step '+(index===i+1?'active':index>i+1?'done':'')+'"><b>'+(index>i+1?'✓':i+1)+'</b>'+label+'</div>').join('');
  const assignment=reviewing?'<div class="field"><label for="edit-agent">Recommending Official</label><select id="edit-agent"><option value="">Select…</option>'+agentOptions.map(s=>'<option value="'+safe(W.nameOf(s))+'"'+(r.agent===W.nameOf(s)?' selected':'')+'>'+safe(W.nameOf(s))+'</option>').join('')+'</select></div>'+inputField('edit-supervisor','Supervisor',assignedSupervisor,'text',true,'')+inputField('edit-team','Team',r.team||'','text',true,''):
@@ -781,9 +811,10 @@ function renderReview(r){
  const checklistWarning=incomplete?'<div class="form-callout amber">'+(app.checklistError?safe(app.checklistError):checkItems.some(W.isPlaceholder)?'This action’s checklist includes a placeholder. It is not a complete review checklist.':'No finalized checklist was supplied for this action.')+'</div><label class="checkbox-label"><input type="checkbox" id="manual-confirm"'+(responses.__manualReviewConfirmed?' checked':'')+(!reviewing?' disabled':'')+'>I reviewed this action against the applicable policy and documentation requirements.</label>':'';
  const findingInputs=reviewing?'<div class="form-grid">'+inputField('edit-issued','Finding issued on',r.findingIssuedOn?r.findingIssuedOn.slice(0,10):'','date')+inputField('edit-due','Corrections and corrective actions due by',r.findingDueOn?r.findingDueOn.slice(0,10):'','date')+'<div class="field"><label>Type</label><select id="edit-critical" required><option value="">Select…</option><option value="Critical"'+(r.critical==='Critical'?' selected':'')+'>Critical</option><option value="Non Critical"'+(r.critical==='Non Critical'?' selected':'')+'>Non Critical</option></select></div></div><div style="margin:8px 0"><label class="checkbox-label" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="edit-flag"'+(r.flag?' checked':'')+'><span style="color:#c62828;font-weight:600">🚩 Immediate attention</span></label><div class="full">'+textField('edit-finding','Findings and Notes',r.findingText)+'</div></div>':
  '<div class="read-only-grid"><div><dt>Category</dt><dd>'+safe(r.findingCategory||'Not recorded')+'</dd></div><div><dt>Issued on</dt><dd>'+safe(dateLabel(r.findingIssuedOn))+'</dd></div><div><dt>Due on</dt><dd class="'+(isOverdue(r)?'overdue':'')+'">'+safe(dateLabel(r.findingDueOn))+'</dd></div></div><div class="issue-info" style="margin-top:14px">'+safe(r.findingText||'No finding details recorded.')+'</div>';
- const signoff=supervising?'<div class="signoff"><h3>Supervisor sign-off</h3><p class="hint">Approve every documented response. At least one approval is required to complete this finding.</p><label class="checkbox-label"><input type="checkbox" id="approve-correction">I reviewed and approve the correction.</label><label class="checkbox-label"><input type="checkbox" id="approve-action">I reviewed and approve the corrective action.</label>'+textField('edit-signoff-notes','Sign-off notes (optional)',r.supervisorSignOffNotes,false,'Your name and sign-off timestamp will be recorded automatically.')+'</div>':'';
+ const standInField=isStandIn?'<div class="form-callout amber">You are not the Supervisor assigned to this finding ('+safe(r.supervisor||'unassigned')+'). Enter your name below; it is recorded as the signer in place of the Supervisor.</div>'+inputField('edit-signed-off-by','Signed off by',who,'text',false,'Recorded on the finding instead of the assigned Supervisor.'):'';
+ const signoff=supervising?'<div class="signoff"><h3>'+(isStandIn?'Sign-off':'Supervisor sign-off')+'</h3><p class="hint">Approve every documented response. At least one approval is required to complete this finding.</p>'+standInField+'<label class="checkbox-label"><input type="checkbox" id="approve-correction">I reviewed and approve the correction.</label><label class="checkbox-label"><input type="checkbox" id="approve-action">I reviewed and approve the corrective action.</label>'+textField('edit-signoff-notes','Sign-off notes (optional)',r.supervisorSignOffNotes,false,(isStandIn?'The name above':'Your name')+' and the sign-off timestamp are recorded automatically.')+'</div>':'';
  const resolution=(finding||r.outcome==='Non Concur')?'<section class="form-section"><h3><span class="section-number">03</span> Correction &amp; corrective action</h3><p class="hint">A correction fixes this issue. A corrective action helps prevent it from happening again.</p><div class="form-grid">'+textField('edit-correction','Correction · the fix',r.correction,!responding,'Document what was fixed on this loan action.')+textField('edit-corrective-action','Corrective action · prevent recurrence',r.correctiveAction,!supervising,'Document the change in process, training, or controls to prevent a repeat.')+'</div>'+(!responding&&finding?'<div class="form-callout">Only the assigned Supervisor can update this response and sign off.</div>':'')+signoff+'</section>':'';
- const completion=completed?'<div class="signoff"><h3>Completed '+outcomeBadge(r)+'</h3><p class="hint">Completed '+safe(dateLabel(r.completedOn,true))+'</p>'+(r.outcome==='Non Concur'?'<p>Supervisor sign-off: <strong>'+safe(r.supervisorSignedOffBy||'Not recorded')+'</strong><br><span class="subtle">'+safe(dateLabel(r.supervisorSignedOffOn,true))+'</span></p><p class="hint">'+(r.supervisorApprovedCorrection?'✓ Correction approved. ':'')+(r.supervisorApprovedCorrectiveAction?'✓ Corrective action approved.':'')+'</p>'+(r.supervisorSignOffNotes?'<p>'+safe(r.supervisorSignOffNotes)+'</p>':''):r.outcome==='Concur'?'<p class="hint">Original decision: Concur. No finding was issued.</p>':'<p class="hint">The original outcome was not recorded. Reconcile this legacy item in Database.</p>')+'</div>':'';
+ const completion=completed?'<div class="signoff"><h3>Completed '+outcomeBadge(r)+'</h3><p class="hint">Completed '+safe(dateLabel(r.completedOn,true))+'</p>'+(r.outcome==='Non Concur'?'<p>Signed off by: <strong>'+safe(r.supervisorSignedOffBy||'Not recorded')+'</strong>'+((r.supervisorSignedOffBy&&r.supervisor&&r.supervisorSignedOffBy!==r.supervisor)?' <span class="badge">In place of '+safe(r.supervisor)+'</span>':'')+'<br><span class="subtle">'+safe(dateLabel(r.supervisorSignedOffOn,true))+'</span></p><p class="hint">'+(r.supervisorApprovedCorrection?'✓ Correction approved. ':'')+(r.supervisorApprovedCorrectiveAction?'✓ Corrective action approved.':'')+'</p>'+(r.supervisorSignOffNotes?'<p>'+safe(r.supervisorSignOffNotes)+'</p>':''):r.outcome==='Concur'?'<p class="hint">Original decision: Concur. No finding was issued.</p>':'<p class="hint">The original outcome was not recorded. Reconcile this legacy item in Database.</p>')+'</div>':'';
  const history=Array.isArray(r.reviewHistory)?r.reviewHistory:[];
  const historyHtml='';
  const returnBtn=(role==='Reviewer'&&(finding||completed))?'<button class="btn" data-command="return-to-review">Return to In Review</button>':'';
@@ -807,7 +838,7 @@ function updateSupervisor(){
   showError('supervisor-warning',agent&&name&&!valid?'The staff table lists '+(name)+' for this Agent, but no matching Supervisor record is available.':'');
 }
 async function openReview(id,trigger){let r=app.records.find(r=>r.id===id);if(!r)return;app.returnFocus=trigger;app.openRecord=copy(r);app.dirty=false;renderReview(app.openRecord);$('review-dialog').showModal();}
-function gatherReview(){const get=id=>$(id)?$(id).value.trim():'';const checked=id=>!!($(id)&&$(id).checked);const answers={};document.querySelectorAll('[data-check]').forEach(el=>{if(el.checked)answers[el.dataset.check]=true;});if(checked('manual-confirm'))answers.__manualReviewConfirmed=true;return {agent:get('edit-agent'),team:get('edit-team'),supervisor:get('edit-supervisor'),findingCategory:get('edit-category'),findingText:get('edit-finding'),findingIssuedOn:get('edit-issued'),findingDueOn:get('edit-due'),critical:get('edit-critical'),flag:checked('edit-flag'),checklistResponses:answers,correction:get('edit-correction'),correctiveAction:get('edit-corrective-action'),supervisorApprovedCorrection:checked('approve-correction'),supervisorApprovedCorrectiveAction:checked('approve-action'),supervisorSignOffNotes:get('edit-signoff-notes')};}
+function gatherReview(){const get=id=>$(id)?$(id).value.trim():'';const checked=id=>!!($(id)&&$(id).checked);const answers={};document.querySelectorAll('[data-check]').forEach(el=>{if(el.checked)answers[el.dataset.check]=true;});if(checked('manual-confirm'))answers.__manualReviewConfirmed=true;return {agent:get('edit-agent'),team:get('edit-team'),supervisor:get('edit-supervisor'),findingCategory:get('edit-category'),findingText:get('edit-finding'),findingIssuedOn:get('edit-issued'),findingDueOn:get('edit-due'),critical:get('edit-critical'),flag:checked('edit-flag'),checklistResponses:answers,correction:get('edit-correction'),correctiveAction:get('edit-corrective-action'),supervisorApprovedCorrection:checked('approve-correction'),supervisorApprovedCorrectiveAction:checked('approve-action'),supervisorSignOffNotes:get('edit-signoff-notes'),signedOffBy:get('edit-signed-off-by')};}
 async function confirmAction(title,message,accept='Continue',cancel='Cancel'){const dialog=$('confirm-dialog');$('confirm-title').textContent=title;$('confirm-message').textContent=message;$('confirm-accept').textContent=accept;$('confirm-cancel').textContent=cancel;dialog.showModal();return new Promise(resolve=>{function finish(value){dialog.close();$('confirm-accept').onclick=null;$('confirm-cancel').onclick=null;dialog.oncancel=null;resolve(value);}$('confirm-accept').onclick=()=>finish(true);$('confirm-cancel').onclick=()=>finish(false);dialog.oncancel=e=>{e.preventDefault();finish(false);};});}
 async function closeReview(){if(app.busy)return;if(app.dirty&&!await confirmAction('Discard unsaved changes?','Your edits have not been saved.','Discard changes','Keep editing'))return;$('review-dialog').close();app.openRecord=null;app.dirty=false;if(app.returnFocus&&document.contains(app.returnFocus))app.returnFocus.focus();else $('queue-title').scrollIntoView({block:'nearest'});}
 async function saveReview(command){
@@ -850,6 +881,7 @@ async function saveReview(command){
      if(saved.supervisorSignOffNotes) patch.supervisorSignOffNotes = saved.supervisorSignOffNotes;
      if(saved.state) patch.state = saved.state;
      if(saved.checklistResponses && Object.keys(saved.checklistResponses).length) patch.checklistResponses = saved.checklistResponses;
+     if(Array.isArray(saved.checklistSnapshot) && saved.checklistSnapshot.length) patch.checklistSnapshot = saved.checklistSnapshot;
      if(Object.keys(patch).length){
        await fetch(CONFIG.url+'/api/collections/loan_action_reviews/records/'+encodeURIComponent(record.id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
      }
@@ -2112,8 +2144,9 @@ async function loadDash() {
         '</tbody></table><p class="cap" style="margin:9px 0 0">A flagged finding is counted as flagged only; Critical and Non Critical exclude flagged items.</p></div>';
     }
 
-    root.innerHTML = '<div style="display:flex;gap:16px;flex-wrap:wrap"><div style="flex:1;min-width:300px">' + rep1 + '</div><div style="flex:1;min-width:320px">' + rep2 + '</div></div>' +
-      '<div style="display:flex;gap:16px;flex-wrap:wrap"><div style="flex:1;min-width:300px">' + org + '</div><div style="flex:1;min-width:300px">' + loans_html + '</div></div>' + del_html;
+    root.innerHTML = org +
+      '<div style="display:flex;gap:16px;flex-wrap:wrap"><div style="flex:1;min-width:300px">' + rep1 + '</div><div style="flex:1;min-width:320px">' + rep2 + '</div></div>' +
+      loans_html + del_html;
   } catch (e) { root.innerHTML = '<p>Failed to load dashboard.</p>'; }
 }
 
