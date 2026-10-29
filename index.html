@@ -77,6 +77,39 @@ body[data-width="full"]{--page-w:100%}
 .chk-branch summary .n{margin-left:auto;font-size:11px;color:var(--muted);font-weight:600}
 .chk-leaves{padding:4px 14px 10px}
 .chk-empty{margin:0;padding:10px 0;font-size:12.5px;color:var(--muted)}
+.dt-wrap{border:1px solid var(--line);border-radius:10px;background:white;overflow:auto;max-height:430px}
+.dt{width:100%;border-collapse:separate;border-spacing:0;font-size:12px}
+.dt th{position:sticky;top:0;z-index:1;background:#f2f5e8;text-align:left;padding:9px 11px;font-size:9.5px;
+ letter-spacing:.9px;text-transform:uppercase;color:#4b5563;font-weight:700;white-space:nowrap;border-bottom:1px solid var(--line)}
+.dt td{padding:7px 11px;border-bottom:1px solid #f1f3ea;vertical-align:top;max-width:240px;overflow:hidden;
+ text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.dt tbody tr:nth-child(even) td{background:#fbfcf6}
+.dt tbody tr:hover td{background:#eef1e4}
+.dt tbody tr:last-child td{border-bottom:0}
+.dt td.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;color:var(--muted)}
+.dt td.act,.dt th.act{text-align:right;white-space:nowrap;width:1%}
+.dt td.act button{font-size:10.5px;padding:3px 10px;min-height:26px}
+.dt-foot{padding:8px 12px;font-size:11px;color:var(--muted);background:#fbfcf6;border-top:1px solid var(--line)}
+.dt-none{margin:0;padding:22px 12px;text-align:center;font-size:12.5px;color:var(--muted)}
+.rep{background:white;border:2px solid #c4bdd4;border-radius:14px;padding:16px}
+.rep h2{margin:0 0 2px;font-size:14px}
+.rep .cap{margin:0 0 12px;font-size:11px;color:var(--muted)}
+.rep-tiles{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.rep-tile{flex:1;min-width:92px;text-align:center;padding:11px 8px;background:#f8f9f2;border:1px solid var(--line);border-radius:8px}
+.rep-tile b{display:block;font-family:var(--font-serif);font-size:25px;line-height:1.1;font-variant-numeric:tabular-nums}
+.rep-tile span{font-size:10.5px;color:var(--muted);letter-spacing:.3px}
+.rep-bar{display:flex;height:22px;border-radius:5px;overflow:hidden;background:#edefe4}
+.rep-bar div{display:grid;place-items:center;font-size:10.5px;font-weight:700;color:white;white-space:nowrap}
+.rep-key{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11.5px;color:var(--muted)}
+.rep-key i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;font-style:normal}
+.rep table{width:100%;border-collapse:collapse;font-size:12px}
+.rep th{text-align:right;padding:6px 8px;font-size:9.5px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line)}
+.rep th:first-child{text-align:left}
+.rep td{text-align:right;padding:6px 8px;border-bottom:1px solid #f1f3ea;font-variant-numeric:tabular-nums}
+.rep td:first-child{text-align:left}
+.rep tbody tr:last-child td{border-bottom:0}
+.rep tr.tot td{font-weight:700;border-top:2px solid var(--line);border-bottom:0}
+.rep .od{color:var(--danger);font-weight:700}
 @media(max-width:850px){.sup-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:9px}.sup-count{text-align:left}.sup-metrics{justify-content:flex-start}}
 </style>
 </head>
@@ -1040,7 +1073,7 @@ disconnectedPresentation();
     <button class="btn" id="ws-close" style="position:absolute;top:12px;right:12px;z-index:2;background:#1e3a5f;color:white;border-color:#1e3a5f;font-size:18px;padding:6px 12px" title="Home">🏠</button>
   </div>
   <nav style="display:flex;gap:8px;margin:16px 0;border-bottom:1px solid #ddd;padding-bottom:8px;flex-wrap:wrap">
-    <button class="btn" data-ws="loans">Loan Reviews</button>
+    <button class="btn" data-ws="loans">Monthly Loan Review Selection</button>
     <button class="btn" data-ws="genesys">Customer Service Reviews</button>
     <button class="btn" data-ws="csh">Genesys Dashboard</button>
     <button class="btn" data-ws="delinquency">Delinquency</button>
@@ -1050,7 +1083,7 @@ disconnectedPresentation();
     
   </nav>
   <div id="ws-loans">
-    <h2>Loan Reviews</h2>
+    <h2>Monthly Loan Review Selection</h2>
     <p>Paste production loans (CSV). Columns should match loan_action_reviews fields.</p>
     <textarea id="ws-loans-input" rows="8" style="width:100%;font-family:monospace;font-size:12px" placeholder="title,loanAction,team,risk,actionDate,reviewer"></textarea>
     <div style="margin:10px 0;display:flex;gap:8px">
@@ -1061,8 +1094,8 @@ disconnectedPresentation();
     <div id="ws-loans-status"></div>
   </div>
   <div id="ws-genesys" hidden>
-    <h2>Customer Service Reviews</h2>
-    <form id="genesys-form" style="display:grid;gap:12px;max-width:600px">
+    <h2 style="margin-bottom:22px">Customer Service Reviews</h2>
+    <form id="genesys-form" style="display:grid;gap:14px;max-width:600px">
       <div class="field"><label>Communication type</label>
         <select id="g-type"><option>Genesys</option><option>CSH</option></select>
       </div>
@@ -1284,24 +1317,37 @@ async function loadGenesysLists() {
 }
 document.getElementById('g-save').addEventListener('click', async () => {
   const status = document.getElementById('g-status');
-  status.textContent = 'Saving…';
+  const val = id => (document.getElementById(id) || {}).value || '';
+  const recId = val('g-csid').trim();
+  const agentOpt = document.getElementById('g-agent').selectedOptions[0];
+  const agent = agentOpt ? (agentOpt.value ? agentOpt.textContent : '') : '';
+  if (!recId) { status.textContent = 'Enter the Genesys Call ID / CSH Case Number.'; status.style.color = '#a32f58'; return; }
+  if (!agent) { status.textContent = 'Select an agent.'; status.style.color = '#a32f58'; return; }
   const body = {
-    type: document.getElementById('g-type').value,
-    agent: document.getElementById('g-agent').selectedOptions[0]?.textContent || '',
-    supervisor: document.getElementById('g-supervisor').value,
-    team: document.getElementById('g-team').value,
-    checklist: document.getElementById('g-checklist').value,
-    cs_id: document.getElementById('g-csid').value,
-    loan_url: document.getElementById('g-loan').value,
-    reviewer_comments: document.getElementById('g-finding').value
+    id: recId,
+    type: val('g-type'),
+    agent: agent,
+    supervisor: val('g-supervisor'),
+    team: val('g-team'),
+    checkFailed: val('g-checklist'),
+    loanNumber: val('g-loan').trim(),
+    findingComment: val('g-finding').trim()
   };
+  status.textContent = 'Saving…'; status.style.color = '#5a6b80';
   try {
-    const res = await fetch(CONFIG.url + '/api/collections/genesys_reviews/records', {
+    const res = await fetch(CONFIG.url + '/api/collections/customer_service/records', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
     });
-    status.textContent = res.ok ? 'Saved.' : 'Save failed (' + res.status + ').';
-    if (res.ok) document.getElementById('genesys-form').reset();
-  } catch { status.textContent = 'Save failed.'; }
+    if (res.ok) {
+      status.textContent = 'Saved ' + recId + '.'; status.style.color = '#216b50';
+      document.getElementById('genesys-form').reset();
+      gFillChecklist();
+    } else {
+      const t = await res.text();
+      status.textContent = 'Save failed (' + res.status + '): ' + t.slice(0, 200);
+      status.style.color = '#a32f58';
+    }
+  } catch (e) { status.textContent = 'Save failed: ' + e.message; status.style.color = '#a32f58'; }
 });
 
 // Delinquency
@@ -1483,18 +1529,29 @@ function renderDataEdit() {
   const q = document.getElementById('de-search').value.toLowerCase();
   const filtered = deRecords.filter(r => JSON.stringify(r).toLowerCase().includes(q));
   const table = document.getElementById('de-table');
-  if (!filtered.length) { table.innerHTML = '<p style="padding:12px">No records.</p>'; return; }
+  table.classList.add('dt-wrap');
+  if (!filtered.length) { table.innerHTML = '<p class="dt-none">No records match.</p>'; return; }
   const keys = Object.keys(filtered[0]).filter(k => !['collectionId','collectionName','expand'].includes(k));
-  table.innerHTML = '<table style="width:100%;font-size:11px;border-collapse:collapse"><tr>' + keys.map(k => '<th style="text-align:left;padding:6px;border-bottom:1px solid #ddd;background:#f5f5f5">' + k + '</th>').join('') + '<th></th></tr>' +
-    filtered.slice(0, 50).map(r => '<tr>' + keys.map(k => '<td style="padding:4px 6px;border-bottom:1px solid #eee;max-width:150px;overflow:hidden;text-overflow:ellipsis">' + (r[k] ?? '') + '</td>').join('') + '<td><button class="btn" onclick="editRecord(\'' + r.id + '\')" style="font-size:10px;padding:2px 6px">Edit</button></td></tr>').join('') + '</table>' +
-    (filtered.length > 50 ? '<p style="padding:8px;font-size:11px">Showing 50 of ' + filtered.length + '</p>' : '');
+  const shown = filtered.slice(0, 50);
+  const cell = (r, k) => {
+    const v = r[k] == null ? '' : (typeof r[k] === 'object' ? JSON.stringify(r[k]) : String(r[k]));
+    const mono = ['id','created','updated'].includes(k) ? ' class="mono"' : '';
+    return '<td' + mono + ' title="' + safe(v) + '">' + safe(v) + '</td>';
+  };
+  table.innerHTML = '<table class="dt"><thead><tr>' +
+    keys.map(k => '<th>' + safe(k) + '</th>').join('') + '<th class="act"></th></tr></thead><tbody>' +
+    shown.map(r => '<tr>' + keys.map(k => cell(r, k)).join('') +
+      '<td class="act"><button class="btn" onclick="editRecord(\'' + safe(r.id) + '\')">Edit</button></td></tr>').join('') +
+    '</tbody></table>' +
+    '<div class="dt-foot">Showing ' + shown.length + ' of ' + filtered.length +
+      (filtered.length !== deRecords.length ? ' matching (' + deRecords.length + ' loaded)' : '') + '</div>';
 }
 
 // ---- Add a checklist policy check -------------------------------------
-// Loan Action drives the two read-only fields; Check ID must be 5 digits and
-// unused, and it is checked against the collection, not just the loaded page.
+// Loan Action drives the two read-only fields; Check ID must be at least five
+// characters and unused, checked against the collection, not the loaded page.
 let ckCats = {};        // category -> { categoryNumber, riskRating } (raw values, types preserved)
-let ckIds = new Set();  // every checkID already in the collection
+let ckIds = new Set();  // every checkID already in the collection, lowercased
 let ckNumericId = false;
 
 function showChecklistAddForm() {
@@ -1527,8 +1584,7 @@ function showChecklistAddForm() {
   document.body.insertAdjacentHTML('beforeend', html);
   document.getElementById('ck-category').onchange = ckApplyCategory;
   document.getElementById('ck-check').oninput = ckValidate;
-  const idEl = document.getElementById('ck-id');
-  idEl.oninput = ckValidate;
+  document.getElementById('ck-id').oninput = ckValidate;
   ckLoadCategories();
 }
 
@@ -1597,7 +1653,8 @@ window.saveChecklistAdd = async function () {
   const cat = document.getElementById('ck-category').value;
   const meta = ckCats[cat] || {};
   const rawId = document.getElementById('ck-id').value.trim();
-  const body = { category: cat, check: document.getElementById('ck-check').value.trim(), checkID: (ckNumericId && /^\d+$/.test(rawId)) ? Number(rawId) : rawId };
+  const body = { category: cat, check: document.getElementById('ck-check').value.trim(),
+                 checkID: (ckNumericId && /^\d+$/.test(rawId)) ? Number(rawId) : rawId };
   if (meta.categoryNumber !== '' && meta.categoryNumber != null) body.categoryNumber = meta.categoryNumber;
   if (meta.riskRating !== '' && meta.riskRating != null) body.riskRating = meta.riskRating;
   save.disabled = true;
@@ -1612,7 +1669,6 @@ window.saveChecklistAdd = async function () {
     document.getElementById('ck-id').value = '';
     ckValidate();
     if (document.getElementById('de-collection').value === 'checklists') loadDataEdit();
-    if (typeof app !== 'undefined') { try { app.checks.push(body); } catch (e) {} }
   } catch (e) {
     status.textContent = 'Failed: ' + e.message; status.style.color = '#a32f58';
     save.disabled = false;
@@ -1707,10 +1763,26 @@ async function loadAging() {
     const data = await fetch(CONFIG.url + '/api/collections/delinquency/records?filter=qualityNotes!=""&&updated>="' + cutoff + '"&sort=-updated&perPage=10').then(r => r.json());
     const items = data.items || [];
     if (!items.length) { cards.innerHTML = '<p>No recent notes.</p>'; return; }
+    const revDate = v => {
+      if (!v) return 'Not recorded';
+      const d = new Date(String(v).replace(' ', 'T'));
+      return isNaN(d.getTime()) ? 'Not recorded'
+        : new Intl.DateTimeFormat('en-US', { timeZone: CONFIG.zone, month: 'numeric', day: 'numeric', year: 'numeric' }).format(d);
+    };
     cards.innerHTML = items.map(r => {
-  const bg = r.qualityConcur === true ? '#e8f5e9' : r.qualityConcur === false ? '#ffebee' : '#f8f7fc';
-  return '<div style="background:white;border:2px solid #c4bdd4;border-radius:14px;padding:16px;box-shadow:0 2px 8px #0001"><div style="font-size:11px;color:#666;margin-bottom:4px">' + (r.updated || '').slice(0, 10) + '</div><h3 style="margin:0 0 8px;font-size:16px">' + (r.loanNumber || '') + '</h3><p style="margin:0 0 4px;font-weight:600">' + (r.borrowerName || '') + '</p><p style="margin:0 0 8px;font-size:13px;color:#555">' + (r.daysPastDue || '') + ' days past due<br>Next due: ' + (r.nextDueDate || '').slice(0, 10) + '</p><p style="margin:0;font-size:13px;background:' + bg + ';padding:10px;border-radius:6px">' + (r.qualityNotes || '') + '</p></div>';
-}).join('');
+      const bg = r.qualityConcur === true ? '#e8f5e9' : r.qualityConcur === false ? '#ffebee' : '#f8f7fc';
+      const tag = r.qualityConcur === true ? '<span class="badge outcome-concur">Concur</span>'
+                : r.qualityConcur === false ? '<span class="badge outcome-non">Non Concur</span>' : '';
+      return '<div style="background:white;border:2px solid #c4bdd4;border-radius:14px;padding:16px;box-shadow:0 2px 8px #0001">' +
+        '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">' +
+          '<h3 style="margin:0;font-size:17px;font-variant-numeric:tabular-nums">' + safe(r.loanNumber || r.loannumber || 'No loan number') + '</h3>' + tag +
+        '</div>' +
+        '<p style="margin:3px 0 0;font-weight:600;font-size:13.5px">' + safe(r.borrowerName || r.borrowername || 'Name not recorded') + '</p>' +
+        '<p style="margin:2px 0 10px;font-size:11.5px;letter-spacing:.3px;text-transform:uppercase;color:#5a6b80">Review Performed ' + safe(revDate(r.updated)) + '</p>' +
+        '<p style="margin:0 0 8px;font-size:13px;color:#555">' + safe(r.daysPastDue || '') + ' days past due<br>Next due: ' + safe(String(r.nextDueDate || '').slice(0, 10)) + '</p>' +
+        '<p style="margin:0;font-size:13px;background:' + bg + ';padding:10px;border-radius:6px">' + safe(r.qualityNotes || '') + '</p>' +
+      '</div>';
+    }).join('');
   } catch { cards.innerHTML = '<p>Failed to load.</p>'; }
 }
 
@@ -1771,7 +1843,74 @@ async function loadDash() {
     del_html += '<div style="display:flex;gap:16px;margin-bottom:16px"><div style="flex:1;text-align:center;padding:12px;background:#f8f7fc;border-radius:8px"><div style="font-size:28px;font-weight:700;color:#1e3a5f">' + delinqTotal.toLocaleString() + '</div><div style="font-size:12px;color:#666">Total Loans</div></div><div style="flex:1;text-align:center;padding:12px;background:#f8f7fc;border-radius:8px"><div style="font-size:28px;font-weight:700;color:#1e3a5f">$' + Math.round(totalBal/1000).toLocaleString('en-US') + 'k</div><div style="font-size:12px;color:#666">Outstanding</div></div><div style="flex:1;text-align:center;padding:12px;background:#f8f7fc;border-radius:8px"><div style="font-size:28px;font-weight:700;color:#1e3a5f">' + avgDays + '</div><div style="font-size:12px;color:#666">Avg Days Past Due</div></div></div>';
     del_html += '<p style="font-size:12px;color:#666;margin:0 0 8px">Aging breakdown (from loaded sample):</p><div style="display:flex;gap:8px;flex-wrap:wrap">' + Object.entries(groups).sort((a,b)=>b[1]-a[1]).map(([g,c]) => '<div style="background:#fff3e0;padding:8px 12px;border-radius:6px;font-size:13px"><strong>' + c + '</strong> loans in ' + g + '</div>').join('') + '</div></div>';
 
-    root.innerHTML = '<div style="display:flex;gap:16px"><div style="flex:1">' + org + '</div><div style="flex:1">' + loans_html + '</div></div>' + del_html;
+    // ---- Previous month: Concur vs Non Concur -------------------------
+    const pmStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const pmEnd = new Date(now.getFullYear(), now.getMonth(), 1);
+    const pmLabel = pmStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const asDate = v => { const d = new Date(String(v || '').replace(' ', 'T')); return isNaN(d.getTime()) ? null : d; };
+    const pmDone = l.filter(r => { const d = asDate(r.completedOn); return d && d >= pmStart && d < pmEnd; });
+    const pmConcur = pmDone.filter(r => r.outcome === 'Concur').length;
+    const pmNon = pmDone.filter(r => r.outcome === 'Non Concur').length;
+    const pmOther = pmDone.length - pmConcur - pmNon;
+    const pmTotal = pmDone.length || 1;
+    const pct = n => Math.round(n / pmTotal * 100);
+    const seg = (n, color, label) => n ? '<div style="width:' + (n / pmTotal * 100) + '%;background:' + color + '" title="' + label + ': ' + n + '">' + (n / pmTotal > .08 ? pct(n) + '%' : '') + '</div>' : '';
+    let rep1 = '<div class="rep"><h2>Loan Action Reviews — ' + pmLabel + '</h2>' +
+      '<p class="cap">Reviews completed last month, by outcome</p>';
+    if (!pmDone.length) {
+      rep1 += '<p class="chk-empty">No reviews were completed in ' + pmLabel + '.</p></div>';
+    } else {
+      rep1 += '<div class="rep-tiles">' +
+        '<div class="rep-tile"><b style="color:#216b50">' + pmConcur + '</b><span>Concur</span></div>' +
+        '<div class="rep-tile"><b style="color:#8a5320">' + pmNon + '</b><span>Non Concur</span></div>' +
+        (pmOther ? '<div class="rep-tile"><b style="color:#5a6b80">' + pmOther + '</b><span>Unclassified</span></div>' : '') +
+        '<div class="rep-tile"><b>' + pmDone.length + '</b><span>Completed</span></div>' +
+        '<div class="rep-tile"><b>' + pct(pmConcur) + '%</b><span>Concur rate</span></div>' +
+        '</div><div class="rep-bar">' + seg(pmConcur, '#216b50', 'Concur') + seg(pmNon, '#c45c26', 'Non Concur') + seg(pmOther, '#9aa5b1', 'Unclassified') + '</div>' +
+        '<div class="rep-key"><span><i style="background:#216b50"></i>Concur</span><span><i style="background:#c45c26"></i>Non Concur</span>' +
+        (pmOther ? '<span><i style="background:#9aa5b1"></i>Unclassified</span>' : '') + '</div></div>';
+    }
+
+    // ---- Outstanding findings, aged, split by flag and type ------------
+    const open_ = l.filter(r => r.state === 'Findings');
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const ageOf = r => { const d = asDate(r.findingIssuedOn); return d ? Math.max(0, Math.floor((today - d) / 86400000)) : null; };
+    const BUCKETS = [['1–10 days', 0, 10], ['11–30 days', 11, 30], ['31–60 days', 31, 60], ['Over 60 days', 61, Infinity]];
+    const kindOf = r => r.flag ? 'flag' : (r.critical === 'Critical' ? 'crit' : 'non');
+    const counts = {};
+    BUCKETS.forEach(([lab]) => counts[lab] = { flag: 0, crit: 0, non: 0, od: 0, n: 0 });
+    const undated = { flag: 0, crit: 0, non: 0, od: 0, n: 0 };
+    const overdue = r => { const d = asDate(r.findingDueOn); return d && d < today; };
+    open_.forEach(r => {
+      const a = ageOf(r);
+      const row = a == null ? undated : counts[(BUCKETS.find(([, lo, hi]) => a >= lo && a <= hi) || BUCKETS[BUCKETS.length - 1])[0]];
+      row[kindOf(r)]++; row.n++; if (overdue(r)) row.od++;
+    });
+    const tFlag = open_.filter(r => kindOf(r) === 'flag').length;
+    const tCrit = open_.filter(r => kindOf(r) === 'crit').length;
+    const tNon = open_.filter(r => kindOf(r) === 'non').length;
+    const tOd = open_.filter(overdue).length;
+    const line = (lab, c) => '<tr><td>' + lab + '</td><td>' + (c.flag || '—') + '</td><td>' + (c.crit || '—') + '</td><td>' + (c.non || '—') + '</td><td class="' + (c.od ? 'od' : '') + '">' + (c.od || '—') + '</td><td>' + (c.n || '—') + '</td></tr>';
+    let rep2 = '<div class="rep"><h2>Outstanding Findings — Aging</h2>' +
+      '<p class="cap">Open findings awaiting correction and sign-off, aged from the issued date</p>';
+    if (!open_.length) {
+      rep2 += '<p class="chk-empty">No findings are currently outstanding.</p></div>';
+    } else {
+      rep2 += '<div class="rep-tiles">' +
+        '<div class="rep-tile"><b>' + open_.length + '</b><span>Outstanding</span></div>' +
+        '<div class="rep-tile"><b style="color:#c62828">' + tFlag + '</b><span>\u{1F6A9} Flagged</span></div>' +
+        '<div class="rep-tile"><b style="color:#c45c26">' + tCrit + '</b><span>Critical</span></div>' +
+        '<div class="rep-tile"><b style="color:#8a6a20">' + tNon + '</b><span>Non Critical</span></div>' +
+        '<div class="rep-tile"><b class="' + (tOd ? 'od' : '') + '">' + tOd + '</b><span>Overdue</span></div>' +
+        '</div><table><thead><tr><th>Age</th><th>\u{1F6A9} Flag</th><th>Critical</th><th>Non Critical</th><th>Overdue</th><th>Total</th></tr></thead><tbody>' +
+        BUCKETS.map(([lab]) => counts[lab].n ? line(lab, counts[lab]) : '').join('') +
+        (undated.n ? line('No issued date', undated) : '') +
+        '<tr class="tot"><td>Total</td><td>' + tFlag + '</td><td>' + tCrit + '</td><td>' + tNon + '</td><td class="' + (tOd ? 'od' : '') + '">' + tOd + '</td><td>' + open_.length + '</td></tr>' +
+        '</tbody></table><p class="cap" style="margin:9px 0 0">A flagged finding is counted as flagged only; Critical and Non Critical exclude flagged items.</p></div>';
+    }
+
+    root.innerHTML = '<div style="display:flex;gap:16px;flex-wrap:wrap"><div style="flex:1;min-width:300px">' + rep1 + '</div><div style="flex:1;min-width:320px">' + rep2 + '</div></div>' +
+      '<div style="display:flex;gap:16px;flex-wrap:wrap"><div style="flex:1;min-width:300px">' + org + '</div><div style="flex:1;min-width:300px">' + loans_html + '</div></div>' + del_html;
   } catch (e) { root.innerHTML = '<p>Failed to load dashboard.</p>'; }
 }
 
@@ -2077,9 +2216,16 @@ async function loadNewsletter() {
 
 function renderNL() {
   const table = document.getElementById('nl-table');
-  if (!nlRecords.length) { table.innerHTML = '<p style="padding:12px">No records.</p>'; return; }
-  table.innerHTML = '<table style="width:100%;font-size:11px;border-collapse:collapse"><tr><th style="text-align:left;padding:6px;background:#f5f5f5">Month</th><th style="text-align:left;padding:6px;background:#f5f5f5">Section</th><th style="text-align:left;padding:6px;background:#f5f5f5">Subtitle</th><th></th></tr>' +
-    nlRecords.map(r => '<tr><td style="padding:4px 6px;border-bottom:1px solid #eee">' + (r.month||'') + '</td><td style="padding:4px 6px;border-bottom:1px solid #eee">' + (r.sectionTitle||'') + '</td><td style="padding:4px 6px;border-bottom:1px solid #eee">' + (r.sectionSubTitle||'').slice(0,40) + '</td><td><button class="btn" onclick="editNL(\'' + r.id + '\')" style="font-size:10px;padding:2px 6px">Edit</button></td></tr>').join('') + '</table>';
+  table.classList.add('dt-wrap');
+  if (!nlRecords.length) { table.innerHTML = '<p class="dt-none">No records.</p>'; return; }
+  table.innerHTML = '<table class="dt"><thead><tr><th>Month</th><th>Section</th><th>Subtitle</th><th>Note</th><th class="act"></th></tr></thead><tbody>' +
+    nlRecords.map(r => '<tr>' +
+      '<td>' + safe(r.month || '') + '</td>' +
+      '<td>' + safe(r.sectionTitle || '') + '</td>' +
+      '<td title="' + safe(r.sectionSubTitle || '') + '">' + safe(r.sectionSubTitle || '') + '</td>' +
+      '<td title="' + safe(r.note || '') + '">' + safe((r.note || '').slice(0, 70)) + ((r.note || '').length > 70 ? '…' : '') + '</td>' +
+      '<td class="act"><button class="btn" onclick="editNL(\'' + safe(r.id) + '\')">Edit</button></td></tr>').join('') +
+    '</tbody></table><div class="dt-foot">' + nlRecords.length + (nlRecords.length === 1 ? ' item' : ' items') + '</div>';
 }
 
 window.editNL = function(id) {
