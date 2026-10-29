@@ -1417,6 +1417,7 @@ document.getElementById('de-search').addEventListener('input', renderDataEdit);
 document.getElementById('de-add').addEventListener('click', () => {
   const col = document.getElementById('de-collection').value;
   if (col === 'loan_action_reviews') showLoanAddForm();
+  else if (col === 'checklists') showChecklistAddForm();
   else editRecord(null);
 });
 
@@ -1488,6 +1489,138 @@ function renderDataEdit() {
     filtered.slice(0, 50).map(r => '<tr>' + keys.map(k => '<td style="padding:4px 6px;border-bottom:1px solid #eee;max-width:150px;overflow:hidden;text-overflow:ellipsis">' + (r[k] ?? '') + '</td>').join('') + '<td><button class="btn" onclick="editRecord(\'' + r.id + '\')" style="font-size:10px;padding:2px 6px">Edit</button></td></tr>').join('') + '</table>' +
     (filtered.length > 50 ? '<p style="padding:8px;font-size:11px">Showing 50 of ' + filtered.length + '</p>' : '');
 }
+
+// ---- Add a checklist policy check -------------------------------------
+// Loan Action drives the two read-only fields; Check ID must be 5 digits and
+// unused, and it is checked against the collection, not just the loaded page.
+let ckCats = {};        // category -> { categoryNumber, riskRating } (raw values, types preserved)
+let ckIds = new Set();  // every checkID already in the collection
+let ckNumericId = false;
+
+function showChecklistAddForm() {
+  const fld = 'display:block;font-size:11px;font-weight:600;color:#4b4475;margin-bottom:3px';
+  const inp = 'width:100%;padding:6px 8px;border:1px solid #cdc7e4;border-radius:6px;font:inherit';
+  const ro  = inp + ';background:#f5f3fb;color:#5d5680';
+  const html = '<div id="de-modal" style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999">' +
+    '<div style="background:white;padding:20px;border-radius:10px;max-width:460px;width:92%;max-height:86vh;overflow:auto">' +
+    '<h3 style="margin:0 0 12px">Add Checklist Policy</h3>' +
+    '<div style="display:grid;gap:10px">' +
+      '<div><label for="ck-category" style="' + fld + '">Loan Action</label>' +
+        '<select id="ck-category" style="' + inp + '"><option value="">Loading…</option></select></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+        '<div><label for="ck-catnum" style="' + fld + '">Loan Action ID</label>' +
+          '<input id="ck-catnum" readonly tabindex="-1" style="' + ro + '"></div>' +
+        '<div><label for="ck-risk" style="' + fld + '">Risk</label>' +
+          '<input id="ck-risk" readonly tabindex="-1" style="' + ro + '"></div>' +
+      '</div>' +
+      '<div><label for="ck-check" style="' + fld + '">Policy</label>' +
+        '<textarea id="ck-check" rows="3" style="' + inp + ';resize:vertical" placeholder="The check as a reviewer will read it"></textarea></div>' +
+      '<div><label for="ck-id" style="' + fld + '">Check ID</label>' +
+        '<input id="ck-id" maxlength="5" inputmode="numeric" autocomplete="off" style="' + inp + ';font-weight:700;letter-spacing:1px">' +
+        '<div id="ck-id-msg" style="font-size:11px;margin-top:4px;min-height:14px"></div></div>' +
+    '</div>' +
+    '<div id="ck-status" style="margin:10px 0 0;font-size:12px;min-height:16px"></div>' +
+    '<div style="margin-top:12px;display:flex;gap:8px">' +
+      '<button class="btn primary" id="ck-save" onclick="saveChecklistAdd()" disabled>Add</button>' +
+      '<button class="btn" onclick="document.getElementById(\'de-modal\').remove()">Cancel</button>' +
+    '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  document.getElementById('ck-category').onchange = ckApplyCategory;
+  document.getElementById('ck-check').oninput = ckValidate;
+  const idEl = document.getElementById('ck-id');
+  idEl.oninput = () => { idEl.value = idEl.value.replace(/\D/g, '').slice(0, 5); ckValidate(); };
+  ckLoadCategories();
+}
+
+async function ckLoadCategories() {
+  const sel = document.getElementById('ck-category');
+  const status = document.getElementById('ck-status');
+  try {
+    const res = await fetch(CONFIG.url + '/api/collections/checklists/records?perPage=500');
+    if (!res.ok) throw new Error('checklists returned HTTP ' + res.status);
+    const items = (await res.json()).items || [];
+    ckIds = new Set(items.map(c => String(c.checkID == null ? '' : c.checkID).trim()).filter(Boolean));
+    ckNumericId = items.length > 0 && items.every(c => c.checkID == null || typeof c.checkID === 'number');
+    ckCats = {};
+    items.forEach(c => {
+      const k = String(c.category || '').trim();
+      if (!k) return;
+      if (!ckCats[k]) ckCats[k] = { categoryNumber: '', riskRating: '' };
+      if (ckCats[k].categoryNumber === '' && c.categoryNumber != null && c.categoryNumber !== '') ckCats[k].categoryNumber = c.categoryNumber;
+      if (ckCats[k].riskRating === '' && c.riskRating != null && c.riskRating !== '') ckCats[k].riskRating = c.riskRating;
+    });
+    const other = k => /^delinquen/i.test(k) || /^genesys/i.test(k) || /^csh\b/i.test(k) || /customer\s*service\s*hub/i.test(k);
+    const names = Object.keys(ckCats).sort((a, b) => a.localeCompare(b));
+    const loan = names.filter(k => !other(k)), rest = names.filter(other);
+    const opts = a => a.map(k => '<option value="' + safe(k) + '">' + safe(k) + '</option>').join('');
+    sel.innerHTML = '<option value="">Select…</option>' +
+      (loan.length ? '<optgroup label="Loan Actions">' + opts(loan) + '</optgroup>' : '') +
+      (rest.length ? '<optgroup label="Other Areas">' + opts(rest) + '</optgroup>' : '');
+    status.textContent = names.length + ' categories · ' + ckIds.size + ' existing check IDs';
+    status.style.color = '#5a6b80';
+  } catch (e) {
+    sel.innerHTML = '<option value="">Could not load</option>';
+    status.textContent = 'Could not load the checklists collection: ' + e.message;
+    status.style.color = '#a32f58';
+  }
+  ckValidate();
+}
+
+function ckApplyCategory() {
+  const meta = ckCats[document.getElementById('ck-category').value] || {};
+  document.getElementById('ck-catnum').value = meta.categoryNumber == null ? '' : meta.categoryNumber;
+  document.getElementById('ck-risk').value = meta.riskRating == null ? '' : meta.riskRating;
+  ckValidate();
+}
+
+function ckValidate() {
+  const idEl = document.getElementById('ck-id');
+  if (!idEl) return false;
+  const msg = document.getElementById('ck-id-msg');
+  const v = String(idEl.value || '').trim();
+  let err = '';
+  if (!v) err = 'Must be 5 digits and not already used.';
+  else if (!/^\d{5}$/.test(v)) err = 'Needs 5 digits — ' + v.length + ' so far.';
+  else if (ckIds.has(v)) err = 'Check ID ' + v + ' is already in the database.';
+  const ok = !err;
+  idEl.style.color = ok ? '#216b50' : '#c62828';
+  idEl.style.borderColor = ok ? '#a9cdb9' : (v ? '#efc6d7' : '#cdc7e4');
+  msg.textContent = ok ? 'Available.' : err;
+  msg.style.color = ok ? '#216b50' : (v ? '#c62828' : '#5a6b80');
+  const ready = ok && !!document.getElementById('ck-category').value && !!document.getElementById('ck-check').value.trim();
+  const save = document.getElementById('ck-save');
+  if (save) save.disabled = !ready;
+  return ready;
+}
+
+window.saveChecklistAdd = async function () {
+  if (!ckValidate()) return;
+  const status = document.getElementById('ck-status');
+  const save = document.getElementById('ck-save');
+  const cat = document.getElementById('ck-category').value;
+  const meta = ckCats[cat] || {};
+  const rawId = document.getElementById('ck-id').value.trim();
+  const body = { category: cat, check: document.getElementById('ck-check').value.trim(), checkID: ckNumericId ? Number(rawId) : rawId };
+  if (meta.categoryNumber !== '' && meta.categoryNumber != null) body.categoryNumber = meta.categoryNumber;
+  if (meta.riskRating !== '' && meta.riskRating != null) body.riskRating = meta.riskRating;
+  save.disabled = true;
+  status.textContent = 'Adding…'; status.style.color = '#5a6b80';
+  try {
+    const res = await fetch(CONFIG.url + '/api/collections/checklists/records',
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) { const t = await res.text(); throw new Error(t.slice(0, 180)); }
+    ckIds.add(rawId);
+    status.textContent = 'Added ' + rawId + '.'; status.style.color = '#216b50';
+    document.getElementById('ck-check').value = '';
+    document.getElementById('ck-id').value = '';
+    ckValidate();
+    if (document.getElementById('de-collection').value === 'checklists') loadDataEdit();
+    if (typeof app !== 'undefined') { try { app.checks.push(body); } catch (e) {} }
+  } catch (e) {
+    status.textContent = 'Failed: ' + e.message; status.style.color = '#a32f58';
+    save.disabled = false;
+  }
+};
 
 window.editRecord = function(id) {
   const col = document.getElementById('de-collection').value;
