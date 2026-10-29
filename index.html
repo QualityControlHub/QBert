@@ -1279,8 +1279,19 @@ disconnectedPresentation();
   </div>
   <div id="ws-reports" hidden>
     <h2>Narrative Reports</h2>
-    <p>Generate an HTML report of findings and completed reviews.</p>
-    <button class="btn primary" id="ws-gen-report">Generate Report</button>
+    <p class="del-hint">Builds the Customer Service review report from the <code>customer_service</code> collection, grouped by team, then by contact, then by finding. The markup is Outlook-safe, so it pastes into an email with its formatting intact.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;max-width:720px;margin-bottom:12px">
+      <div class="del-f"><label for="rpt-from">Reviewed from</label><input type="date" id="rpt-from"></div>
+      <div class="del-f"><label for="rpt-to">Reviewed to</label><input type="date" id="rpt-to"></div>
+      <div class="del-f"><label for="rpt-type">Communication type</label><select id="rpt-type"><option value="">All</option><option>Genesys</option><option>CSH</option></select></div>
+    </div>
+    <div class="del-f" style="max-width:720px;margin-bottom:12px"><label for="rpt-greeting">Greeting</label><input id="rpt-greeting" value="Good morning, Everyone"></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn primary" id="ws-gen-report">Generate Report</button>
+      <button class="btn" id="rpt-copy" hidden>Copy for Email</button>
+      <button class="btn" id="rpt-download" hidden>Download HTML</button>
+      <span id="rpt-status" style="font-size:12px"></span>
+    </div>
     <div id="ws-report-output"></div>
   </div>
 </div>
@@ -1457,6 +1468,180 @@ document.getElementById('g-save').addEventListener('click', async () => {
       status.style.color = '#a32f58';
     }
   } catch (e) { status.textContent = 'Save failed: ' + e.message; status.style.color = '#a32f58'; }
+});
+
+// ---- Customer Service narrative report --------------------------------
+// Outlook desktop renders with Word's engine: default <p> margins inflate
+// every cell, so keep markup compact, wrap text in zero-margin <p>, no <div>.
+const RP0 = 'margin:0;padding:0;mso-margin-top-alt:0;mso-margin-bottom-alt:0;mso-line-height-rule:exactly;';
+const RFONT = 'font-family:Aptos,Calibri,Arial,sans-serif;';
+const RTABLE = 'border-collapse:collapse;border-spacing:0;mso-table-lspace:0pt;mso-table-rspace:0pt;';
+const GENESYS_TAB = '68320927-7346-499a-85bd-a9aea710484a';
+let rptHtml = '';
+
+const rp = (text, extra) => '<p style="' + RP0 + RFONT + (extra || '') + '">' + text + '</p>';
+const rpSpacer = (px) => { px = px || 12;
+  return "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' border='0' style='" + RTABLE + "'>" +
+    "<tr><td height='" + px + "' style='height:" + px + "px;line-height:" + px + "px;font-size:" + px + "px;mso-line-height-rule:exactly;'>&nbsp;</td></tr></table>"; };
+
+// A UUID contact id becomes a clickable Genesys Cloud interaction link.
+function genesysUrl(id) {
+  const v = String(id == null ? '' : id).trim();
+  if (!v) return '';
+  if (/^https?:\/\//i.test(v)) return v;
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v))
+    return 'https://apps.usw2.pure.cloud/directory/#/analytics/interactions/' + v + '/admin?tabId=' + GENESYS_TAB;
+  return '';
+}
+// G0302 - ... reads as "Genesys 0302 - ...", C.... as "CSH ...".
+function displayCheck(text) {
+  const v = String(text == null ? '' : text).trim();
+  const m = v.match(/^(G|C)(\d+)([\s\S]*)$/i);
+  return m ? ((m[1].toUpperCase() === 'G' ? 'Genesys' : 'CSH') + ' ' + m[2] + m[3]) : v;
+}
+function checkSortKey(text) {
+  const v = String(text == null ? '' : text);
+  const m = v.match(/^([A-Za-z]*)(\d+)/);
+  if (!m) return [9, 9999, v];
+  const order = { G: 0, C: 1 };
+  const o = order[m[1].toUpperCase()];
+  return [o === undefined ? 2 : o, parseInt(m[2], 10), v];
+}
+const cmpKey = (a, b) => { for (let i = 0; i < 3; i++) { if (a[i] < b[i]) return -1; if (a[i] > b[i]) return 1; } return 0; };
+
+function rptIntro(greeting) {
+  const body = rp(safe(greeting || 'Good morning, Everyone'), 'font-size:18px;line-height:24px;font-weight:bold;color:#1B1E29;') +
+    rpSpacer(10) +
+    rp('We&rsquo;ve completed a few Customer Service Evaluations and have assigned the forms in Genesys for your review &amp; record. ' +
+       '(If you cannot access the provided hyperlinks, the evaluations are also assigned in your Genesys Inbox).',
+       'font-size:15px;line-height:22px;color:#1B1E29;');
+  return "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' border='0' style='" + RTABLE +
+    "margin:0 0 22px 0;max-width:760px;'><tr><td style='padding:4px 2px 16px 2px;border-bottom:2px solid #8FC1DA;'>" + body + "</td></tr></table>";
+}
+
+function rptRecord(r) {
+  const finding = safe(r.findingComment || '');
+  const findingHtml = finding
+    ? "<tr><td style='background-color:#E8EBD2;padding:8px 10px;'>" + rp(finding, 'font-size:14px;line-height:18px;color:#1B1E29;') + "</td></tr>"
+    : '';
+  return "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' border='0' style='" + RTABLE +
+    "border:1px solid #8FC1DA;margin:0 0 8px 0;background-color:#FFFFFF;border-radius:6px;'>" +
+    "<tr><td style='padding:8px 10px 4px 10px;'>" +
+      rp(safe(displayCheck(r.checkFailed) || 'Unspecified Checklist'), 'font-size:13px;line-height:17px;font-weight:bold;color:#1B1E29;') +
+    "</td></tr>" + findingHtml +
+    "<tr><td valign='top' style='padding:8px 10px;'>" +
+      rp(safe(r.agent || 'Unknown Agent'), 'font-size:15px;line-height:18px;font-weight:bold;color:#1B1E29;') +
+      rp('Supervisor: ' + safe(r.supervisor || 'N/A'), 'font-size:12px;line-height:16px;color:#5C5C5C;') +
+    "</td></tr></table>" + rpSpacer(8);
+}
+
+function rptTeamCard(team, rows) {
+  const parts = [
+    "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' border='0' style='" + RTABLE +
+      "margin:0 0 24px 0;max-width:760px;background-color:#E8F4FA;'>",
+    "<tr><td style='background-color:#8FC1DA;padding:12px 16px;'>",
+    rp(safe(team || 'Unassigned'), 'font-size:22px;line-height:26px;font-weight:bold;color:#1B1E29;'),
+    "</td></tr>",
+    "<tr><td style='padding:12px 12px 8px 12px;background-color:#E8F4FA;'>"
+  ];
+  const ids = [], seen = {};
+  rows.forEach(r => { const k = String(r.contactID == null ? '' : r.contactID).trim();
+    if (!(k in seen)) { seen[k] = 1; ids.push(k); } });
+  ids.forEach(cid => {
+    const group = rows.filter(r => String(r.contactID == null ? '' : r.contactID).trim() === cid);
+    let loan = '';
+    for (const r of group) { loan = String(r.loanNumber == null ? '' : r.loanNumber).trim(); if (loan) break; }
+    const url = genesysUrl(cid);
+    // A Genesys UUID is abbreviated to its last four; a CSH case number is shown whole.
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cid);
+    const label = !cid ? '????' : (isUuid ? cid.slice(-4) : cid);
+    const word = (isUuid || !cid) ? 'Call ' : 'Contact ';
+    const callPart = url
+      ? '<a href="' + safe(url) + '" style="color:#0B4F8A;text-decoration:underline;">' + word + safe(label) + '</a>'
+      : word + safe(label);
+    const header = loan ? callPart + ' (Loan Number ' + safe(loan) + ')' : callPart;
+    parts.push("<table role='presentation' width='100%' cellpadding='0' cellspacing='0' border='0' style='" + RTABLE +
+      "margin:0 0 12px 0;background-color:#F7F3E0;border-radius:8px;overflow:hidden;'>" +
+      "<tr><td style='background-color:#F1CC13;padding:8px 12px;'>" +
+      rp(header, 'font-size:14px;line-height:18px;font-weight:bold;color:#1B1E29;') +
+      "</td></tr><tr><td style='padding:10px 12px;background-color:#F7F3E0;'>");
+    group.slice().sort((a, b) => cmpKey(checkSortKey(a.checkFailed), checkSortKey(b.checkFailed)) ||
+      String(a.agent || '').localeCompare(String(b.agent || ''))).forEach(r => parts.push(rptRecord(r)));
+    parts.push("</td></tr></table>");
+  });
+  parts.push("</td></tr></table>");
+  return parts.join('');
+}
+
+function rptDocument(body, title) {
+  return "<!DOCTYPE html><html><head><meta charset='utf-8'><title>" + safe(title) + "</title>" +
+    "<style>p{margin:0 !important;} table{border-collapse:collapse;}</style></head>" +
+    "<body style='margin:0;padding:20px 16px 32px 16px;background-color:#F3F6F8;'>" +
+    "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' border='0' style='" + RTABLE + "max-width:760px;'>" +
+    "<tr><td>" + body + "</td></tr></table></body></html>";
+}
+
+document.getElementById('ws-gen-report').addEventListener('click', async () => {
+  const st = document.getElementById('rpt-status');
+  const out = document.getElementById('ws-report-output');
+  const btn = document.getElementById('ws-gen-report');
+  btn.disabled = true; st.textContent = 'Building…'; st.style.color = '#5a6b80';
+  try {
+    const conds = [];
+    const from = document.getElementById('rpt-from').value;
+    const to = document.getElementById('rpt-to').value;
+    const type = document.getElementById('rpt-type').value;
+    if (from) conds.push('created >= "' + from + ' 00:00:00"');
+    if (to) conds.push('created <= "' + to + ' 23:59:59"');
+    if (type) conds.push('type = "' + type + '"');
+    const url = CONFIG.url + '/api/collections/customer_service/records?perPage=500&sort=team,agent' +
+      (conds.length ? '&filter=' + encodeURIComponent(conds.join(' && ')) : '');
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('customer_service returned HTTP ' + res.status);
+    const items = (await res.json()).items || [];
+    if (!items.length) { st.textContent = 'No reviews match that range.'; st.style.color = '#8a5320';
+      out.innerHTML = ''; document.getElementById('rpt-copy').hidden = true; document.getElementById('rpt-download').hidden = true;
+      btn.disabled = false; return; }
+    const byTeam = {};
+    items.forEach(r => { const t = String(r.team || '').trim() || 'Unassigned'; (byTeam[t] = byTeam[t] || []).push(r); });
+    const teams = Object.keys(byTeam).sort((a, b) =>
+      (a === 'Unassigned') - (b === 'Unassigned') || a.localeCompare(b));
+    rptHtml = rptDocument(rptIntro(document.getElementById('rpt-greeting').value) +
+      teams.map(t => rptTeamCard(t, byTeam[t])).join('\n'), 'QC Review Report');
+    const frame = document.createElement('iframe');
+    frame.style.cssText = 'width:100%;height:560px;border:1px solid #d0d8c4;border-radius:10px;background:white';
+    frame.setAttribute('title', 'Report preview');
+    out.innerHTML = ''; out.appendChild(frame); frame.srcdoc = rptHtml;
+    document.getElementById('rpt-copy').hidden = false;
+    document.getElementById('rpt-download').hidden = false;
+    st.textContent = items.length + ' finding' + (items.length === 1 ? '' : 's') + ' across ' + teams.length +
+      (teams.length === 1 ? ' team' : ' teams') + '.';
+    st.style.color = '#216b50';
+  } catch (e) { st.textContent = 'Failed: ' + e.message; st.style.color = '#a32f58'; }
+  btn.disabled = false;
+});
+
+document.getElementById('rpt-copy').addEventListener('click', async () => {
+  const st = document.getElementById('rpt-status');
+  if (!rptHtml) return;
+  try {
+    if (!navigator.clipboard || !window.ClipboardItem) throw new Error('clipboard unavailable');
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([rptHtml], { type: 'text/html' }),
+      'text/plain': new Blob([rptHtml], { type: 'text/plain' })
+    })]);
+    st.textContent = 'Copied — paste into your email.'; st.style.color = '#216b50';
+  } catch (e) { st.textContent = 'Could not copy (' + e.message + '). Use Download HTML instead.'; st.style.color = '#8a5320'; }
+});
+
+document.getElementById('rpt-download').addEventListener('click', () => {
+  if (!rptHtml) return;
+  const blob = new Blob([rptHtml], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'QC_Review_Report_' + new Date().toISOString().slice(0, 10) + '.html';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 });
 
 // ---- Delinquency workspace: replace, reviews, DCIA ---------------------
