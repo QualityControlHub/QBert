@@ -1516,7 +1516,7 @@ function showChecklistAddForm() {
       '<div><label for="ck-check" style="' + fld + '">Policy</label>' +
         '<textarea id="ck-check" rows="3" style="' + inp + ';resize:vertical" placeholder="The check as a reviewer will read it"></textarea></div>' +
       '<div><label for="ck-id" style="' + fld + '">Check ID</label>' +
-        '<input id="ck-id" maxlength="5" inputmode="numeric" autocomplete="off" style="' + inp + ';font-weight:700;letter-spacing:1px">' +
+        '<input id="ck-id" inputmode="numeric" autocomplete="off" style="' + inp + ';font-weight:700;letter-spacing:1px">' +
         '<div id="ck-id-msg" style="font-size:11px;margin-top:4px;min-height:14px"></div></div>' +
     '</div>' +
     '<div id="ck-status" style="margin:10px 0 0;font-size:12px;min-height:16px"></div>' +
@@ -1528,7 +1528,7 @@ function showChecklistAddForm() {
   document.getElementById('ck-category').onchange = ckApplyCategory;
   document.getElementById('ck-check').oninput = ckValidate;
   const idEl = document.getElementById('ck-id');
-  idEl.oninput = () => { idEl.value = idEl.value.replace(/\D/g, '').slice(0, 5); ckValidate(); };
+  idEl.oninput = () => { idEl.value = idEl.value.replace(/\D/g, ''); ckValidate(); };
   ckLoadCategories();
 }
 
@@ -1556,8 +1556,6 @@ async function ckLoadCategories() {
     sel.innerHTML = '<option value="">Select…</option>' +
       (loan.length ? '<optgroup label="Loan Actions">' + opts(loan) + '</optgroup>' : '') +
       (rest.length ? '<optgroup label="Other Areas">' + opts(rest) + '</optgroup>' : '');
-    status.textContent = names.length + ' categories · ' + ckIds.size + ' existing check IDs';
-    status.style.color = '#5a6b80';
   } catch (e) {
     sel.innerHTML = '<option value="">Could not load</option>';
     status.textContent = 'Could not load the checklists collection: ' + e.message;
@@ -1579,8 +1577,7 @@ function ckValidate() {
   const msg = document.getElementById('ck-id-msg');
   const v = String(idEl.value || '').trim();
   let err = '';
-  if (!v) err = 'Must be 5 digits and not already used.';
-  else if (!/^\d{5}$/.test(v)) err = 'Needs 5 digits — ' + v.length + ' so far.';
+  if (!/^\d{5,}$/.test(v)) err = 'Must be a minimum of 5 digits not already used.';
   else if (ckIds.has(v)) err = 'Check ID ' + v + ' is already in the database.';
   const ok = !err;
   idEl.style.color = ok ? '#216b50' : '#c62828';
