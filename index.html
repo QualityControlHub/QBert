@@ -132,6 +132,33 @@ body[data-width="full"]{--page-w:100%}
 .del-concur input{width:15px;height:15px;accent-color:var(--navy)}
 .del-act{display:flex;align-items:center;gap:11px}
 .del-act .st{font-size:11.5px}
+.dq-group{margin:0 0 26px}
+.dq-head{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;border-bottom:2px solid var(--gold);padding-bottom:7px;margin:0 0 14px}
+.dq-head h2{font-size:17px}
+.dq-head .team{font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:700}
+.dq-head .n{margin-left:auto;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.dq-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(284px,1fr));gap:14px}
+.dq-card{background:white;border:1px solid var(--line);border-left:4px solid var(--navy);border-radius:12px;padding:15px 16px;box-shadow:0 2px 10px #1e4d6b12}
+.dq-card .loan{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.dq-card .loan h3{margin:0;font-size:16px;font-variant-numeric:tabular-nums}
+.dq-card .nm{margin:3px 0 0;font-weight:600;font-size:13.5px}
+.dq-card .when{margin:2px 0 11px;font-size:10.5px;letter-spacing:.45px;text-transform:uppercase;color:var(--muted)}
+.dq-meta{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:12px;margin:0 0 11px}
+.dq-meta dt{color:var(--muted)}
+.dq-meta dd{margin:0;font-weight:600;overflow-wrap:anywhere}
+.dq-note{margin:0;font-size:12.5px;padding:10px 11px;border-radius:7px;line-height:1.5}
+.dcia-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.dcia-card{border:1px solid #d8c3cd;border-radius:12px;overflow:hidden;background:white;box-shadow:0 3px 12px #6d1f3c1a}
+.dcia-bar{background:#6d1f3c;color:white;padding:10px 14px;display:flex;align-items:center;gap:9px}
+.dcia-bar h3{margin:0;font-size:15.5px;color:white;font-variant-numeric:tabular-nums;font-family:var(--font-sans);font-weight:700}
+.dcia-bar .tag{margin-left:auto;font-size:8.5px;letter-spacing:1.1px;text-transform:uppercase;font-weight:700;background:#ffffff26;border:1px solid #ffffff4d;padding:3px 7px;border-radius:4px;white-space:nowrap}
+.dcia-body{padding:13px 15px 15px}
+.dcia-days{display:flex;align-items:baseline;gap:8px;border-bottom:1px solid #f0e4e9;padding-bottom:10px;margin-bottom:10px}
+.dcia-days b{font-family:var(--font-serif);font-size:31px;line-height:1;color:#6d1f3c;font-variant-numeric:tabular-nums}
+.dcia-days span{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);line-height:1.3}
+.dcia-body .nm{margin:0;font-weight:700;font-size:14px}
+.dcia-body .when{margin:2px 0 10px;font-size:10.5px;letter-spacing:.45px;text-transform:uppercase;color:var(--muted)}
+.cards-empty{grid-column:1/-1;margin:0;padding:26px 14px;text-align:center;color:var(--muted);font-size:13px;background:white;border:1px dashed var(--line);border-radius:12px}
 @media(max-width:850px){.sup-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:9px}.sup-count{text-align:left}.sup-metrics{justify-content:flex-start}}
 </style>
 </head>
@@ -193,7 +220,7 @@ body[data-width="full"]{--page-w:100%}
 <div id="section-dcia" style="display:none">
   <div class="page-heading"><div><h1>DCIA</h1></div></div>
   <p class="dcia-notice">DCIA requires delinquent nontax debts to be referred to Treasury for appropriate collection action. Federal agencies must refer eligible debts that are 180 days delinquent to the U.S. Department of the Treasury’s Bureau of the Fiscal Service (BFS) for cross-servicing. The Digital Accountability and Transparency Act (DATA Act) amended the DCIA to require agencies to notify Fiscal Service of all debts delinquent 120 days or more for purposes of administrative offset.</p>
-  <p class="subtle">Coming soon</p>
+  <div id="dcia-cards" class="dcia-cards"></div>
 </div>
 <div id="section-aging" style="display:none">
   <div class="page-heading"><div><h1>Delinquency File Reviews</h1><p class="subtle">Delinquency file reviews from the last 30 days.</p></div></div>
@@ -938,7 +965,7 @@ document.addEventListener('click',e=>{
 });
 function renderChecklists(){const root=$('checklist-content');if(!root)return;root.innerHTML=checklistHtml(app.checks);}
 
-function showSection(name){document.querySelectorAll('.app-nav button').forEach(b=>{if(b.dataset.section===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});['loans','cs','aging','dcia','newsletter','dash'].forEach(s=>{const section=$('section-'+s);if(section){section.hidden=s!==name;section.style.display='';}});if(name==='checklists')renderChecklists(); if(name==='aging')loadAging(); if(name==='dash')loadDash(); if(name==='cs')loadCS(); if(name==='newsletter')loadFrontNewsletter();}
+function showSection(name){document.querySelectorAll('.app-nav button').forEach(b=>{if(b.dataset.section===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});['loans','cs','aging','dcia','newsletter','dash'].forEach(s=>{const section=$('section-'+s);if(section){section.hidden=s!==name;section.style.display='';}});if(name==='checklists')renderChecklists(); if(name==='aging')loadAging(); if(name==='dash')loadDash(); if(name==='cs')loadCS(); if(name==='dcia')loadDcia(); if(name==='newsletter')loadFrontNewsletter();}
 async function connect(e){
  e.preventDefault();showError('connection-error','');
  const button=$('login-submit');button.disabled=true;button.textContent='Connecting…';
@@ -1988,37 +2015,100 @@ window.deleteGuideSection = async function(id) {
   loadGuides();
 };
 
+// Shared helpers for the two delinquency card views.
+function dqDate(v) {
+  if (!v) return 'Not recorded';
+  const d = new Date(String(v).replace(' ', 'T'));
+  return isNaN(d.getTime()) ? 'Not recorded'
+    : new Intl.DateTimeFormat('en-US', { timeZone: CONFIG.zone, month: 'numeric', day: 'numeric', year: 'numeric' }).format(d);
+}
+function dqConcurTag(r) {
+  return r.qualityConcur === true ? '<span class="badge outcome-concur">Concur</span>'
+       : r.qualityConcur === false ? '<span class="badge outcome-non">Non Concur</span>' : '';
+}
+function dqNoteBg(r) {
+  return r.qualityConcur === true ? '#eaf5ef' : r.qualityConcur === false ? '#fbf2e6' : '#f6f7f0';
+}
+async function dqFetch(filter, sort) {
+  const url = CONFIG.url + '/api/collections/delinquency/records?perPage=200'
+    + '&filter=' + encodeURIComponent(filter) + '&sort=' + encodeURIComponent(sort);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('delinquency returned HTTP ' + res.status);
+  return (await res.json()).items || [];
+}
+
+// Delinquency tab: reviewed files under 180 days, grouped by supervisor and team.
 async function loadAging() {
   const cards = document.getElementById('aging-cards');
   if (!cards) return;
-  cards.innerHTML = '<p>Loading…</p>';
+  cards.className = '';
+  cards.innerHTML = '<p class="cards-empty">Loading…</p>';
   const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
   const cutoff = monthAgo.toISOString().replace('T', ' ').slice(0, 19);
   try {
-    const data = await fetch(CONFIG.url + '/api/collections/delinquency/records?filter=qualityNotes!=""&&updated>="' + cutoff + '"&sort=-updated&perPage=10').then(r => r.json());
-    const items = data.items || [];
-    if (!items.length) { cards.innerHTML = '<p>No recent notes.</p>'; return; }
-    const revDate = v => {
-      if (!v) return 'Not recorded';
-      const d = new Date(String(v).replace(' ', 'T'));
-      return isNaN(d.getTime()) ? 'Not recorded'
-        : new Intl.DateTimeFormat('en-US', { timeZone: CONFIG.zone, month: 'numeric', day: 'numeric', year: 'numeric' }).format(d);
-    };
-    cards.innerHTML = items.map(r => {
-      const bg = r.qualityConcur === true ? '#e8f5e9' : r.qualityConcur === false ? '#ffebee' : '#f8f7fc';
-      const tag = r.qualityConcur === true ? '<span class="badge outcome-concur">Concur</span>'
-                : r.qualityConcur === false ? '<span class="badge outcome-non">Non Concur</span>' : '';
-      return '<div style="background:white;border:2px solid #c4bdd4;border-radius:14px;padding:16px;box-shadow:0 2px 8px #0001">' +
-        '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">' +
-          '<h3 style="margin:0;font-size:17px;font-variant-numeric:tabular-nums">' + safe(r.loanNumber || r.loannumber || 'No loan number') + '</h3>' + tag +
-        '</div>' +
-        '<p style="margin:3px 0 0;font-weight:600;font-size:13.5px">' + safe(r.borrowerName || r.borrowername || 'Name not recorded') + '</p>' +
-        '<p style="margin:2px 0 10px;font-size:11.5px;letter-spacing:.3px;text-transform:uppercase;color:#5a6b80">Review Performed ' + safe(revDate(r.updated)) + '</p>' +
-        '<p style="margin:0 0 8px;font-size:13px;color:#555">' + safe(r.daysPastDue || '') + ' days past due<br>Next due: ' + safe(String(r.nextDueDate || '').slice(0, 10)) + '</p>' +
-        '<p style="margin:0;font-size:13px;background:' + bg + ';padding:10px;border-radius:6px">' + safe(r.qualityNotes || '') + '</p>' +
-      '</div>';
+    const items = await dqFetch('qualityNotes != "" && daysPastDue <= 179 && updated >= "' + cutoff + '"', '-updated');
+    if (!items.length) { cards.innerHTML = '<p class="cards-empty">No delinquency file reviews in the last 30 days.</p>'; return; }
+    const groups = {};
+    items.forEach(r => {
+      const sup = String(r.supervisor || '').trim() || 'Unassigned';
+      const team = String(r.team || '').trim();
+      const key = sup + '\u0000' + team;
+      (groups[key] = groups[key] || { sup, team, rows: [] }).rows.push(r);
+    });
+    const order = Object.keys(groups).sort((a, b) => {
+      const A = groups[a], B = groups[b];
+      if ((A.sup === 'Unassigned') !== (B.sup === 'Unassigned')) return A.sup === 'Unassigned' ? 1 : -1;
+      return A.sup.localeCompare(B.sup) || A.team.localeCompare(B.team);
+    });
+    cards.innerHTML = order.map(k => {
+      const g = groups[k];
+      return '<section class="dq-group">' +
+        '<div class="dq-head"><h2>' + safe(g.sup) + '</h2>' +
+          (g.team ? '<span class="team">' + safe(g.team) + '</span>' : '') +
+          '<span class="n">' + g.rows.length + (g.rows.length === 1 ? ' review' : ' reviews') + '</span></div>' +
+        '<div class="dq-cards">' + g.rows.map(r =>
+          '<article class="dq-card">' +
+            '<div class="loan"><h3>' + safe(r.loanNumber || 'No loan number') + '</h3>' + dqConcurTag(r) + '</div>' +
+            '<p class="nm">' + safe(r.borrowerName || 'Name not recorded') + '</p>' +
+            '<p class="when">Review Performed ' + safe(dqDate(r.updated)) + '</p>' +
+            '<dl class="dq-meta">' +
+              '<dt>Agent</dt><dd>' + safe(r.agent || 'Unassigned') + '</dd>' +
+              '<dt>Past due</dt><dd>' + safe(r.daysPastDue == null ? '—' : r.daysPastDue + ' days') + '</dd>' +
+              '<dt>Next due</dt><dd>' + safe(dqDate(r.nextDueDate)) + '</dd>' +
+            '</dl>' +
+            '<p class="dq-note" style="background:' + dqNoteBg(r) + '">' + safe(r.qualityNotes || '') + '</p>' +
+          '</article>').join('') + '</div></section>';
     }).join('');
-  } catch { cards.innerHTML = '<p>Failed to load.</p>'; }
+  } catch (e) { cards.innerHTML = '<p class="cards-empty">Failed to load: ' + safe(e.message) + '</p>'; }
+}
+
+// DCIA tab: reviewed files at or beyond the 180-day referral threshold.
+async function loadDcia() {
+  const cards = document.getElementById('dcia-cards');
+  if (!cards) return;
+  cards.innerHTML = '<p class="cards-empty">Loading…</p>';
+  try {
+    const items = await dqFetch('qualityNotes != "" && daysPastDue >= 180', '-daysPastDue');
+    if (!items.length) { cards.innerHTML = '<p class="cards-empty">No reviewed files are 180 or more days past due.</p>'; return; }
+    cards.innerHTML = items.map(r =>
+      '<article class="dcia-card">' +
+        '<div class="dcia-bar"><h3>' + safe(r.loanNumber || 'No loan number') + '</h3>' +
+          '<span class="tag">Referral Eligible</span></div>' +
+        '<div class="dcia-body">' +
+          '<div class="dcia-days"><b>' + safe(r.daysPastDue == null ? '—' : r.daysPastDue) + '</b>' +
+            '<span>Days<br>Past Due</span>' + (dqConcurTag(r) ? '<span style="margin-left:auto">' + dqConcurTag(r) + '</span>' : '') + '</div>' +
+          '<p class="nm">' + safe(r.borrowerName || 'Name not recorded') + '</p>' +
+          '<p class="when">Review Performed ' + safe(dqDate(r.updated)) + '</p>' +
+          '<dl class="dq-meta">' +
+            '<dt>Agent</dt><dd>' + safe(r.agent || 'Unassigned') + '</dd>' +
+            '<dt>Supervisor</dt><dd>' + safe(r.supervisor || 'Unassigned') + '</dd>' +
+            '<dt>Team</dt><dd>' + safe(r.team || '—') + '</dd>' +
+            '<dt>Last pay</dt><dd>' + safe(dqDate(r.dateLastPay)) + '</dd>' +
+          '</dl>' +
+          '<p class="dq-note" style="background:' + dqNoteBg(r) + '">' + safe(r.qualityNotes || '') + '</p>' +
+        '</div>' +
+      '</article>').join('');
+  } catch (e) { cards.innerHTML = '<p class="cards-empty">Failed to load: ' + safe(e.message) + '</p>'; }
 }
 
 async function loadDash() {
