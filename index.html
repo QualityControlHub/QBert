@@ -1186,7 +1186,11 @@ disconnectedPresentation();
     <div id="ws-loans-status"></div>
   </div>
   <div id="ws-genesys" hidden>
-    <h2 style="margin-bottom:22px">Customer Service Reviews</h2>
+    <h2 style="margin-bottom:18px">Customer Service Reviews</h2>
+
+    <section class="rpt-block">
+      <h3>Add Customer Service Review</h3>
+      <p class="desc">Record a single finding against a Genesys call or a Customer Service Hub case. Supervisor and Team fill in from the agent&rsquo;s staff record, and the checklist follows the communication type.</p>
     <form id="genesys-form" style="display:grid;gap:14px;max-width:600px">
       <div class="field"><label>Communication type</label>
         <select id="g-type"><option>Genesys</option><option>CSH</option></select>
@@ -1215,6 +1219,39 @@ disconnectedPresentation();
       <button type="button" class="btn primary" id="g-save">Save Review</button>
       <div id="g-status"></div>
     </form>
+    </section>
+
+    <section class="rpt-block">
+      <h3>Edit Reviews</h3>
+      <p class="desc">Load the <code>customer_service</code> collection to correct or remove an existing review.</p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <button class="btn" id="cs-edit-load">Load</button>
+        <button class="btn primary" id="cs-edit-add">Add Record</button>
+        <input id="cs-edit-search" placeholder="Filter…" style="margin-left:auto;padding:6px 10px;border:1px solid #cdc7e4;border-radius:6px;font:inherit;font-size:12.5px">
+      </div>
+      <div id="cs-edit-table"></div>
+      <div id="cs-edit-status" style="margin-top:8px;font-size:12px"></div>
+    </section>
+
+    <section class="rpt-block">
+      <h3>Generate Weekly Reports</h3>
+      <section class="rpt-block" style="border:0;box-shadow:none;padding:0;margin:0;background:none">
+    <p class="desc">Builds the Customer Service review report from the <code>customer_service</code> collection, grouped by team, then by contact, then by finding. The markup is Outlook-safe, so it pastes into an email with its formatting intact.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;max-width:720px;margin-bottom:12px">
+      <div class="del-f"><label for="rpt-from">Reviewed from</label><input type="date" id="rpt-from"></div>
+      <div class="del-f"><label for="rpt-to">Reviewed to</label><input type="date" id="rpt-to"></div>
+      <div class="del-f"><label for="rpt-type">Communication type</label><select id="rpt-type"><option value="">All</option><option>Genesys</option><option>CSH</option></select></div>
+    </div>
+    <div class="del-f" style="max-width:720px;margin-bottom:12px"><label for="rpt-greeting">Greeting</label><input id="rpt-greeting" value="Good morning, Everyone"></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn primary" id="ws-gen-report">Generate Report</button>
+      <button class="btn" id="rpt-copy" hidden>Copy for Email</button>
+      <button class="btn" id="rpt-download" hidden>Download HTML</button>
+      <span id="rpt-status" style="font-size:12px"></span>
+    </div>
+    <div id="ws-report-output"></div>
+      </section>
+    </section>
   </div>
   <div id="ws-csh" hidden>
     <h2>Genesys Dashboard</h2>
@@ -1290,23 +1327,6 @@ disconnectedPresentation();
     <h2>Narrative Reports</h2>
     <p class="del-hint">Each generator below builds a self-contained HTML report ready to paste into an email.</p>
 
-    <section class="rpt-block">
-    <h3>Customer Service Weekly Report <span class="rpt-tag">Ready</span></h3>
-    <p class="desc">Builds the Customer Service review report from the <code>customer_service</code> collection, grouped by team, then by contact, then by finding. The markup is Outlook-safe, so it pastes into an email with its formatting intact.</p>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;max-width:720px;margin-bottom:12px">
-      <div class="del-f"><label for="rpt-from">Reviewed from</label><input type="date" id="rpt-from"></div>
-      <div class="del-f"><label for="rpt-to">Reviewed to</label><input type="date" id="rpt-to"></div>
-      <div class="del-f"><label for="rpt-type">Communication type</label><select id="rpt-type"><option value="">All</option><option>Genesys</option><option>CSH</option></select></div>
-    </div>
-    <div class="del-f" style="max-width:720px;margin-bottom:12px"><label for="rpt-greeting">Greeting</label><input id="rpt-greeting" value="Good morning, Everyone"></div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
-      <button class="btn primary" id="ws-gen-report">Generate Report</button>
-      <button class="btn" id="rpt-copy" hidden>Copy for Email</button>
-      <button class="btn" id="rpt-download" hidden>Download HTML</button>
-      <span id="rpt-status" style="font-size:12px"></span>
-    </div>
-    <div id="ws-report-output"></div>
-    </section>
 
     <section class="rpt-block soon">
       <h3>Genesys Dashboard Weekly Report <span class="rpt-tag wip">Not built yet</span></h3>
@@ -1497,6 +1517,110 @@ document.getElementById('g-save').addEventListener('click', async () => {
     }
   } catch (e) { status.textContent = 'Save failed: ' + e.message; status.style.color = '#a32f58'; }
 });
+
+// ---- Edit Reviews: CRUD over the customer_service collection -----------
+const CS_FIELDS = [
+  ['contactID','Genesys Call ID / CSH Case Number'],
+  ['type','Communication type'],
+  ['agent','Agent'],
+  ['supervisor','Supervisor'],
+  ['team','Team'],
+  ['checkFailed','Checklist'],
+  ['loanNumber','Loan Number'],
+  ['findingComment','Finding']
+];
+let csEditRecords = [];
+
+async function loadCsEdit() {
+  const st = document.getElementById('cs-edit-status');
+  st.textContent = 'Loading…'; st.style.color = '#5a6b80';
+  try {
+    const res = await fetch(CONFIG.url + '/api/collections/customer_service/records?perPage=500&sort=-created');
+    if (!res.ok) throw new Error('customer_service returned HTTP ' + res.status);
+    csEditRecords = (await res.json()).items || [];
+    st.textContent = csEditRecords.length + (csEditRecords.length === 1 ? ' record' : ' records');
+    st.style.color = '#216b50';
+    renderCsEdit();
+  } catch (e) { st.textContent = 'Failed: ' + e.message; st.style.color = '#a32f58'; csEditRecords = []; renderCsEdit(); }
+}
+
+function renderCsEdit() {
+  const table = document.getElementById('cs-edit-table');
+  table.classList.add('dt-wrap');
+  const q = (document.getElementById('cs-edit-search').value || '').toLowerCase();
+  const rows = csEditRecords.filter(r => JSON.stringify(r).toLowerCase().includes(q));
+  if (!rows.length) { table.innerHTML = '<p class="dt-none">' + (csEditRecords.length ? 'No records match.' : 'Nothing loaded yet.') + '</p>'; return; }
+  const shown = rows.slice(0, 50);
+  const td = (v, cls) => '<td' + (cls ? ' class="' + cls + '"' : '') + ' title="' + safe(v) + '">' + safe(v) + '</td>';
+  table.innerHTML = '<table class="dt"><thead><tr>' +
+    CS_FIELDS.map(([k, label]) => '<th>' + safe(label) + '</th>').join('') + '<th class="act"></th></tr></thead><tbody>' +
+    shown.map(r => '<tr>' + CS_FIELDS.map(([k]) => td(r[k] == null ? '' : r[k], k === 'contactID' ? 'mono' : '')).join('') +
+      '<td class="act"><button class="btn" onclick="csEditOpen(\'' + safe(r.id) + '\')">Edit</button></td></tr>').join('') +
+    '</tbody></table><div class="dt-foot">Showing ' + shown.length + ' of ' + rows.length +
+      (rows.length !== csEditRecords.length ? ' matching (' + csEditRecords.length + ' loaded)' : '') + '</div>';
+}
+
+window.csEditOpen = function (id) {
+  const r = id ? (csEditRecords.find(x => x.id === id) || {}) : {};
+  const fld = 'display:block;font-size:11px;font-weight:600;color:#4b4475;margin-bottom:3px';
+  const inp = 'width:100%;padding:6px 8px;border:1px solid #cdc7e4;border-radius:6px;font:inherit;font-size:12.5px';
+  const field = ([k, label]) => {
+    if (k === 'type') {
+      const v = r.type || 'Genesys';
+      return '<div><label for="cse-' + k + '" style="' + fld + '">' + safe(label) + '</label>' +
+        '<select id="cse-' + k + '" style="' + inp + '">' +
+        ['Genesys', 'CSH'].map(o => '<option' + (o === v ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
+    }
+    if (k === 'findingComment' || k === 'checkFailed') {
+      return '<div><label for="cse-' + k + '" style="' + fld + '">' + safe(label) + '</label>' +
+        '<textarea id="cse-' + k + '" rows="' + (k === 'findingComment' ? 3 : 2) + '" style="' + inp + ';resize:vertical">' + safe(r[k] || '') + '</textarea></div>';
+    }
+    return '<div><label for="cse-' + k + '" style="' + fld + '">' + safe(label) + '</label>' +
+      '<input id="cse-' + k + '" value="' + safe(r[k] == null ? '' : r[k]) + '" style="' + inp + '"></div>';
+  };
+  document.body.insertAdjacentHTML('beforeend',
+    '<div id="cs-edit-modal" style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999">' +
+    '<div style="background:white;padding:20px;border-radius:10px;max-width:480px;width:92%;max-height:86vh;overflow:auto">' +
+    '<h3 style="margin:0 0 12px">' + (id ? 'Edit' : 'Add') + ' Customer Service Review</h3>' +
+    '<div style="display:grid;gap:10px">' + CS_FIELDS.map(field).join('') + '</div>' +
+    '<div id="cse-status" style="margin:10px 0 0;font-size:12px;min-height:16px"></div>' +
+    '<div style="margin-top:12px;display:flex;gap:8px">' +
+      '<button class="btn primary" onclick="csEditSave(\'' + safe(id || '') + '\')">Save</button>' +
+      '<button class="btn" onclick="document.getElementById(\'cs-edit-modal\').remove()">Cancel</button>' +
+      (id ? '<button class="btn" style="margin-left:auto;background:#8b1e1e;color:white" onclick="csEditDelete(\'' + safe(id) + '\')">Delete</button>' : '') +
+    '</div></div></div>');
+};
+
+window.csEditSave = async function (id) {
+  const st = document.getElementById('cse-status');
+  const body = {};
+  CS_FIELDS.forEach(([k]) => { const el = document.getElementById('cse-' + k); if (el) body[k] = el.value.trim(); });
+  if (!body.contactID) { st.textContent = 'Enter the Call ID / Case Number.'; st.style.color = '#a32f58'; return; }
+  st.textContent = 'Saving…'; st.style.color = '#5a6b80';
+  try {
+    const url = CONFIG.url + '/api/collections/customer_service/records' + (id ? '/' + encodeURIComponent(id) : '');
+    const res = await fetch(url, { method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) { const t = await res.text(); throw new Error(t.slice(0, 180)); }
+    const modal = document.getElementById('cs-edit-modal'); if (modal) modal.remove();
+    loadCsEdit();
+  } catch (e) { st.textContent = 'Failed: ' + e.message; st.style.color = '#a32f58'; }
+};
+
+window.csEditDelete = async function (id) {
+  if (!confirm('Delete this customer service review?')) return;
+  const st = document.getElementById('cse-status');
+  st.textContent = 'Deleting…'; st.style.color = '#5a6b80';
+  try {
+    const res = await fetch(CONFIG.url + '/api/collections/customer_service/records/' + encodeURIComponent(id), { method: 'DELETE' });
+    if (!res.ok) throw new Error('delete returned HTTP ' + res.status);
+    const modal = document.getElementById('cs-edit-modal'); if (modal) modal.remove();
+    loadCsEdit();
+  } catch (e) { st.textContent = 'Failed: ' + e.message; st.style.color = '#a32f58'; }
+};
+
+document.getElementById('cs-edit-load').addEventListener('click', loadCsEdit);
+document.getElementById('cs-edit-add').addEventListener('click', () => csEditOpen(null));
+document.getElementById('cs-edit-search').addEventListener('input', renderCsEdit);
 
 // ---- Customer Service narrative report --------------------------------
 // Outlook desktop renders with Word's engine: default <p> margins inflate
