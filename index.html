@@ -168,6 +168,8 @@ body[data-width="full"]{--page-w:100%}
 .rpt-tag.wip{background:#fbf2e6;color:var(--amber);border-color:#eedcc0}
 .rpt-plan{margin:0;padding-left:18px;font-size:12.5px;color:var(--muted);line-height:1.7}
 .rpt-plan li{margin:0}
+.ws-warn{margin:0 0 16px;font-size:12.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--danger);
+ background:#fdf1f5;border:1px solid #efc6d7;border-left:4px solid var(--danger);border-radius:8px;padding:11px 14px;max-width:780px}
 @media(max-width:850px){.sup-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:9px}.sup-count{text-align:left}.sup-metrics{justify-content:flex-start}}
 </style>
 </head>
@@ -885,7 +887,7 @@ async function saveReview(command){
   if(command==='return-to-review'){
    if(!await confirmAction('Return to In Review?','This clears findings, outcome, and completion data. The record returns to In Review.','Return','Cancel'))return;
    const keep=['id','title','loanAction','team','risk','reviewer','created','updated','actionDate'];
-   const patch={state:'In Review',outcome:'',completedOn:'',supervisor:'',agent:'',findingCategory:'',findingText:'',findingIssuedOn:'',findingDueOn:'',correction:'',correctiveAction:'',supervisorApprovedCorrection:false,supervisorApprovedCorrectiveAction:false,supervisorSignOffNotes:'',supervisorSignedOffBy:'',supervisorSignedOffOn:'',supervisorSignedOffStaff:'',checklistResponses:{},checklistSnapshot:[]};
+   const patch={state:'In Review',outcome:'',completedOn:'',supervisor:'',agent:'',critical:'',flag:false,findingCategory:'',findingText:'',findingIssuedOn:'',findingDueOn:'',correction:'',correctiveAction:'',supervisorApprovedCorrection:false,supervisorApprovedCorrectiveAction:false,supervisorSignOffNotes:'',supervisorSignedOffBy:'',supervisorSignedOffOn:'',supervisorSignedOffStaff:'',checklistResponses:{},checklistSnapshot:[]};
    app.busy=true;
    await fetch(CONFIG.url+'/api/collections/loan_action_reviews/records/'+encodeURIComponent(record.id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
    app.dirty=false;$('review-dialog').close();query(true);return;
@@ -1165,7 +1167,7 @@ disconnectedPresentation();
     <button class="btn" id="ws-close" style="position:absolute;top:12px;right:12px;z-index:2;background:#1e3a5f;color:white;border-color:#1e3a5f;font-size:18px;padding:6px 12px" title="Home">🏠</button>
   </div>
   <nav style="display:flex;gap:8px;margin:16px 0;border-bottom:1px solid #ddd;padding-bottom:8px;flex-wrap:wrap">
-    <button class="btn" data-ws="loans">Monthly Loan Review Selection</button>
+    <button class="btn" data-ws="loans">Loan Action Reviews</button>
     <button class="btn" data-ws="genesys">Customer Service Reviews</button>
     <button class="btn" data-ws="delinquency">Delinquency Loan Reviews</button>
     <button class="btn" data-ws="csh">Genesys Dashboard</button>
@@ -1175,7 +1177,8 @@ disconnectedPresentation();
     
   </nav>
   <div id="ws-loans">
-    <h2>Monthly Loan Review Selection</h2>
+    <h2>Loan Action Reviews</h2>
+    <p class="ws-warn">Loan reviews are performed on the front workspace</p>
     <p>Paste production loans (CSV). Columns should match loan_action_reviews fields.</p>
     <textarea id="ws-loans-input" rows="8" style="width:100%;font-family:monospace;font-size:12px" placeholder="title,loanAction,team,risk,actionDate,reviewer"></textarea>
     <div style="margin:10px 0;display:flex;gap:8px">
@@ -2640,14 +2643,46 @@ async function loadDash() {
     loans_html += '<div style="display:flex;height:24px;border-radius:4px;overflow:hidden;background:#eee">' + Object.entries(prevByState).map(([k,v]) => '<div style="width:' + (prevTotal ? v/prevTotal*100 : 0) + '%;background:' + ({'In Review':'#6b4c9a','Findings':'#c45c26','Completed':'#2e7d32'}[k]||'#999') + '" title="' + k + '"></div>').join('') + '</div>';
     loans_html += '<div style="margin-top:20px;padding:16px;background:#f8f7fc;border-radius:8px"><div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px"><span style="background:#1e3a5f;color:white;padding:6px 12px;border-radius:4px">QC Specialist</span><span>→</span><span style="background:#4a6fa5;color:white;padding:6px 12px;border-radius:4px">Supervisor</span><span>→</span><span style="background:#c45c26;color:white;padding:6px 12px;border-radius:4px">Corrections</span><span>→</span><span style="background:#2e7d32;color:white;padding:6px 12px;border-radius:4px">Complete</span></div></div></div>';
 
-    // Delinquency portfolio
-    const groups = {};
-    d.forEach(r => { const g = r.delinquencyGroup || 'Unknown'; groups[g] = (groups[g]||0) + 1; });
-    const totalBal = d.reduce((s,r) => s + (Number(r.outstandingBalance)||0), 0);
-    const avgDays = d.length ? Math.round(d.reduce((s,r) => s + (Number(r.daysPastDue)||0), 0) / d.length) : 0;
-    let del_html = '<div style="background:white;border-radius:10px;padding:12px;border:2px solid #c4bdd4;border-radius:14px"><h2 style="margin:0 0 10px;font-size:14px">Delinquency Snapshot</h2>';
-    del_html += '<div style="display:flex;gap:16px;margin-bottom:16px"><div style="flex:1;text-align:center;padding:12px;background:#f8f7fc;border-radius:8px"><div style="font-size:28px;font-weight:700;color:#1e3a5f">' + delinqTotal.toLocaleString() + '</div><div style="font-size:12px;color:#666">Total Loans</div></div><div style="flex:1;text-align:center;padding:12px;background:#f8f7fc;border-radius:8px"><div style="font-size:28px;font-weight:700;color:#1e3a5f">$' + Math.round(totalBal/1000).toLocaleString('en-US') + 'k</div><div style="font-size:12px;color:#666">Outstanding</div></div><div style="flex:1;text-align:center;padding:12px;background:#f8f7fc;border-radius:8px"><div style="font-size:28px;font-weight:700;color:#1e3a5f">' + avgDays + '</div><div style="font-size:12px;color:#666">Avg Days Past Due</div></div></div>';
-    del_html += '<p style="font-size:12px;color:#666;margin:0 0 8px">Aging breakdown (from loaded sample):</p><div style="display:flex;gap:8px;flex-wrap:wrap">' + Object.entries(groups).sort((a,b)=>b[1]-a[1]).map(([g,c]) => '<div style="background:#fff3e0;padding:8px 12px;border-radius:6px;font-size:13px"><strong>' + c + '</strong> loans in ' + g + '</div>').join('') + '</div></div>';
+    // Delinquency portfolio by days past due. Counts come from the server with
+    // perPage=1, so each band is exact rather than limited to the loaded page.
+    const BANDS = [['Under 120', 0, 119], ['120–139', 120, 139], ['140–159', 140, 159],
+                   ['160–179', 160, 179], ['180 and greater', 180, null]];
+    const BAND_COLORS = ['#9aa5b1', '#4a6fa5', '#6b4c9a', '#c45c26', '#8e2b4f'];
+    const bandCounts = await Promise.all(BANDS.map(async ([lab, lo, hi]) => {
+      const f = hi == null ? 'daysPastDue >= ' + lo : '(daysPastDue >= ' + lo + ' && daysPastDue <= ' + hi + ')';
+      try {
+        const r = await fetch(CONFIG.url + '/api/collections/delinquency/records?perPage=1&filter=' + encodeURIComponent(f));
+        if (!r.ok) return 0;
+        const j = await r.json();
+        return j.totalItems == null ? (j.items || []).length : j.totalItems;
+      } catch (e) { return 0; }
+    }));
+    const bands = BANDS.map((b, i) => ({ lab: b[0], n: bandCounts[i], c: BAND_COLORS[i] }))
+      .filter((b, i) => i > 0 || b.n > 0);           // hide "Under 120" when empty
+    const banded = bands.reduce((t, b) => t + b.n, 0);
+    const tile = (n, label, color) =>
+      '<div style="flex:1;min-width:104px;text-align:center;padding:12px 8px;background:#f8f7fc;border-radius:8px">' +
+      '<div style="font-size:26px;font-weight:700;line-height:1.1;color:' + color + '">' + n + '</div>' +
+      '<div style="font-size:11.5px;color:#666;margin-top:2px">' + label + '</div></div>';
+
+    let del_html = '<div style="background:white;padding:12px;border:2px solid #c4bdd4;border-radius:14px">' +
+      '<h2 style="margin:0 0 10px;font-size:14px">Delinquency Snapshot</h2>';
+    del_html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">' +
+      tile(delinqTotal.toLocaleString(), 'Total Loans', '#1e3a5f') +
+      bands.map(b => tile(b.n.toLocaleString(), b.lab + ' days', b.c)).join('') + '</div>';
+    const barTotal = banded || 1;
+    del_html += '<div style="display:flex;height:22px;border-radius:5px;overflow:hidden;background:#edefe4">' +
+      bands.map(b => b.n ? '<div style="width:' + (b.n / barTotal * 100) + '%;background:' + b.c +
+        '" title="' + b.lab + ': ' + b.n + '"></div>' : '').join('') + '</div>';
+    del_html += '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:#666">' +
+      bands.map(b => '<span><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:' + b.c +
+        ';margin-right:5px"></i>' + b.lab + '</span>').join('') + '</div>';
+    if (banded !== delinqTotal) {
+      del_html += '<p style="font-size:11px;color:#666;margin:8px 0 0">' +
+        (delinqTotal - banded).toLocaleString() + ' loan' + (delinqTotal - banded === 1 ? ' has' : 's have') +
+        ' no days past due recorded.</p>';
+    }
+    del_html += '</div>';
 
     // ---- Previous month: Concur vs Non Concur -------------------------
     const pmStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
