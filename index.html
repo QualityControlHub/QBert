@@ -168,6 +168,23 @@ body[data-width="full"]{--page-w:100%}
 .rpt-tag.wip{background:#fbf2e6;color:var(--amber);border-color:#eedcc0}
 .rpt-plan{margin:0;padding-left:18px;font-size:12.5px;color:var(--muted);line-height:1.7}
 .rpt-plan li{margin:0}
+.dm-group{margin:0 0 22px}
+.dm-group:last-child{margin-bottom:0}
+.dm-glabel{display:flex;align-items:center;gap:11px;margin:0 0 11px;font-size:10.5px;letter-spacing:1.7px;
+ text-transform:uppercase;font-weight:700;color:var(--header)}
+.dm-glabel::after{content:"";flex:1;height:2px;background:var(--gold);border-radius:1px}
+.dm-glabel .n{font-size:10px;letter-spacing:.3px;text-transform:none;color:var(--muted);font-weight:600}
+.dm-card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:0 0 9px;background:white;
+ display:flex;gap:16px;align-items:flex-start;box-shadow:0 1px 5px #1e4d6b0d}
+.dm-card:last-child{margin-bottom:0}
+.dm-main{flex:1;min-width:0}
+.dm-loan{font-family:var(--font-serif);font-size:18px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums;color:var(--ink)}
+.dm-text{margin:5px 0 0;font-size:12.5px;line-height:1.55;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}
+.dm-side{display:flex;flex-direction:column;gap:7px;align-items:stretch;flex:none;min-width:116px}
+.dm-chk{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:600;white-space:nowrap;color:var(--ink)}
+.dm-chk input{width:15px;height:15px;accent-color:var(--navy);flex:none}
+.dm-side .btn{min-height:28px;font-size:11px;padding:3px 10px}
+.dm-del{background:#8b1e1e;color:white;border-color:#8b1e1e}
 .ws-warn{margin:0 0 16px;font-size:12.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--danger);
  background:#fdf1f5;border:1px solid #efc6d7;border-left:4px solid var(--danger);border-radius:8px;padding:11px 14px;max-width:780px}
 @media(max-width:850px){.sup-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:9px}.sup-count{text-align:left}.sup-metrics{justify-content:flex-start}}
@@ -2930,11 +2947,13 @@ async function loadLoanForm() {
 </script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
-<div id="dm-workspace" style="display:none;max-width:800px;margin:40px auto;padding:24px">
+<div id="dm-workspace" style="display:none;max-width:920px;margin:40px auto;padding:24px">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
     <h1 style="margin:0;color:#4a6fa5">DM Workspace</h1>
     <button class="btn" id="dm-close" style="background:#1e3a5f;color:white;border-color:#1e3a5f;font-size:18px;padding:6px 12px" title="Home">🏠</button>
   </div>
+    <section class="rpt-block">
+      <h3>Findings Input</h3>
   <form id="dm-form" style="display:grid;gap:12px;max-width:560px;margin-bottom:28px">
     <div class="field"><label for="dm-title">Loan Number</label><input id="dm-title" required></div>
     <div class="field"><label for="dm-type">Type</label>
@@ -2950,8 +2969,19 @@ async function loadLoanForm() {
     <div><button type="submit" class="btn primary">Submit</button></div>
     <div id="dm-status" style="font-size:12px;min-height:16px"></div>
   </form>
-  <h2 style="font-size:17px;margin:0 0 12px">Findings List</h2>
-  <div id="dm-records"></div>
+    </section>
+
+    <section class="rpt-block">
+      <h3>Findings List</h3>
+      <p class="desc">Findings still outstanding. Tick <strong>Added</strong> and save to move one to the archive.</p>
+      <div id="dm-records"></div>
+    </section>
+
+    <section class="rpt-block">
+      <h3>Findings Archive</h3>
+      <p class="desc">Findings already added. Untick and save to send one back to the list.</p>
+      <div id="dm-archive"></div>
+    </section>
 </div>
 
 <script>
@@ -2992,32 +3022,61 @@ document.getElementById('dm-form').addEventListener('submit', async e => {
 });
 
 const DM_TYPES = ['Loan Action', 'Loan File', 'Genesys', 'CSH'];
+
+function dmGroups(rows, archived, empty) {
+  if (!rows.length) return '<p class="dt-none">' + empty + '</p>';
+  const groups = {};
+  rows.forEach(r => { const k = String(r.typeAction || '').trim() || 'Unspecified'; (groups[k] = groups[k] || []).push(r); });
+  const order = Object.keys(groups).sort((x, y) => {
+    const a = DM_TYPES.indexOf(x), b = DM_TYPES.indexOf(y);
+    return (a === -1 ? 99 : a) - (b === -1 ? 99 : b) || x.localeCompare(y);
+  });
+  return order.map(k => '<section class="dm-group">' +
+    '<div class="dm-glabel">' + safe(k) + '<span class="n">' + groups[k].length +
+      (groups[k].length === 1 ? ' finding' : ' findings') + '</span></div>' +
+    groups[k].map(r =>
+      '<div class="dm-card" data-dm="' + safe(r.id) + '">' +
+        '<div class="dm-main"><div class="dm-loan">' + safe(r.title || 'No loan number') + '</div>' +
+          '<p class="dm-text">' + safe(r.findingText || '') + '</p></div>' +
+        '<div class="dm-side">' +
+          '<label class="dm-chk"><input type="checkbox" data-added' + (archived ? ' checked' : '') + '> Added</label>' +
+          '<button class="btn" onclick="dmSaveAdded(this)">Save</button>' +
+          '<button class="btn dm-del" onclick="deleteDM(\'' + safe(r.id) + '\')">Delete</button>' +
+          '<span class="st" style="font-size:10.5px"></span>' +
+        '</div>' +
+      '</div>').join('') + '</section>').join('');
+}
+
 async function loadDMRecords() {
-  const div = document.getElementById('dm-records');
+  const list = document.getElementById('dm-records');
+  const arch = document.getElementById('dm-archive');
+  if (!list || !arch) return;
   try {
     const res = await fetch(CONFIG.url + '/api/collections/dm_findings/records?perPage=200&sort=-created');
     if (!res.ok) throw new Error('dm_findings returned HTTP ' + res.status);
     const items = (await res.json()).items || [];
-    if (!items.length) { div.innerHTML = '<p class="dt-none">No findings recorded yet.</p>'; return; }
-    const groups = {};
-    items.forEach(r => { const k = String(r.typeAction || '').trim() || 'Unspecified'; (groups[k] = groups[k] || []).push(r); });
-    const order = Object.keys(groups).sort((x, y) => {
-      const a = DM_TYPES.indexOf(x), b = DM_TYPES.indexOf(y);
-      return (a === -1 ? 99 : a) - (b === -1 ? 99 : b) || x.localeCompare(y);
-    });
-    div.innerHTML = order.map(k => '<section class="dq-group">' +
-      '<div class="dq-head"><h2>' + safe(k) + '</h2>' +
-        '<span class="n">' + groups[k].length + (groups[k].length === 1 ? ' finding' : ' findings') + '</span></div>' +
-      groups[k].map(r =>
-        '<div style="border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin:0 0 9px;background:white;display:flex;gap:12px;align-items:flex-start">' +
-        '<div style="flex:1;min-width:0">' +
-          '<strong style="font-variant-numeric:tabular-nums">' + safe(r.title || 'No loan number') + '</strong>' +
-          '<p style="margin:4px 0 0;font-size:12.5px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere">' + safe(r.findingText || '') + '</p>' +
-        '</div>' +
-        '<button class="btn" onclick="deleteDM(\'' + safe(r.id) + '\')" style="background:#8b1e1e;color:white;border-color:#8b1e1e;font-size:11px;min-height:28px;padding:3px 10px">Delete</button>' +
-        '</div>').join('') + '</section>').join('');
-  } catch (e) { div.innerHTML = '<p class="dt-none">Failed to load: ' + safe(e.message) + '</p>'; }
+    list.innerHTML = dmGroups(items.filter(r => r.addedFinding !== true), false, 'No outstanding findings.');
+    arch.innerHTML = dmGroups(items.filter(r => r.addedFinding === true), true, 'Nothing archived yet.');
+  } catch (e) {
+    const msg = '<p class="dt-none">Failed to load: ' + safe(e.message) + '</p>';
+    list.innerHTML = msg; arch.innerHTML = '';
+  }
 }
+
+window.dmSaveAdded = async function (btn) {
+  const card = btn.closest('.dm-card');
+  const id = card.dataset.dm;
+  const st = card.querySelector('.st');
+  const added = card.querySelector('[data-added]').checked;
+  btn.disabled = true; st.textContent = 'Saving…'; st.style.color = '#5a6b80';
+  try {
+    const res = await fetch(CONFIG.url + '/api/collections/dm_findings/records/' + encodeURIComponent(id),
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ addedFinding: added }) });
+    if (!res.ok) { const t = await res.text(); throw new Error(t.slice(0, 140)); }
+    loadDMRecords();
+  } catch (e) { st.textContent = 'Failed'; st.style.color = '#a32f58'; btn.disabled = false; }
+};
+
 window.deleteDM = async function(id) {
   if (!confirm('Delete this finding?')) return;
   await fetch(CONFIG.url + '/api/collections/dm_findings/records/' + encodeURIComponent(id), { method: 'DELETE' });
