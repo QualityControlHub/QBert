@@ -185,6 +185,10 @@ body[data-width="full"]{--page-w:100%}
 .dm-chk input{width:15px;height:15px;accent-color:var(--navy);flex:none}
 .dm-side .btn{min-height:28px;font-size:11px;padding:3px 10px}
 .dm-del{background:#8b1e1e;color:white;border-color:#8b1e1e}
+.dm-archive-block{background:#fdf2f4;border-color:#eccfd7}
+.dm-archive-block .dm-card{background:#fffafb;border-color:#f0d8de}
+.dm-archive-block .dm-glabel{color:#8e2b4f}
+.dm-archive-block .dm-glabel::after{background:#e7b9c6}
 .ws-warn{margin:0 0 16px;font-size:12.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--danger);
  background:#fdf1f5;border:1px solid #efc6d7;border-left:4px solid var(--danger);border-radius:8px;padding:11px 14px;max-width:780px}
 @media(max-width:850px){.sup-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:9px}.sup-count{text-align:left}.sup-metrics{justify-content:flex-start}}
@@ -2962,7 +2966,7 @@ async function loadLoanForm() {
       <div id="dm-records"></div>
     </section>
 
-    <section class="rpt-block">
+    <section class="rpt-block dm-archive-block">
       <h3>Findings Archive</h3>
       <p class="desc">Findings already added. Untick and save to send one back to the list.</p>
       <div id="dm-archive"></div>
