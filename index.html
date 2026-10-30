@@ -1167,8 +1167,8 @@ disconnectedPresentation();
   <nav style="display:flex;gap:8px;margin:16px 0;border-bottom:1px solid #ddd;padding-bottom:8px;flex-wrap:wrap">
     <button class="btn" data-ws="loans">Monthly Loan Review Selection</button>
     <button class="btn" data-ws="genesys">Customer Service Reviews</button>
+    <button class="btn" data-ws="delinquency">Delinquency Loan Reviews</button>
     <button class="btn" data-ws="csh">Genesys Dashboard</button>
-    <button class="btn" data-ws="delinquency">Delinquency</button>
     <button class="btn" data-ws="dataedit">Data Edit</button>
     <button class="btn" data-ws="newsletter">Newsletter</button>
     <button class="btn" data-ws="reports">Narrative Reports</button>
@@ -1270,13 +1270,11 @@ disconnectedPresentation();
     <div id="metrics-status"></div>
   </div>
   <div id="ws-delinquency" hidden>
-    <h2>Delinquency</h2>
-    <div class="del-tabs">
-      <button class="btn" data-del="replace" aria-pressed="false">Replace Collection</button>
-      <button class="btn" data-del="review" aria-pressed="false">Delinquency Reviews</button>
-      <button class="btn" data-del="dcia" aria-pressed="false">DCIA Reviews</button>
-    </div>
-    <div id="del-pane-replace" hidden>
+    <h2 style="margin-bottom:18px">Delinquency Loan Reviews</h2>
+
+    <section class="rpt-block">
+      <h3>Replace Collection</h3>
+
       <p class="del-hint">Paste the delinquency CSV. Every record in the collection is deleted and replaced.
         Columns: loanNumber, borrowerName, agent, team, supervisor, daysPastDue, nextDueDate, dateLastPay, qualityCheck, qualityNotes, qualityConcur.</p>
       <textarea id="del-csv" rows="7" style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px" placeholder="Paste CSV with headers"></textarea>
@@ -1284,23 +1282,41 @@ disconnectedPresentation();
         <button class="btn danger" id="del-replace">Replace Collection</button>
         <span id="del-status" style="font-size:12px"></span>
       </div>
-    </div>
-    <div id="del-pane-review" hidden>
+    </section>
+
+    <section class="rpt-block">
+      <h3>Delinquency Reviews <span class="rpt-tag">145–179 days</span></h3>
+
       <p class="del-hint">A random five files with <strong>145–179 days past due</strong>. Complete the quality check, notes and outcome on each.</p>
       <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
         <button class="btn" id="del-review-pull">Pull 5 Files</button>
         <span id="del-review-status" style="font-size:12px"></span>
       </div>
       <div id="del-review-list"></div>
-    </div>
-    <div id="del-pane-dcia" hidden>
+    </section>
+
+    <section class="rpt-block">
+      <h3>DCIA Reviews <span class="rpt-tag wip">180+ days</span></h3>
+
       <p class="del-hint">Every file at <strong>180 or more days past due</strong>, eligible for Treasury cross-servicing referral.</p>
       <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
         <button class="btn" id="del-dcia-pull">Load DCIA Files</button>
         <span id="del-dcia-status" style="font-size:12px"></span>
       </div>
       <div id="del-dcia-list"></div>
-    </div>
+    </section>
+
+    <section class="rpt-block">
+      <h3>Edit Delinquency Records</h3>
+      <p class="desc">The collection is large, so the filter searches the database directly across loan number, borrower, agent, supervisor and team. Leave it blank to load the most delinquent files.</p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <input id="dl-edit-search" placeholder="Loan number, borrower, agent…" style="flex:1;min-width:220px;padding:6px 10px;border:1px solid #cdc7e4;border-radius:6px;font:inherit;font-size:12.5px">
+        <button class="btn" id="dl-edit-load">Load</button>
+        <button class="btn primary" id="dl-edit-add">Add Record</button>
+      </div>
+      <div id="dl-edit-table"></div>
+      <div id="dl-edit-status" style="margin-top:8px;font-size:12px"></div>
+    </section>
   </div>
   <div id="ws-dataedit" hidden>
     <h2>Data Edit</h2>
@@ -1516,6 +1532,143 @@ document.getElementById('g-save').addEventListener('click', async () => {
       status.style.color = '#a32f58';
     }
   } catch (e) { status.textContent = 'Save failed: ' + e.message; status.style.color = '#a32f58'; }
+});
+
+// ---- Edit Delinquency Records -----------------------------------------
+// The collection is large, so the filter queries the server rather than
+// paging everything into the browser.
+const DL_COLS = [
+  ['loanNumber','Loan Number'],['borrowerName','Borrower'],['agent','Agent'],
+  ['supervisor','Supervisor'],['team','Team'],['daysPastDue','Days Past Due'],
+  ['nextDueDate','Next Due'],['dateLastPay','Last Pay'],['qualityCheck','Quality Check'],
+  ['qualityConcur','Outcome'],['qualityNotes','Quality Notes']
+];
+const DL_SEARCH = ['loanNumber','borrowerName','agent','supervisor','team'];
+let dlEditRecords = [];
+
+async function loadDlEdit() {
+  const st = document.getElementById('dl-edit-status');
+  const q = (document.getElementById('dl-edit-search').value || '').trim();
+  st.textContent = 'Loading…'; st.style.color = '#5a6b80';
+  try {
+    const esc = '"' + q.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+    const filter = q ? '(' + DL_SEARCH.map(f => f + ' ~ ' + esc).join(' || ') + ')' : '';
+    const url = CONFIG.url + '/api/collections/delinquency/records?perPage=200&sort=-daysPastDue' +
+      (filter ? '&filter=' + encodeURIComponent(filter) : '');
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('delinquency returned HTTP ' + res.status);
+    const data = await res.json();
+    dlEditRecords = data.items || [];
+    const total = data.totalItems == null ? dlEditRecords.length : data.totalItems;
+    st.textContent = dlEditRecords.length + ' of ' + total + (q ? ' matching "' + q + '"' : ' records') +
+      (total > dlEditRecords.length ? ' · narrow the filter to see the rest' : '');
+    st.style.color = total > dlEditRecords.length ? '#8a5320' : '#216b50';
+    renderDlEdit();
+  } catch (e) { st.textContent = 'Failed: ' + e.message; st.style.color = '#a32f58'; dlEditRecords = []; renderDlEdit(); }
+}
+
+function dlCell(r, k) {
+  const v = r[k];
+  if (k === 'qualityConcur') return v === true ? 'Concur' : v === false ? 'Non Concur' : '';
+  if (k === 'nextDueDate' || k === 'dateLastPay') return delShowDate(v);
+  return v == null ? '' : String(v);
+}
+
+function renderDlEdit() {
+  const table = document.getElementById('dl-edit-table');
+  table.classList.add('dt-wrap');
+  if (!dlEditRecords.length) { table.innerHTML = '<p class="dt-none">Nothing to show. Load the collection or change the filter.</p>'; return; }
+  table.innerHTML = '<table class="dt"><thead><tr>' +
+    DL_COLS.map(([k, label]) => '<th>' + safe(label) + '</th>').join('') + '<th class="act"></th></tr></thead><tbody>' +
+    dlEditRecords.map(r => '<tr>' + DL_COLS.map(([k]) => {
+      const v = dlCell(r, k);
+      return '<td' + (k === 'loanNumber' ? ' class="mono"' : '') + ' title="' + safe(v) + '">' + safe(v) + '</td>';
+    }).join('') + '<td class="act"><button class="btn" onclick="dlEditOpen(\'' + safe(r.id) + '\')">Edit</button></td></tr>').join('') +
+    '</tbody></table><div class="dt-foot">' + dlEditRecords.length + (dlEditRecords.length === 1 ? ' row' : ' rows') + '</div>';
+}
+
+window.dlEditOpen = function (id) {
+  const r = id ? (dlEditRecords.find(x => x.id === id) || {}) : {};
+  const fld = 'display:block;font-size:11px;font-weight:600;color:#4b4475;margin-bottom:3px';
+  const inp = 'width:100%;padding:6px 8px;border:1px solid #cdc7e4;border-radius:6px;font:inherit;font-size:12.5px';
+  const day = v => { const t = String(v || '').trim(); return /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : ''; };
+  const text = (k, label, val) => '<div><label for="dle-' + k + '" style="' + fld + '">' + safe(label) + '</label>' +
+    '<input id="dle-' + k + '" value="' + safe(val == null ? '' : val) + '" style="' + inp + '"></div>';
+  const body =
+    text('loanNumber', 'Loan Number', r.loanNumber) +
+    text('borrowerName', 'Borrower', r.borrowerName) +
+    text('agent', 'Agent', r.agent) +
+    text('supervisor', 'Supervisor', r.supervisor) +
+    text('team', 'Team', r.team) +
+    '<div><label for="dle-daysPastDue" style="' + fld + '">Days Past Due</label>' +
+      '<input id="dle-daysPastDue" type="number" value="' + safe(r.daysPastDue == null ? '' : r.daysPastDue) + '" style="' + inp + '"></div>' +
+    '<div><label for="dle-nextDueDate" style="' + fld + '">Next Due Date</label>' +
+      '<input id="dle-nextDueDate" type="date" value="' + day(r.nextDueDate) + '" style="' + inp + '"></div>' +
+    '<div><label for="dle-dateLastPay" style="' + fld + '">Date Last Pay</label>' +
+      '<input id="dle-dateLastPay" type="date" value="' + day(r.dateLastPay) + '" style="' + inp + '"></div>' +
+    text('qualityCheck', 'Quality Check', r.qualityCheck) +
+    '<div><label for="dle-qualityConcur" style="' + fld + '">Outcome</label><select id="dle-qualityConcur" style="' + inp + '">' +
+      '<option value="">Not recorded</option>' +
+      '<option value="true"' + (r.qualityConcur === true ? ' selected' : '') + '>Concur</option>' +
+      '<option value="false"' + (r.qualityConcur === false ? ' selected' : '') + '>Non Concur</option></select></div>' +
+    '<div><label for="dle-qualityNotes" style="' + fld + '">Quality Notes</label>' +
+      '<textarea id="dle-qualityNotes" rows="3" style="' + inp + ';resize:vertical">' + safe(r.qualityNotes || '') + '</textarea></div>';
+  document.body.insertAdjacentHTML('beforeend',
+    '<div id="dl-edit-modal" style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999">' +
+    '<div style="background:white;padding:20px;border-radius:10px;max-width:480px;width:92%;max-height:86vh;overflow:auto">' +
+    '<h3 style="margin:0 0 12px">' + (id ? 'Edit' : 'Add') + ' Delinquency Record</h3>' +
+    '<div style="display:grid;gap:10px">' + body + '</div>' +
+    '<div id="dle-status" style="margin:10px 0 0;font-size:12px;min-height:16px"></div>' +
+    '<div style="margin-top:12px;display:flex;gap:8px">' +
+      '<button class="btn primary" onclick="dlEditSave(\'' + safe(id || '') + '\')">Save</button>' +
+      '<button class="btn" onclick="document.getElementById(\'dl-edit-modal\').remove()">Cancel</button>' +
+      (id ? '<button class="btn" style="margin-left:auto;background:#8b1e1e;color:white" onclick="dlEditDelete(\'' + safe(id) + '\')">Delete</button>' : '') +
+    '</div></div></div>');
+};
+
+window.dlEditSave = async function (id) {
+  const st = document.getElementById('dle-status');
+  const val = k => { const el = document.getElementById('dle-' + k); return el ? el.value.trim() : ''; };
+  const loan = val('loanNumber');
+  if (!loan) { st.textContent = 'Enter the loan number.'; st.style.color = '#a32f58'; return; }
+  const body = { loanNumber: loan, borrowerName: val('borrowerName'), agent: val('agent'),
+    supervisor: val('supervisor'), team: val('team'), qualityCheck: val('qualityCheck'),
+    qualityNotes: val('qualityNotes') };
+  const dpd = val('daysPastDue');
+  if (dpd !== '' && !isNaN(Number(dpd))) body.daysPastDue = Number(dpd);
+  ['nextDueDate','dateLastPay'].forEach(k => { const d = val(k); if (d) body[k] = d + ' 00:00:00.000Z'; });
+  const oc = val('qualityConcur');
+  body.qualityConcur = oc === 'true' ? true : oc === 'false' ? false : null;
+  st.textContent = 'Saving…'; st.style.color = '#5a6b80';
+  try {
+    const url = CONFIG.url + '/api/collections/delinquency/records' + (id ? '/' + encodeURIComponent(id) : '');
+    const res = await fetch(url, { method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) { const t = await res.text(); throw new Error(t.slice(0, 180)); }
+    const m = document.getElementById('dl-edit-modal'); if (m) m.remove();
+    loadDlEdit();
+  } catch (e) { st.textContent = 'Failed: ' + e.message; st.style.color = '#a32f58'; }
+};
+
+window.dlEditDelete = async function (id) {
+  if (!confirm('Delete this delinquency record?')) return;
+  const st = document.getElementById('dle-status');
+  st.textContent = 'Deleting…'; st.style.color = '#5a6b80';
+  try {
+    const res = await fetch(CONFIG.url + '/api/collections/delinquency/records/' + encodeURIComponent(id), { method: 'DELETE' });
+    if (!res.ok) throw new Error('delete returned HTTP ' + res.status);
+    const m = document.getElementById('dl-edit-modal'); if (m) m.remove();
+    loadDlEdit();
+  } catch (e) { st.textContent = 'Failed: ' + e.message; st.style.color = '#a32f58'; }
+};
+
+document.getElementById('dl-edit-load').addEventListener('click', loadDlEdit);
+document.getElementById('dl-edit-add').addEventListener('click', () => dlEditOpen(null));
+let dlSearchTimer;
+document.getElementById('dl-edit-search').addEventListener('input', () => {
+  clearTimeout(dlSearchTimer); dlSearchTimer = setTimeout(loadDlEdit, 400);
+});
+document.getElementById('dl-edit-search').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); clearTimeout(dlSearchTimer); loadDlEdit(); }
 });
 
 // ---- Edit Reviews: CRUD over the customer_service collection -----------
@@ -1842,15 +1995,6 @@ function delShowDate(v) {
   return isNaN(d.getTime()) ? '—' : new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'numeric', day: 'numeric', year: 'numeric' }).format(d);
 }
 
-document.querySelectorAll('[data-del]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    ['replace','review','dcia'].forEach(k => {
-      const pane = document.getElementById('del-pane-' + k);
-      if (pane) pane.hidden = k !== btn.dataset.del;
-    });
-    document.querySelectorAll('[data-del]').forEach(b => b.setAttribute('aria-pressed', b === btn));
-  });
-});
 
 async function delLoadLists() {
   if (delStaff.length && delChecks.length) return;
