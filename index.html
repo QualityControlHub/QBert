@@ -1216,6 +1216,9 @@ disconnectedPresentation();
       <h3>Add Customer Service Review</h3>
       <p class="desc">Record a single finding against a Genesys call or a Customer Service Hub case. Supervisor and Team fill in from the agent&rsquo;s staff record, and the checklist follows the communication type.</p>
     <form id="genesys-form" style="display:grid;gap:14px;max-width:600px">
+      <div class="field"><label for="g-reviewer">Reviewer</label>
+        <select id="g-reviewer"><option value="">Select reviewer…</option><option>Robert Thompson</option><option>Tonya Hayes</option></select>
+      </div>
       <div class="field"><label>Communication type</label>
         <select id="g-type"><option>Genesys</option><option>CSH</option></select>
       </div>
@@ -1260,10 +1263,9 @@ disconnectedPresentation();
     <section class="rpt-block">
       <h3>Generate Weekly Reports</h3>
       <section class="rpt-block" style="border:0;box-shadow:none;padding:0;margin:0;background:none">
-    <p class="desc">Builds the Customer Service review report from the <code>customer_service</code> collection, grouped by team, then by contact, then by finding. The markup is Outlook-safe, so it pastes into an email with its formatting intact.</p>
+    <p class="desc">Builds the Customer Service review report from the <code>customer_service</code> collection, grouped by team, then by contact, then by finding. Only reviews not yet marked <strong>Sent?</strong> are included. The markup is Outlook-safe, so it pastes into an email with its formatting intact.</p>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;max-width:720px;margin-bottom:12px">
-      <div class="del-f"><label for="rpt-from">Reviewed from</label><input type="date" id="rpt-from"></div>
-      <div class="del-f"><label for="rpt-to">Reviewed to</label><input type="date" id="rpt-to"></div>
+      <div class="del-f"><label for="rpt-reviewer">Reviewer</label><select id="rpt-reviewer"><option value="">All reviewers</option><option>Robert Thompson</option><option>Tonya Hayes</option></select></div>
       <div class="del-f"><label for="rpt-type">Communication type</label><select id="rpt-type"><option value="">All</option><option>Genesys</option><option>CSH</option></select></div>
     </div>
     <div class="del-f" style="max-width:720px;margin-bottom:12px"><label for="rpt-greeting">Greeting</label><input id="rpt-greeting" value="Good morning, Everyone"></div>
@@ -1271,6 +1273,7 @@ disconnectedPresentation();
       <button class="btn primary" id="ws-gen-report">Generate Report</button>
       <button class="btn" id="rpt-copy" hidden>Copy for Email</button>
       <button class="btn" id="rpt-download" hidden>Download HTML</button>
+      <button class="btn success" id="rpt-mark-sent" hidden>Mark these as sent</button>
       <span id="rpt-status" style="font-size:12px"></span>
     </div>
     <div id="ws-report-output"></div>
@@ -1516,9 +1519,13 @@ document.getElementById('g-save').addEventListener('click', async () => {
   const agent = agentOpt ? (agentOpt.value ? agentOpt.textContent : '') : '';
   if (!recId) { status.textContent = 'Enter the Genesys Call ID / CSH Case Number.'; status.style.color = '#a32f58'; return; }
   if (!agent) { status.textContent = 'Select an agent.'; status.style.color = '#a32f58'; return; }
+  const reviewer = val('g-reviewer');
+  if (!reviewer) { status.textContent = 'Select a reviewer.'; status.style.color = '#a32f58'; return; }
   const body = {
     contactID: recId,
     type: val('g-type'),
+    reviewer: reviewer,
+    sent: false,
     agent: agent,
     supervisor: val('g-supervisor'),
     team: val('g-team'),
@@ -1681,9 +1688,12 @@ document.getElementById('dl-edit-search').addEventListener('keydown', e => {
 });
 
 // ---- Edit Reviews: CRUD over the customer_service collection -----------
+const QC_REVIEWERS = ['Robert Thompson', 'Tonya Hayes'];
 const CS_FIELDS = [
+  ['sent','Sent?'],
   ['contactID','Genesys Call ID / CSH Case Number'],
   ['type','Communication type'],
+  ['reviewer','Reviewer'],
   ['agent','Agent'],
   ['supervisor','Supervisor'],
   ['team','Team'],
@@ -1714,9 +1724,12 @@ function renderCsEdit() {
   if (!rows.length) { table.innerHTML = '<p class="dt-none">' + (csEditRecords.length ? 'No records match.' : 'Nothing loaded yet.') + '</p>'; return; }
   const shown = rows.slice(0, 50);
   const td = (v, cls) => '<td' + (cls ? ' class="' + cls + '"' : '') + ' title="' + safe(v) + '">' + safe(v) + '</td>';
+  const cell = (r, k) => k === 'sent'
+    ? (r.sent === true ? '<td style="color:#216b50;font-weight:700">Yes</td>' : '<td style="color:#8a5320;font-weight:700">No</td>')
+    : td(r[k] == null ? '' : r[k], k === 'contactID' ? 'mono' : '');
   table.innerHTML = '<table class="dt"><thead><tr>' +
     CS_FIELDS.map(([k, label]) => '<th>' + safe(label) + '</th>').join('') + '<th class="act"></th></tr></thead><tbody>' +
-    shown.map(r => '<tr>' + CS_FIELDS.map(([k]) => td(r[k] == null ? '' : r[k], k === 'contactID' ? 'mono' : '')).join('') +
+    shown.map(r => '<tr>' + CS_FIELDS.map(([k]) => cell(r, k)).join('') +
       '<td class="act"><button class="btn" onclick="csEditOpen(\'' + safe(r.id) + '\')">Edit</button></td></tr>').join('') +
     '</tbody></table><div class="dt-foot">Showing ' + shown.length + ' of ' + rows.length +
       (rows.length !== csEditRecords.length ? ' matching (' + csEditRecords.length + ' loaded)' : '') + '</div>';
@@ -1727,6 +1740,16 @@ window.csEditOpen = function (id) {
   const fld = 'display:block;font-size:11px;font-weight:600;color:#4b4475;margin-bottom:3px';
   const inp = 'width:100%;padding:6px 8px;border:1px solid #cdc7e4;border-radius:6px;font:inherit;font-size:12.5px';
   const field = ([k, label]) => {
+    if (k === 'sent') {
+      return '<label class="dm-chk" style="padding:8px 10px;background:#f8f9f2;border:1px solid var(--line);border-radius:7px">' +
+        '<input type="checkbox" id="cse-sent"' + (r.sent === true ? ' checked' : '') + '> ' + safe(label) + '</label>';
+    }
+    if (k === 'reviewer') {
+      return '<div><label for="cse-reviewer" style="' + fld + '">' + safe(label) + '</label>' +
+        '<select id="cse-reviewer" style="' + inp + '"><option value="">Not set</option>' +
+        QC_REVIEWERS.map(n => '<option' + (r.reviewer === n ? ' selected' : '') + '>' + safe(n) + '</option>').join('') +
+        '</select></div>';
+    }
     if (k === 'type') {
       const v = r.type || 'Genesys';
       return '<div><label for="cse-' + k + '" style="' + fld + '">' + safe(label) + '</label>' +
@@ -1756,7 +1779,11 @@ window.csEditOpen = function (id) {
 window.csEditSave = async function (id) {
   const st = document.getElementById('cse-status');
   const body = {};
-  CS_FIELDS.forEach(([k]) => { const el = document.getElementById('cse-' + k); if (el) body[k] = el.value.trim(); });
+  CS_FIELDS.forEach(([k]) => {
+    const el = document.getElementById('cse-' + k);
+    if (!el) return;
+    body[k] = (k === 'sent') ? el.checked : el.value.trim();
+  });
   if (!body.contactID) { st.textContent = 'Enter the Call ID / Case Number.'; st.style.color = '#a32f58'; return; }
   st.textContent = 'Saving…'; st.style.color = '#5a6b80';
   try {
@@ -1792,6 +1819,7 @@ const RFONT = 'font-family:Aptos,Calibri,Arial,sans-serif;';
 const RTABLE = 'border-collapse:collapse;border-spacing:0;mso-table-lspace:0pt;mso-table-rspace:0pt;';
 const GENESYS_TAB = '68320927-7346-499a-85bd-a9aea710484a';
 let rptHtml = '';
+let rptIds = [];
 
 const rp = (text, extra) => '<p style="' + RP0 + RFONT + (extra || '') + '">' + text + '</p>';
 const rpSpacer = (px) => { px = px || 12;
@@ -1901,21 +1929,23 @@ document.getElementById('ws-gen-report').addEventListener('click', async () => {
   const btn = document.getElementById('ws-gen-report');
   btn.disabled = true; st.textContent = 'Building…'; st.style.color = '#5a6b80';
   try {
-    const conds = [];
-    const from = document.getElementById('rpt-from').value;
-    const to = document.getElementById('rpt-to').value;
+    // Only reviews that have not been sent yet; a record predating the field
+    // has no value, so test against true rather than equalling false.
+    const conds = ['sent != true'];
+    const reviewer = document.getElementById('rpt-reviewer').value;
     const type = document.getElementById('rpt-type').value;
-    if (from) conds.push('created >= "' + from + ' 00:00:00"');
-    if (to) conds.push('created <= "' + to + ' 23:59:59"');
+    if (reviewer) conds.push('reviewer = "' + reviewer + '"');
     if (type) conds.push('type = "' + type + '"');
     const url = CONFIG.url + '/api/collections/customer_service/records?perPage=500&sort=team,agent' +
       (conds.length ? '&filter=' + encodeURIComponent(conds.join(' && ')) : '');
     const res = await fetch(url);
     if (!res.ok) throw new Error('customer_service returned HTTP ' + res.status);
     const items = (await res.json()).items || [];
-    if (!items.length) { st.textContent = 'No reviews match that range.'; st.style.color = '#8a5320';
-      out.innerHTML = ''; document.getElementById('rpt-copy').hidden = true; document.getElementById('rpt-download').hidden = true;
+    if (!items.length) { st.textContent = 'No unsent reviews match those filters.'; st.style.color = '#8a5320';
+      out.innerHTML = ''; rptIds = [];
+      ['rpt-copy','rpt-download','rpt-mark-sent'].forEach(id => document.getElementById(id).hidden = true);
       btn.disabled = false; return; }
+    rptIds = items.map(r => r.id);
     const byTeam = {};
     items.forEach(r => { const t = String(r.team || '').trim() || 'Unassigned'; (byTeam[t] = byTeam[t] || []).push(r); });
     const teams = Object.keys(byTeam).sort((a, b) =>
@@ -1928,6 +1958,9 @@ document.getElementById('ws-gen-report').addEventListener('click', async () => {
     out.innerHTML = ''; out.appendChild(frame); frame.srcdoc = rptHtml;
     document.getElementById('rpt-copy').hidden = false;
     document.getElementById('rpt-download').hidden = false;
+    const mark = document.getElementById('rpt-mark-sent');
+    mark.hidden = false; mark.disabled = false;
+    mark.textContent = 'Mark these ' + rptIds.length + ' as sent';
     st.textContent = items.length + ' finding' + (items.length === 1 ? '' : 's') + ' across ' + teams.length +
       (teams.length === 1 ? ' team' : ' teams') + '.';
     st.style.color = '#216b50';
@@ -1946,6 +1979,33 @@ document.getElementById('rpt-copy').addEventListener('click', async () => {
     })]);
     st.textContent = 'Copied — paste into your email.'; st.style.color = '#216b50';
   } catch (e) { st.textContent = 'Could not copy (' + e.message + '). Use Download HTML instead.'; st.style.color = '#8a5320'; }
+});
+
+// Flips sent on exactly the records that went into the report on screen, so a
+// later report cannot repeat them. Send the email first; this is not undoable
+// from here (untick Sent? in Edit Reviews to reverse one).
+document.getElementById('rpt-mark-sent').addEventListener('click', async () => {
+  const st = document.getElementById('rpt-status');
+  const btn = document.getElementById('rpt-mark-sent');
+  if (!rptIds.length) return;
+  if (!confirm('Mark ' + rptIds.length + ' review' + (rptIds.length === 1 ? '' : 's') +
+      ' as sent?\n\nDo this after the email has gone out \u2014 they will be left out of future reports.')) return;
+  btn.disabled = true;
+  let ok = 0, fail = 0, firstErr = '';
+  for (const id of rptIds) {
+    st.textContent = 'Marking\u2026 ' + (ok + fail + 1) + ' of ' + rptIds.length;
+    st.style.color = '#5a6b80';
+    try {
+      const res = await fetch(CONFIG.url + '/api/collections/customer_service/records/' + encodeURIComponent(id),
+        { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sent: true }) });
+      if (res.ok) ok++; else { fail++; if (!firstErr) firstErr = (await res.text()).slice(0, 140); }
+    } catch (e) { fail++; if (!firstErr) firstErr = e.message; }
+  }
+  st.textContent = 'Marked ' + ok + ' as sent' + (fail ? ', ' + fail + ' failed \u2014 ' + firstErr : '') + '.';
+  st.style.color = fail ? '#a32f58' : '#216b50';
+  if (!fail) { btn.textContent = 'Marked as sent'; rptIds = []; }
+  else { btn.disabled = false; }
+  if (typeof csEditRecords !== 'undefined' && csEditRecords.length) loadCsEdit();
 });
 
 document.getElementById('rpt-download').addEventListener('click', () => {
