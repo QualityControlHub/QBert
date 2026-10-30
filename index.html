@@ -2617,7 +2617,8 @@ async function loadAging() {
   const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
   const cutoff = monthAgo.toISOString().replace('T', ' ').slice(0, 19);
   try {
-    const items = await dqFetch('qualityNotes != "" && daysPastDue <= 179 && updated >= "' + cutoff + '"', '-updated');
+    const items = (await dqFetch('qualityCheck != "" && daysPastDue <= 179 && updated >= "' + cutoff + '"', '-updated'))
+      .filter(r => String(r.qualityCheck || '').trim());
     if (!items.length) { cards.innerHTML = '<p class="cards-empty">No delinquency file reviews in the last 30 days.</p>'; return; }
     const groups = {};
     items.forEach(r => {
@@ -2646,8 +2647,10 @@ async function loadAging() {
               '<dt>Agent</dt><dd>' + safe(r.agent || 'Unassigned') + '</dd>' +
               '<dt>Past due</dt><dd>' + safe(r.daysPastDue == null ? '—' : r.daysPastDue + ' days') + '</dd>' +
               '<dt>Next due</dt><dd>' + safe(dqDate(r.nextDueDate)) + '</dd>' +
+              '<dt>Check</dt><dd>' + safe(r.qualityCheck || '—') + '</dd>' +
             '</dl>' +
-            '<p class="dq-note" style="background:' + dqNoteBg(r) + '">' + safe(r.qualityNotes || '') + '</p>' +
+            (String(r.qualityNotes || '').trim()
+              ? '<p class="dq-note" style="background:' + dqNoteBg(r) + '">' + safe(r.qualityNotes) + '</p>' : '') +
           '</article>').join('') + '</div></section>';
     }).join('');
   } catch (e) { cards.innerHTML = '<p class="cards-empty">Failed to load: ' + safe(e.message) + '</p>'; }
@@ -2659,7 +2662,8 @@ async function loadDcia() {
   if (!cards) return;
   cards.innerHTML = '<p class="cards-empty">Loading…</p>';
   try {
-    const items = await dqFetch('qualityNotes != "" && daysPastDue >= 180', '-daysPastDue');
+    const items = (await dqFetch('qualityCheck != "" && daysPastDue >= 180', '-daysPastDue'))
+      .filter(r => String(r.qualityCheck || '').trim());
     if (!items.length) { cards.innerHTML = '<p class="cards-empty">No reviewed files are 180 or more days past due.</p>'; return; }
     cards.innerHTML = items.map(r =>
       '<article class="dcia-card">' +
@@ -2675,8 +2679,10 @@ async function loadDcia() {
             '<dt>Supervisor</dt><dd>' + safe(r.supervisor || 'Unassigned') + '</dd>' +
             '<dt>Team</dt><dd>' + safe(r.team || '—') + '</dd>' +
             '<dt>Last pay</dt><dd>' + safe(dqDate(r.dateLastPay)) + '</dd>' +
+            '<dt>Check</dt><dd>' + safe(r.qualityCheck || '—') + '</dd>' +
           '</dl>' +
-          '<p class="dq-note" style="background:' + dqNoteBg(r) + '">' + safe(r.qualityNotes || '') + '</p>' +
+          (String(r.qualityNotes || '').trim()
+            ? '<p class="dq-note" style="background:' + dqNoteBg(r) + '">' + safe(r.qualityNotes) + '</p>' : '') +
         '</div>' +
       '</article>').join('');
   } catch (e) { cards.innerHTML = '<p class="cards-empty">Failed to load: ' + safe(e.message) + '</p>'; }
