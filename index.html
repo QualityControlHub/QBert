@@ -1190,7 +1190,7 @@ disconnectedPresentation();
   <nav style="display:flex;gap:8px;margin:16px 0;border-bottom:1px solid #ddd;padding-bottom:8px;flex-wrap:wrap">
     <button class="btn" data-ws="loans">Loan Action Reviews</button>
     <button class="btn" data-ws="genesys">Customer Service Reviews</button>
-    <button class="btn" data-ws="delinquency">Delinquency Loan Reviews</button>
+    <button class="btn" data-ws="delinquency">Delinquency File Reviews</button>
     <button class="btn" data-ws="csh">Genesys Dashboard</button>
     <button class="btn" data-ws="dataedit">Data Edit</button>
     <button class="btn" data-ws="newsletter">Newsletter</button>
@@ -1297,7 +1297,7 @@ disconnectedPresentation();
     <div id="metrics-status"></div>
   </div>
   <div id="ws-delinquency" hidden>
-    <h2 style="margin-bottom:18px">Delinquency Loan Reviews</h2>
+    <h2 style="margin-bottom:18px">Delinquency File Reviews</h2>
 
     <section class="rpt-block">
       <h3>Add to Collection <span class="rpt-tag">Keeps existing records</span></h3>
@@ -1336,9 +1336,9 @@ disconnectedPresentation();
     <section class="rpt-block">
       <h3>DCIA Reviews <span class="rpt-tag wip">180+ days</span></h3>
 
-      <p class="del-hint">Every file at <strong>180 or more days past due</strong>, eligible for Treasury cross-servicing referral.</p>
+      <p class="del-hint">A random five files at <strong>180 or more days past due</strong>, eligible for Treasury cross-servicing referral. Complete the quality check, notes and outcome on each.</p>
       <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
-        <button class="btn" id="del-dcia-pull">Load DCIA Files</button>
+        <button class="btn" id="del-dcia-pull">Pull 5 Files</button>
         <span id="del-dcia-status" style="font-size:12px"></span>
       </div>
       <div id="del-dcia-list"></div>
@@ -2170,12 +2170,9 @@ async function delPull(kind) {
     const res = await fetch(url);
     if (!res.ok) throw new Error('delinquency returned HTTP ' + res.status);
     let items = (await res.json()).items || [];
-    if (!isDcia) {
-      for (let i = items.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [items[i], items[j]] = [items[j], items[i]]; }
-      items = items.slice(0, 5);
-    } else {
-      items.sort((a, b) => (b.daysPastDue || 0) - (a.daysPastDue || 0));
-    }
+    // Both sections draw the same way: shuffle the eligible files, take five.
+    for (let i = items.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [items[i], items[j]] = [items[j], items[i]]; }
+    items = items.slice(0, 5);
     if (!items.length) {
       stEl.textContent = isDcia ? 'No files are 180 or more days past due.' : 'No files fall between 145 and 179 days past due.';
       return;
