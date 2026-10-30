@@ -1381,21 +1381,6 @@ disconnectedPresentation();
 </div>
 <script>
 // Reviewer workspace
-document.getElementById('hidden-workspace-link').addEventListener('click', e => {
-  e.preventDefault();
-  history.pushState({workspace: 'reviewer'}, '', '#reviewer');
-  document.getElementById('reviewer-workspace').style.display = 'block'; loadLoanForm(); loadGenesysLists();
-  document.querySelector('.app-header').style.display = 'none';
-  document.querySelector('.nav-shell').style.display = 'none';
-  document.querySelector('main').style.display = 'none';
-});
-document.getElementById('ws-close').addEventListener('click', () => {
-  document.getElementById('reviewer-workspace').style.display = 'none';
-  document.querySelector('.app-header').style.display = '';
-  document.querySelector('.nav-shell').style.display = '';
-  document.querySelector('main').style.display = '';
-  document.getElementById('section-loans').style.display = '';
-});
 document.querySelectorAll('[data-ws]').forEach(btn => {
   btn.addEventListener('click', () => {
     ['loans','genesys','csh','delinquency','dataedit','newsletter','reports'].forEach(s => {
@@ -2985,20 +2970,6 @@ async function loadLoanForm() {
 </div>
 
 <script>
-document.getElementById('hidden-dm-link').addEventListener('click', e => {
-  e.preventDefault();
-  history.pushState({workspace: 'dm'}, '', '#dm'); document.getElementById('dm-workspace').style.display = 'block';
-  document.querySelector('.app-header').style.display = 'none';
-  document.querySelector('.nav-shell').style.display = 'none';
-  document.querySelector('main').style.display = 'none';
-  loadDMRecords();
-});
-document.getElementById('dm-close').addEventListener('click', () => {
-  document.getElementById('dm-workspace').style.display = 'none';
-  document.querySelector('.app-header').style.display = '';
-  document.querySelector('.nav-shell').style.display = '';
-  document.querySelector('main').style.display = '';
-});
 document.getElementById('dm-form').addEventListener('submit', async e => {
   e.preventDefault();
   const status = document.getElementById('dm-status');
@@ -3312,29 +3283,6 @@ function renderNLCards() {
 </div>
 
 <script>
-document.getElementById('qc-docs-link').addEventListener('click', e => {
-  e.preventDefault();
-  history.pushState({workspace: 'qc'}, '', '#qc'); document.getElementById('qc-docs').style.display = 'block';
-  document.querySelector('.app-header').style.display = 'none';
-  document.querySelector('.nav-shell').style.display = 'none';
-  document.querySelector('main').style.display = 'none';
-  document.getElementById('qc-guide').innerHTML = document.getElementById('section-guide').innerHTML;
-  if (typeof renderChecklists === 'function') {
-    const orig = document.getElementById('checklist-content');
-    if (orig) {
-      const clone = orig.cloneNode(true);
-      clone.id = 'qc-checklist-content';
-      document.getElementById('qc-checklists').innerHTML = '';
-      document.getElementById('qc-checklists').appendChild(clone);
-    }
-  }
-});
-document.getElementById('qc-docs-close').addEventListener('click', () => {
-  document.getElementById('qc-docs').style.display = 'none';
-  document.querySelector('.app-header').style.display = '';
-  document.querySelector('.nav-shell').style.display = '';
-  document.querySelector('main').style.display = '';
-});
 document.querySelectorAll('[data-qc]').forEach(btn => {
   btn.addEventListener('click', () => {
     ['guide','comms','checklists'].forEach(s => {
@@ -3524,6 +3472,75 @@ if (metricsBtn) {
       say('Could not capture the tab', 4000);
     }
   });
+})();
+</script>
+
+<script>
+// Deep links: #reviewer, #dm and #qc each open their workspace directly, so the
+// page can be bookmarked. Closing one puts the URL back to the front workspace.
+(function () {
+  function renderQcDocs() {
+    const guide = document.getElementById('qc-guide');
+    const src = document.getElementById('section-guide');
+    if (guide && src) guide.innerHTML = src.innerHTML;
+    const orig = document.getElementById('checklist-content');
+    const target = document.getElementById('qc-checklists');
+    if (orig && target) {
+      const clone = orig.cloneNode(true);
+      clone.id = 'qc-checklist-content';
+      target.innerHTML = '';
+      target.appendChild(clone);
+    }
+  }
+  const WORKSPACES = {
+    reviewer: { el: 'reviewer-workspace', onOpen: () => { if (typeof loadLoanForm === 'function') loadLoanForm();
+                                                          if (typeof loadGenesysLists === 'function') loadGenesysLists(); } },
+    dm:       { el: 'dm-workspace',       onOpen: () => { if (typeof loadDMRecords === 'function') loadDMRecords(); } },
+    qc:       { el: 'qc-docs',            onOpen: renderQcDocs }
+  };
+  const names = Object.keys(WORKSPACES);
+  let current = null;
+
+  function showWorkspace(name) {
+    const front = !name;
+    names.forEach(k => {
+      const el = document.getElementById(WORKSPACES[k].el);
+      if (el) el.style.display = (k === name) ? 'block' : 'none';
+    });
+    const header = document.querySelector('.app-header');
+    const nav = document.querySelector('.nav-shell');
+    const main = document.querySelector('main');
+    if (header) header.style.display = front ? '' : 'none';
+    if (nav) nav.style.display = front ? '' : 'none';
+    if (main) main.style.display = front ? '' : 'none';
+    if (front) { const sec = document.getElementById('section-loans'); if (sec) sec.style.display = ''; }
+    if (name && name !== current) { try { WORKSPACES[name].onOpen(); } catch (e) { console.warn(e); } }
+    current = name || null;
+    window.scrollTo(0, 0);
+  }
+
+  function nameFromHash() {
+    const h = String(location.hash || '').replace(/^#/, '').toLowerCase();
+    return WORKSPACES[h] ? h : '';
+  }
+  function go(name) {
+    const url = name ? ('#' + name) : (location.pathname + location.search);
+    history.pushState({ workspace: name || null }, '', url);
+    showWorkspace(name);
+  }
+
+  [['hidden-workspace-link', 'reviewer'], ['hidden-dm-link', 'dm'], ['qc-docs-link', 'qc']].forEach(([id, name]) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', e => { e.preventDefault(); go(name); });
+  });
+  ['ws-close', 'dm-close', 'qc-docs-close'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', () => go(''));
+  });
+
+  window.addEventListener('popstate', () => showWorkspace(nameFromHash()));
+  window.addEventListener('hashchange', () => showWorkspace(nameFromHash()));
+  showWorkspace(nameFromHash());   // honour a bookmarked hash on load
 })();
 </script>
 </body></html>
