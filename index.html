@@ -1300,7 +1300,18 @@ disconnectedPresentation();
     <h2 style="margin-bottom:18px">Delinquency Loan Reviews</h2>
 
     <section class="rpt-block">
-      <h3>Replace Collection</h3>
+      <h3>Add to Collection <span class="rpt-tag">Keeps existing records</span></h3>
+      <p class="del-hint">Paste a CSV to append rows to the delinquency collection. Nothing already in the collection is removed.
+        Columns: loanNumber, borrowerName, agent, team, supervisor, daysPastDue, nextDueDate, dateLastPay, qualityCheck, qualityNotes, qualityConcur.</p>
+      <textarea id="del-add-csv" rows="7" style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px" placeholder="Paste CSV with headers"></textarea>
+      <div style="margin:10px 0;display:flex;gap:8px;align-items:center">
+        <button class="btn primary" id="del-add-run">Add Records</button>
+        <span id="del-add-status" style="font-size:12px"></span>
+      </div>
+    </section>
+
+    <section class="rpt-block">
+      <h3>Replace Collection <span class="rpt-tag wip">Deletes everything first</span></h3>
 
       <p class="del-hint">Paste the delinquency CSV. Every record in the collection is deleted and replaced.
         Columns: loanNumber, borrowerName, agent, team, supervisor, daysPastDue, nextDueDate, dateLastPay, qualityCheck, qualityNotes, qualityConcur.</p>
@@ -2180,9 +2191,11 @@ async function delPull(kind) {
 document.getElementById('del-review-pull').addEventListener('click', () => delPull('review'));
 document.getElementById('del-dcia-pull').addEventListener('click', () => delPull('dcia'));
 
-document.getElementById('del-replace').addEventListener('click', async () => {
-  const text = document.getElementById('del-csv').value.trim();
-  const status = document.getElementById('del-status');
+// Shared CSV import. `replace` also clears the collection first; otherwise the
+// rows are appended and whatever is already there is left alone.
+async function delImportCsv(textareaId, statusId, replace) {
+  const text = document.getElementById(textareaId).value.trim();
+  const status = document.getElementById(statusId);
   if (!text) { status.textContent = 'Paste the CSV first.'; status.style.color = '#a32f58'; return; }
   const { headers, rows } = delParseCsv(text);
   if (!rows.length) { status.textContent = 'No data rows found.'; status.style.color = '#a32f58'; return; }
@@ -2190,15 +2203,19 @@ document.getElementById('del-replace').addEventListener('click', async () => {
   const known = mapped.filter(Boolean);
   if (!known.length) { status.textContent = 'No recognised columns. Expected: ' + DEL_FIELDS.join(', '); status.style.color = '#a32f58'; return; }
   const unknown = headers.filter((h, i) => !mapped[i]);
-  if (!confirm('Replace all delinquency records with ' + rows.length + ' rows?\n\nMapped columns: ' + known.join(', ') +
-      (unknown.length ? '\nIgnored: ' + unknown.join(', ') : ''))) return;
-  status.textContent = 'Clearing…'; status.style.color = '#5a6b80';
-  try {
-    const existing = await fetch(CONFIG.url + '/api/collections/delinquency/records?perPage=500').then(r => r.json());
-    for (const rec of (existing.items || [])) {
-      await fetch(CONFIG.url + '/api/collections/delinquency/records/' + rec.id, { method: 'DELETE' });
-    }
-  } catch (e) { console.warn(e); }
+  const question = replace
+    ? 'Replace all delinquency records with ' + rows.length + ' rows?\n\nEverything currently in the collection is deleted first.'
+    : 'Add ' + rows.length + ' row' + (rows.length === 1 ? '' : 's') + ' to the delinquency collection?\n\nExisting records are kept.';
+  if (!confirm(question + '\n\nMapped columns: ' + known.join(', ') + (unknown.length ? '\nIgnored: ' + unknown.join(', ') : ''))) return;
+  if (replace) {
+    status.textContent = 'Clearing…'; status.style.color = '#5a6b80';
+    try {
+      const existing = await fetch(CONFIG.url + '/api/collections/delinquency/records?perPage=500').then(r => r.json());
+      for (const rec of (existing.items || [])) {
+        await fetch(CONFIG.url + '/api/collections/delinquency/records/' + rec.id, { method: 'DELETE' });
+      }
+    } catch (e) { console.warn(e); }
+  }
   let ok = 0, fail = 0, firstErr = '';
   for (const vals of rows) {
     const obj = {};
@@ -2216,11 +2233,15 @@ document.getElementById('del-replace').addEventListener('click', async () => {
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) });
       if (res.ok) ok++; else { fail++; if (!firstErr) firstErr = (await res.text()).slice(0, 160); }
     } catch (e) { fail++; if (!firstErr) firstErr = e.message; }
-    status.textContent = 'Adding… ' + ok + ' of ' + rows.length;
+    status.textContent = (replace ? 'Adding… ' : 'Adding… ') + ok + ' of ' + rows.length;
   }
-  status.textContent = 'Replaced with ' + ok + ' records' + (fail ? ', ' + fail + ' failed — ' + firstErr : '') + '.';
+  status.textContent = (replace ? 'Replaced with ' : 'Added ') + ok + ' record' + (ok === 1 ? '' : 's') +
+    (fail ? ', ' + fail + ' failed — ' + firstErr : '') + '.';
   status.style.color = fail ? '#a32f58' : '#216b50';
-});
+  if (!fail && !replace) document.getElementById(textareaId).value = '';
+}
+document.getElementById('del-add-run').addEventListener('click', () => delImportCsv('del-add-csv', 'del-add-status', false));
+document.getElementById('del-replace').addEventListener('click', () => delImportCsv('del-csv', 'del-status', true));
 
 document.getElementById('csh-replace').addEventListener('click', async () => {
   const text = document.getElementById('csh-csv').value.trim();
