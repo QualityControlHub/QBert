@@ -49,7 +49,7 @@ body[data-width="full"]{--page-w:100%}
 .cs-section-title h2{font-size:18px}
 .cs-section-title span{font-size:11.5px;color:var(--muted)}
 .cs-panel{background:white;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:6px 20px}
-.sup-row{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(110px,1.9fr) 78px minmax(0,1.25fr);gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid #eef0e6}
+.sup-row{display:grid;grid-template-columns:minmax(140px,1fr) minmax(0,3.2fr);gap:14px;align-items:center;padding:13px 0;border-bottom:1px solid #eef0e6}
 .sup-row:last-child{border-bottom:0}
 .sup-id{display:flex;align-items:center;gap:9px;min-width:0}
 .sup-dot{width:10px;height:10px;border-radius:3px;flex:none}
@@ -63,9 +63,18 @@ body[data-width="full"]{--page-w:100%}
 .sup-metrics{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
 .sup-metrics span{font-size:10.5px;color:var(--muted);background:#f8f9f2;border:1px solid var(--line);border-radius:6px;padding:3px 7px;white-space:nowrap}
 .sup-metrics b{color:var(--ink);font-weight:600}
-.cov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:18px 12px;padding:16px 0 18px}
+.cs-range-note{font-size:11.5px;color:var(--muted);background:#f8f9f2;border:1px solid var(--line);border-radius:8px;padding:8px 13px;margin:0;display:flex;gap:7px 18px;flex-wrap:wrap;align-items:baseline}
+.cs-range-note b{color:var(--ink);font-weight:600}
+.sup-ranges{display:flex;flex-direction:column;gap:8px;min-width:0}
+.sup-line{display:grid;grid-template-columns:58px minmax(60px,1fr) 52px minmax(0,auto);gap:12px;align-items:center}
+.sup-tag{font-size:9.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--muted)}
+.cov-legend{display:flex;flex-direction:column;gap:2px;margin-top:4px;font-size:10px;color:var(--muted)}
+.cov-legend span{display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
+.cov-legend i{width:7px;height:7px;border-radius:2px;flex:none}
+.cov-legend b{color:var(--ink);font-weight:600}
+.cov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:18px 12px;padding:16px 0 18px}
 .cov-item{text-align:center;min-width:0}
-.cov-ring{position:relative;width:76px;height:76px;margin:0 auto 7px}
+.cov-ring{position:relative;width:92px;height:92px;margin:0 auto 5px}
 .cov-ring svg{display:block}
 .cov-pct{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font-serif);font-size:15px;font-weight:700}
 .cov-name{font-size:12.5px;font-weight:600;overflow-wrap:anywhere}
@@ -205,7 +214,7 @@ body[data-width="full"]{--page-w:100%}
 .dm-archive-block .dm-glabel::after{background:#e7b9c6}
 .ws-warn{margin:0 0 16px;font-size:12.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--danger);
  background:#fdf1f5;border:1px solid #efc6d7;border-left:4px solid var(--danger);border-radius:8px;padding:11px 14px;max-width:780px}
-@media(max-width:850px){.sup-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:9px}.sup-count{text-align:left}.sup-metrics{justify-content:flex-start}}
+@media(max-width:850px){.sup-row{grid-template-columns:minmax(0,1fr);row-gap:10px}.sup-line{grid-template-columns:52px minmax(40px,1fr) 46px;row-gap:6px}.sup-line .sup-metrics{grid-column:1/-1}.sup-count{text-align:left}.sup-metrics{justify-content:flex-start}}
 </style>
 </head>
 <body>
@@ -257,6 +266,7 @@ body[data-width="full"]{--page-w:100%}
  </section>
 <div id="section-cs" style="display:none">
   <div class="page-heading"><div><h1>Genesys SLS Reviews and Quality Metrics</h1></div><div class="heading-actions"><button class="btn" id="cs-snapshot">Copy as image</button></div></div>
+  <p class="cs-range-note" id="cs-range-note"></p>
   <div style="display:flex;align-items:center;gap:16px;margin:16px 0 10px"><h2 style="font-size:16px;margin:0">Agent Scoring</h2><div id="cs-summary" style="display:flex;gap:8px"></div></div>
   <div id="cs-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:20px"></div>
   
@@ -3040,6 +3050,18 @@ async function loadCS() {
       allAgents = allStaff;
       notes.push('No staff records carry the role "Agent", so all ' + allStaff.length + ' active staff were used for matching.');
     }
+    // The refresh date comes from the newest record rather than a hard-coded
+    // string, so a reload of the collection moves it without editing the page.
+    const noteEl = document.getElementById('cs-range-note');
+    if (noteEl) {
+      const stamps = items.map(r => r.updated || r.created).filter(Boolean).sort();
+      const newest = stamps.length ? new Date(String(stamps[stamps.length - 1]).replace(' ', 'T')) : null;
+      const when = newest && !isNaN(newest.getTime())
+        ? new Intl.DateTimeFormat('en-US', { timeZone: CONFIG.zone, month: 'numeric', day: 'numeric', year: 'numeric' }).format(newest)
+        : '';
+      noteEl.innerHTML = '<span><b>Historic</b> = the last two months</span><span><b>Recent</b> = the last two weeks</span>' +
+        (when ? '<span>Updated <b>' + safe(when) + '</b></span>' : '') + '<span>Refreshed weekly</span>';
+    }
     const rangeOf = r => (r.range || '').trim().toLowerCase();
     const histItems = items.filter(r => rangeOf(r) === 'historic');
     const recItems = items.filter(r => rangeOf(r) === 'recent');
@@ -3053,6 +3075,7 @@ async function loadCS() {
     const evaluated = r => (Number(r.evaluations) || 0) > 0;
     const scored = r => known(r) && evaluated(r);
     const reviewedSet = new Set(histItems.filter(scored).map(r => norm(r.agent)));
+    const recentSet = new Set(recItems.filter(scored).map(r => norm(r.agent)));
     const mean = rows => { const v = rows.map(r => pctOf(r.averageEvaluation)).filter(n => n !== null); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : 0; };
     const avgHist = mean(histItems.filter(scored));
     const avgRec = mean(recItems.filter(scored));
@@ -3111,54 +3134,71 @@ async function loadCS() {
     const supAgentMap = {};
     allStaff.forEach(s => { if (s.supervisor) { if (!supAgentMap[s.supervisor]) supAgentMap[s.supervisor] = []; supAgentMap[s.supervisor].push(s.agent); } });
     if (supDiv) {
+      const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+      const roll = rows => ({
+        rows: rows.length,
+        count: rows.reduce((t, r) => t + (Number(r.evaluations) || 0), 0),
+        calls: rows.reduce((t, r) => t + (Number(r.calls) || 0), 0),
+        talkA: avg(rows.map(r => Number(r.callTalkAgent) || 0)),
+        talkC: avg(rows.map(r => Number(r.callTalkCaller) || 0)),
+        silence: avg(rows.map(r => silenceShare(r)).filter(n => n !== null))
+      });
       const supStats = supervisors.map(sup => {
         const supAgents = supAgentMap[sup.agent] || [];
-        const reviewed = supAgents.filter(a => reviewedSet.has(norm(a)));
         const mine = r => supAgents.some(a => norm(a) === norm(r.agent));
-        const teamHist = histItems.filter(mine);
-        const count = teamHist.reduce((s, r) => s + (Number(r.evaluations) || 0), 0);
-        const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
-        const calls = teamHist.reduce((s, r) => s + (Number(r.calls) || 0), 0);
-        const talkA = avg(teamHist.map(r => Number(r.callTalkAgent) || 0));
-        const talkC = avg(teamHist.map(r => Number(r.callTalkCaller) || 0));
-        const sil = avg(teamHist.map(r => silenceShare(r)).filter(n => n !== null));
-        return { name: sup.agent, team: sup.team || '', reviewed: reviewed.length, total: supAgents.length, count: count, calls: calls, talkA: talkA, talkC: talkC, silence: sil, metricRows: teamHist.length };
-      }).sort((a, b) => b.count - a.count);
-      const maxCount = Math.max(1, ...supStats.map(s => s.count));
+        const coverIn = rowsFor => supAgents.filter(a => rowsFor.has(norm(a))).length;
+        return {
+          name: sup.agent, team: sup.team || '', total: supAgents.length,
+          hist: roll(histItems.filter(mine)), rec: roll(recItems.filter(mine)),
+          covHist: coverIn(reviewedSet), covRec: coverIn(recentSet)
+        };
+      }).sort((a, b) => b.hist.count - a.hist.count || b.rec.count - a.rec.count);
+      const maxCount = Math.max(1, ...supStats.map(s => Math.max(s.hist.count, s.rec.count)));
       const supColor = t => teamColors[t] || '#2B5070';
+      // Both ranges share one scale so the two bars can be read against each other.
+      const supLine = (tag, d, c, faded) => {
+        const barW = d.count ? Math.max(3, Math.round(d.count / maxCount * 100)) : 0;
+        const chips = d.rows
+          ? '<span>Calls <b>' + d.calls.toLocaleString() + '</b></span><span>Agent <b>' + dur(d.talkA) + '</b></span><span>Caller <b>' + dur(d.talkC) + '</b></span><span>Silence <b>' + Math.round(d.silence) + '%</b></span>'
+          : '<span>No rows in this range</span>';
+        return '<div class="sup-line"><span class="sup-tag">' + tag + '</span>' +
+          '<div class="sup-track"><div class="sup-fill" style="width:' + barW + '%;background:' + c + (faded ? ';opacity:.5' : '') + '"></div></div>' +
+          '<div class="sup-count"><b>' + d.count + '</b><span>evals</span></div>' +
+          '<div class="sup-metrics">' + chips + '</div></div>';
+      };
       const bars = supStats.map(s => {
-        const barW = s.count ? Math.max(3, Math.round(s.count / maxCount * 100)) : 0;
         const c = supColor(s.team);
-        const chips = s.metricRows
-          ? '<span>Calls <b>' + s.calls + '</b></span><span>Agent <b>' + dur(s.talkA) + '</b></span><span>Caller <b>' + dur(s.talkC) + '</b></span><span>Silence <b>' + Math.round(s.silence) + '%</b></span>'
-          : '<span>No call metrics</span>';
         return '<div class="sup-row">' +
           '<div class="sup-id"><span class="sup-dot" style="background:' + c + '"></span><div><div class="sup-name">' + safe(s.name) + '</div><div class="sup-team">' + safe(s.team || 'Team not set') + '</div></div></div>' +
-          '<div class="sup-track"><div class="sup-fill" style="width:' + barW + '%;background:' + c + '"></div></div>' +
-          '<div class="sup-count"><b>' + s.count + '</b><span>evaluations</span></div>' +
-          '<div class="sup-metrics">' + chips + '</div>' +
+          '<div class="sup-ranges">' + supLine('Historic', s.hist, c, false) + supLine('Recent', s.rec, c, true) + '</div>' +
         '</div>';
       }).join('');
-      const covReviewed = supStats.reduce((t, s) => t + s.reviewed, 0);
+      const covReviewed = supStats.reduce((t, s) => t + s.covHist, 0);
+      const covRecent = supStats.reduce((t, s) => t + s.covRec, 0);
       const covAgents = supStats.reduce((t, s) => t + s.total, 0);
-      const ringCirc = 2 * Math.PI * 30;
-      const pies = supStats.slice().sort((a, b) => (b.total ? b.reviewed / b.total : 0) - (a.total ? a.reviewed / a.total : 0)).map(s => {
-        const pct = s.total ? s.reviewed / s.total : 0;
+      const ring = (r, pct, c, w, faded) => {
+        const circ = 2 * Math.PI * r;
+        return '<circle cx="46" cy="46" r="' + r + '" fill="none" stroke="#edefe4" stroke-width="' + w + '"/>' +
+          (pct > 0 ? '<circle cx="46" cy="46" r="' + r + '" fill="none" stroke="' + c + '" stroke-opacity="' + (faded ? '.5' : '1') +
+            '" stroke-width="' + w + '" stroke-linecap="round" stroke-dasharray="' + (circ * pct).toFixed(2) + ' ' + circ.toFixed(2) +
+            '" transform="rotate(-90 46 46)"/>' : '');
+      };
+      const pies = supStats.slice().sort((a, b) => (b.total ? b.covHist / b.total : 0) - (a.total ? a.covHist / a.total : 0)).map(s => {
+        const pH = s.total ? s.covHist / s.total : 0, pR = s.total ? s.covRec / s.total : 0;
         const c = supColor(s.team);
-        const arc = pct > 0
-          ? '<circle cx="38" cy="38" r="30" fill="none" stroke="' + c + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + (ringCirc * pct).toFixed(2) + ' ' + ringCirc.toFixed(2) + '" transform="rotate(-90 38 38)"/>'
-          : '';
+        const leg = (lab, pct, n, faded) => '<span><i style="background:' + c + (faded ? ';opacity:.5' : '') + '"></i>' + lab +
+          ' <b>' + Math.round(pct * 100) + '%</b> · ' + n + ' of ' + s.total + '</span>';
         return '<div class="cov-item">' +
-          '<div class="cov-ring"><svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true"><circle cx="38" cy="38" r="30" fill="none" stroke="#edefe4" stroke-width="9"/>' + arc + '</svg>' +
-          '<span class="cov-pct" style="color:' + (pct > 0 ? c : '#9aa5b1') + '">' + Math.round(pct * 100) + '%</span></div>' +
+          '<div class="cov-ring"><svg width="92" height="92" viewBox="0 0 92 92" aria-hidden="true">' +
+            ring(36, pH, c, 9, false) + ring(23, pR, c, 9, true) + '</svg></div>' +
           '<div class="cov-name">' + safe(s.name) + '</div>' +
-          '<div class="cov-sub">' + s.reviewed + ' of ' + s.total + ' agents</div>' +
+          '<div class="cov-legend">' + leg('Historic', pH, s.covHist, false) + leg('Recent', pR, s.covRec, true) + '</div>' +
         '</div>';
       }).join('');
       supDiv.innerHTML =
-        '<div class="cs-section-title"><h2>Quality Reviews by Supervisor</h2><span>Historic range, by evaluations completed</span></div>' +
+        '<div class="cs-section-title"><h2>Quality Reviews by Supervisor</h2><span>Evaluations completed, both ranges</span></div>' +
         '<div class="cs-panel">' + (bars || '<p class="cs-empty">No supervisor records to summarize.</p>') + '</div>' +
-        '<div class="cs-section-title"><h2>Agent Coverage</h2><span>' + covReviewed + ' of ' + covAgents + ' agents evaluated in the Historic range</span></div>' +
+        '<div class="cs-section-title"><h2>Agent Coverage</h2><span>' + covReviewed + ' of ' + covAgents + ' agents evaluated Historic, ' + covRecent + ' Recent</span></div>' +
         '<div class="cs-panel">' + (pies ? '<div class="cov-grid">' + pies + '</div>' : '<p class="cs-empty">No agents are assigned to a supervisor yet.</p>') + '</div>';
     }
   } catch (e) {
