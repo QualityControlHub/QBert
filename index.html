@@ -65,8 +65,8 @@ body[data-width="full"]{--page-w:100%}
 .sup-metrics b{color:var(--ink);font-weight:600}
 .cs-range-note{font-size:11.5px;color:var(--muted);background:#f8f9f2;border:1px solid var(--line);border-radius:8px;padding:8px 13px;margin:0;display:flex;gap:7px 18px;flex-wrap:wrap;align-items:baseline}
 .cs-range-note b{color:var(--ink);font-weight:600}
-.sup-ranges{display:flex;flex-direction:column;gap:8px;min-width:0}
-.sup-line{display:grid;grid-template-columns:58px minmax(60px,1fr) 52px minmax(0,auto);gap:12px;align-items:center}
+.sup-ranges{display:grid;grid-template-columns:58px minmax(60px,1fr) 52px 360px;gap:9px 12px;align-items:center;min-width:0}
+.sup-line{display:contents}
 .sup-tag{font-size:9.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--muted)}
 .cov-legend{display:flex;flex-direction:column;gap:2px;margin-top:4px;font-size:10px;color:var(--muted)}
 .cov-legend span{display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
@@ -189,6 +189,23 @@ body[data-width="full"]{--page-w:100%}
 .rpt-block.soon{background:#fbfcf6;border-style:dashed}
 .rpt-tag{font-size:9px;letter-spacing:1.1px;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:5px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--peri);white-space:nowrap}
 .rpt-tag.wip{background:#fbf2e6;color:var(--amber);border-color:#eedcc0}
+.qa-form{display:flex;flex-direction:column;gap:12px;max-width:860px}
+.qa-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.qa-grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.qa-sub{border:1px solid var(--line);border-radius:9px;padding:11px 13px;background:#fbfbf6}
+.qa-sub-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px;font-size:12.5px}
+.qa-sub-head .btn{margin-left:auto;min-height:30px;padding:4px 11px;font-size:12px}
+.qa-up{font-size:11px;color:#216b50;font-weight:600}
+.qa-down{font-size:11px;color:#a32f58;font-weight:600}
+.qa-trend{display:flex;gap:7px;margin-bottom:7px;align-items:center}
+.qa-trend select{flex:1;min-width:0;min-height:34px;border:1px solid #cdc7e4;border-radius:6px;background:white;font-size:12.5px;padding:5px 8px}
+.qa-trend .qa-pct{width:78px;flex:none;min-height:34px;border:1px solid #cdc7e4;border-radius:6px;font-size:12.5px;padding:5px 8px}
+.qa-x{flex:none;width:30px;height:30px;border:1px solid #eccfd8;background:#fdf1f5;color:#a32f58;border-radius:6px;font-size:15px;line-height:1;cursor:pointer}
+.qa-evals{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:6px 14px}
+.qa-eval{display:flex;align-items:center;gap:9px}
+.qa-eval span{flex:1;font-size:12.5px;min-width:0;overflow-wrap:anywhere}
+.qa-eval input{width:66px;flex:none;min-height:32px;border:1px solid #cdc7e4;border-radius:6px;font-size:12.5px;padding:4px 7px;text-align:center}
+.qa-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
 .rpt-plan{margin:0;padding-left:18px;font-size:12.5px;color:var(--muted);line-height:1.7}
 .rpt-plan li{margin:0}
 .dm-group{margin:0 0 22px}
@@ -214,7 +231,7 @@ body[data-width="full"]{--page-w:100%}
 .dm-archive-block .dm-glabel::after{background:#e7b9c6}
 .ws-warn{margin:0 0 16px;font-size:12.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--danger);
  background:#fdf1f5;border:1px solid #efc6d7;border-left:4px solid var(--danger);border-radius:8px;padding:11px 14px;max-width:780px}
-@media(max-width:850px){.sup-row{grid-template-columns:minmax(0,1fr);row-gap:10px}.sup-line{grid-template-columns:52px minmax(40px,1fr) 46px;row-gap:6px}.sup-line .sup-metrics{grid-column:1/-1}.sup-count{text-align:left}.sup-metrics{justify-content:flex-start}}
+@media(max-width:850px){.sup-row{grid-template-columns:minmax(0,1fr);row-gap:10px}.sup-ranges{grid-template-columns:52px minmax(40px,1fr) 46px;row-gap:7px}.sup-ranges .sup-metrics{grid-column:1/-1}.sup-count{text-align:left}.sup-metrics{justify-content:flex-start}}
 </style>
 </head>
 <body>
@@ -1446,15 +1463,87 @@ disconnectedPresentation();
     </section>
   </div>
   <div id="ws-csh" hidden>
-    <h2>Genesys Dashboard</h2>
-    <p>Paste the Genesys Metrics CSV. This replaces all records in <code>genesys_metrics</code>, which is the only collection behind the Customer Service tab.</p>
-    <p style="font-size:12px;color:#555;margin-top:-6px">Columns: agent, range, calls, callTalkAgent, callTalkCaller, callTalkSilence, evaluations, averageEvaluation, averageCriticalEvaluation. The <code>range</code> value must read <strong>Historic</strong> or <strong>Recent</strong> &mdash; rows with anything else load but will not appear on the cards.</p>
-    <textarea id="metrics-csv" rows="8" style="width:100%;font-family:monospace;font-size:11px" placeholder="agent,range,calls,callTalkAgent,callTalkCaller,callTalkSilence,evaluations,averageEvaluation,averageCriticalEvaluation"></textarea>
-    <div style="margin:10px 0">
-      <button class="btn primary" id="metrics-replace">Replace Metrics</button>
-    </div>
-    <div id="metrics-status"></div>
+    <h2 style="margin-bottom:6px">Genesys Dashboard</h2>
+    <p class="del-hint">Load the week&rsquo;s metrics, then build the two outputs that go out from them.</p>
+
+    <section class="rpt-block">
+      <h3>Replace Collection <span class="rpt-tag">Clears genesys_metrics first</span></h3>
+      <p class="desc">Paste the Genesys Metrics CSV. Every existing record in <code>genesys_metrics</code> is deleted and replaced &mdash; this is the only collection behind the Customer Service tab and both generators below.
+        Columns: agent, range, calls, callTalkAgent, callTalkCaller, callTalkSilence, evaluations, averageEvaluation, averageCriticalEvaluation.
+        The <code>range</code> value must read <strong>Historic</strong> or <strong>Recent</strong>.</p>
+      <textarea id="metrics-csv" rows="7" style="width:100%;font-family:monospace;font-size:11px" placeholder="agent,range,calls,callTalkAgent,callTalkCaller,callTalkSilence,evaluations,averageEvaluation,averageCriticalEvaluation"></textarea>
+      <div style="margin:10px 0"><button class="btn primary" id="metrics-replace">Replace Metrics</button></div>
+      <div id="metrics-status" style="font-size:12px"></div>
+    </section>
+
+    <section class="rpt-block">
+      <h3>Weekly QA Email <span class="rpt-tag">Outlook ready</span></h3>
+      <p class="desc">Fill the form and the preview rebuilds as you type. Copy it straight into an Outlook message, or download the HTML. Everything here is typed by hand &mdash; it is the narrative that goes around the numbers, not the numbers themselves.</p>
+
+      <div class="qa-form">
+        <div class="qa-grid2">
+          <div class="field"><label for="qa-start">Start date</label><input type="date" id="qa-start"></div>
+          <div class="field"><label for="qa-end">End date</label><input type="date" id="qa-end"></div>
+        </div>
+        <div class="field"><label for="qa-intro">Intro paragraph</label><textarea id="qa-intro" rows="4"></textarea></div>
+        <div class="field"><label for="qa-meeting">Next meeting</label><textarea id="qa-meeting" rows="2"></textarea></div>
+
+        <div class="qa-sub">
+          <div class="qa-sub-head"><strong>Agent Performance Trends</strong><span class="qa-up">&#9650; positive</span>
+            <button type="button" class="btn" id="qa-add-pos">Add</button></div>
+          <div id="qa-pos"></div>
+        </div>
+        <div class="qa-sub">
+          <div class="qa-sub-head"><strong>Customer Experience Opportunity Trends</strong><span class="qa-down">&#9660; negative</span>
+            <button type="button" class="btn" id="qa-add-neg">Add</button></div>
+          <div id="qa-neg"></div>
+        </div>
+
+        <div class="qa-sub">
+          <div class="qa-sub-head"><strong>Overall QA Accuracy</strong></div>
+          <div class="qa-grid4">
+            <div class="field"><label for="qa-acc">Accuracy</label><input type="text" id="qa-acc" value="89%"></div>
+            <div class="field"><label for="qa-arrow">Direction</label><select id="qa-arrow"><option value="up">&#9650; Up</option><option value="down" selected>&#9660; Down</option></select></div>
+            <div class="field"><label for="qa-change">Change</label><input type="text" id="qa-change" value="4%"></div>
+            <div class="field"><label for="qa-target">FY26 target</label><input type="text" id="qa-target" value="93%"></div>
+          </div>
+        </div>
+
+        <div class="qa-sub">
+          <div class="qa-sub-head"><strong>Monthly Totals by Evaluator</strong><span style="font-size:11.5px;color:var(--muted)">Month to the end date of this report</span>
+            <button type="button" class="btn" id="qa-fill-evals" title="Read evaluation counts out of genesys_metrics instead of typing them">Fill from metrics</button></div>
+          <div id="qa-evals" class="qa-evals"></div>
+        </div>
+
+        <div class="field"><label for="qa-dash">Dashboard link</label><input type="url" id="qa-dash"></div>
+      </div>
+
+      <div class="qa-actions">
+        <button class="btn primary" id="qa-copy">Copy for Outlook</button>
+        <button class="btn" id="qa-draft">Open blank email</button>
+        <button class="btn" id="qa-download">Download HTML</button>
+        <button class="btn" id="qa-save">Save draft</button>
+        <button class="btn" id="qa-load">Load draft</button>
+        <span id="qa-status" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+      <iframe id="qa-preview" title="Weekly QA email preview" style="width:100%;height:620px;border:1px solid var(--line);border-radius:8px;background:white;margin-top:12px"></iframe>
+    </section>
+
+    <section class="rpt-block">
+      <h3>Agent Evaluation Report <span class="rpt-tag">From genesys_metrics</span></h3>
+      <p class="desc">Builds the score report from whatever is currently in <code>genesys_metrics</code>, matched against <code>staff</code> for team and supervisor. Pick the range, generate, then copy it into an email or download it.</p>
+      <div class="qa-actions" style="margin-top:0">
+        <div class="field" style="max-width:190px"><label for="ev-range">Range</label><select id="ev-range"><option value="Historic">Historic &mdash; last two months</option><option value="Recent">Recent &mdash; last two weeks</option></select></div>
+        <button class="btn primary" id="ev-build">Generate Report</button>
+        <button class="btn" id="ev-copy" disabled>Copy for Outlook</button>
+        <button class="btn" id="ev-draft" disabled>Open blank email</button>
+        <button class="btn" id="ev-download" disabled>Download HTML</button>
+        <span id="ev-status" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+      <iframe id="ev-preview" title="Agent evaluation report preview" style="width:100%;height:620px;border:1px solid var(--line);border-radius:8px;background:white;margin-top:12px"></iframe>
+    </section>
   </div>
+
   <div id="ws-delinquency" hidden>
     <h2 style="margin-bottom:18px">Delinquency File Reviews</h2>
 
@@ -3768,6 +3857,377 @@ if (metricsBtn) {
 })();
 </script>
 
+<script>
+/* ===================================================================
+   Genesys Dashboard tab: the Weekly QA email and the Agent Evaluation
+   report. Both end as Outlook-safe HTML: tables, inline styles, no
+   flex or grid, because Outlook renders mail through Word.
+   =================================================================== */
+(function () {
+  const $g = id => document.getElementById(id);
+  if (!$g('qa-copy')) return;
+  const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  // ---- shared output helpers ---------------------------------------
+  function sayTo(el, msg, bad) { if (el) { el.textContent = msg; el.style.color = bad ? '#a32f58' : '#216b50'; } }
+  // The clipboard write starts in the same tick as the click so the user
+  // gesture is still live; text/html is what Outlook pastes as formatting.
+  function copyRich(html, plain, statusEl) {
+    try {
+      navigator.clipboard.write([new ClipboardItem({
+        'text/html': new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([plain || ''], { type: 'text/plain' })
+      })]).then(() => sayTo(statusEl, 'Copied. Paste into a new Outlook message with Ctrl+V.'))
+        .catch(() => sayTo(statusEl, 'This browser would not take formatted text. Use Download HTML instead.', true));
+    } catch (e) { sayTo(statusEl, 'This browser has no clipboard support. Use Download HTML instead.', true); }
+  }
+  function openDraft(subject) {
+    const a = document.createElement('a');
+    a.href = 'mailto:?subject=' + encodeURIComponent(subject);
+    a.style.display = 'none'; document.body.appendChild(a); a.click(); a.remove();
+  }
+  function download(html, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+    a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+  function paint(frameId, html) {
+    const f = $g(frameId); if (!f) return;
+    const d = f.contentDocument || f.contentWindow.document;
+    d.open(); d.write(html); d.close();
+  }
+  const fmtDay = v => { if (!v) return ''; const d = new Date(v + 'T00:00:00'); return isNaN(d) ? '' : d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }); };
+
+  /* =================================================================
+     1. Weekly QA email
+     ================================================================= */
+  const STATEMENTS = [
+    'Answered the call with the full established greeting',
+    "Established the caller's identity with a minimum of two forms of verification",
+    'Repeated to the borrower, or established, the context for discussion',
+    'Addressed the caller by name, or appropriate prefix (Mr., Mrs., Sir, ma’am)',
+    'Verified current and obtained missing contact information (phone, address, EMAIL)',
+    'Avoided interrupting (talking over the caller)',
+    'Avoided long unexplained pauses in the conversation',
+    'Phrasing was professional and courteous',
+    'Information provided was accurate',
+    'Caller was advised of ALL options for making payments',
+    'Assistance was offered if needed; deferments, payment reductions, etc',
+    'Caller was thoroughly walked through all appropriate forms/documents (if applicable)',
+    'Asked permission to place borrower on hold (if applicable)',
+    'Did not place borrower on hold MORE THAN 2 minutes without checking in with them',
+    'Advised borrower if you will be transferring them to another department/team member',
+    'Provided a “warm” transfer (customer info and situation) if a transfer is necessary',
+    'Summarized discussion with the caller',
+    'Set expectations and/or a timeline: (schedule next call, payment, follow up)',
+    'Finished call with “Is there anything else I can help you with?”',
+    'Accurate and Complete Documentation (CHRON)'
+  ];
+  const EVALUATORS = ['Williams Sherman, LaShonta', 'Davis, Melvin', 'Kennedy, Kellie', 'Bui, Quyen',
+    'Hill, Debbie', 'Levack, Travis', 'Segesman, Scot', 'Bullock, Lori', 'Bulloch, Curtis'];
+
+  function trendRow(kind, statement, pct) {
+    const wrap = document.createElement('div');
+    wrap.className = 'qa-trend';
+    wrap.innerHTML = '<select>' + '<option value="">— select statement —</option>' +
+      STATEMENTS.map(s => '<option value="' + esc(s) + '"' + (s === statement ? ' selected' : '') + '>' + esc(s) + '</option>').join('') +
+      '</select><input type="text" class="qa-pct" placeholder="%" value="' + esc(pct || '') + '">' +
+      '<button type="button" class="qa-x" title="Remove">×</button>';
+    wrap.querySelector('.qa-x').onclick = () => { wrap.remove(); qaPreview(); };
+    $g(kind === 'pos' ? 'qa-pos' : 'qa-neg').appendChild(wrap);
+  }
+  function evalRows(counts) {
+    const box = $g('qa-evals'); box.innerHTML = '';
+    EVALUATORS.forEach(n => {
+      const r = document.createElement('div');
+      r.className = 'qa-eval';
+      r.innerHTML = '<span>' + esc(n) + '</span><input type="number" min="0" value="' + ((counts && counts[n] !== undefined) ? esc(counts[n]) : 0) + '" data-name="' + esc(n) + '">';
+      box.appendChild(r);
+    });
+  }
+  function qaCollect() {
+    const start = $g('qa-start').value, end = $g('qa-end').value;
+    const trends = kind => [...document.querySelectorAll('#' + (kind === 'pos' ? 'qa-pos' : 'qa-neg') + ' .qa-trend')]
+      .map(r => ({ statement: r.querySelector('select').value, pct: r.querySelector('.qa-pct').value.trim() }))
+      .filter(t => t.statement && t.pct);
+    const evals = [...document.querySelectorAll('#qa-evals input')].map(i => ({ name: i.dataset.name, count: parseInt(i.value, 10) || 0 }));
+    const up = $g('qa-arrow').value === 'up';
+    return {
+      period: fmtDay(start) + ' – ' + fmtDay(end),
+      monthName: end ? new Date(end + 'T00:00:00').toLocaleDateString('en-US', { month: 'long' }) : '',
+      intro: $g('qa-intro').value.trim(), meeting: $g('qa-meeting').value.trim(),
+      pos: trends('pos'), neg: trends('neg'),
+      accuracy: $g('qa-acc').value.trim(), arrow: up ? '▲' : '▼', arrowColor: up ? '#9CE6A8' : '#FF9A8B',
+      change: $g('qa-change').value.trim(), target: $g('qa-target').value.trim(),
+      evals: evals, total: evals.reduce((t, e) => t + e.count, 0),
+      dash: $g('qa-dash').value.trim()
+    };
+  }
+  function qaHtml(d) {
+    const band = (bg, color, text, size) => '<tr><td colspan="2" style="border:1px solid #D0D7E2;border-top:none;background:' + bg +
+      ';padding:9pt 11pt"><p style="margin:0;font-family:Calibri,sans-serif;font-size:' + (size || '12.5pt') + ';font-weight:bold;color:' + color + '">' + text + '</p></td></tr>';
+    const trend = (t, bg, color, mark) => '<tr><td style="border:1px solid #D0D7E2;border-top:none;background:#F7F8FA;padding:9pt 11pt;font-family:Calibri,sans-serif;font-size:11pt;color:#333">' + esc(t.statement) +
+      '</td><td style="border:1px solid #D0D7E2;border-top:none;border-left:none;background:' + bg + ';padding:9pt 11pt;font-family:Calibri,sans-serif;font-size:11pt;font-weight:bold;color:' + color + ';white-space:nowrap">' + mark + ' ' + esc(t.pct) + '</td></tr>';
+    const evalRow = (e, i) => '<tr><td style="border:1px solid #C5D0E0;border-top:none;background:' + (i % 2 ? '#F7FAFC' : '#ffffff') +
+      ';padding:2pt 6pt;font-family:Calibri,sans-serif;font-size:10pt">' + esc(e.name) +
+      '</td><td align="center" style="border:1px solid #C5D0E0;border-top:none;border-left:none;background:' + (i % 2 ? '#F7FAFC' : '#ffffff') +
+      ';padding:2pt 6pt;font-family:Calibri,sans-serif;font-size:10pt">' + e.count + '</td></tr>';
+    return '<html><head><meta charset="utf-8"></head><body style="margin:0;padding:12px;background:#ffffff">' +
+      '<table cellspacing="0" cellpadding="0" width="800" align="center" style="width:600pt;border-collapse:collapse;margin:0 auto">' +
+      '<tr><td colspan="2" style="border:1px solid #D0D7E2;background:#1F3864;padding:9pt 11pt">' +
+        '<p style="margin:0 0 3pt;font-family:Calibri,sans-serif;font-size:14pt;font-weight:bold;color:#ffffff">📋 Weekly QA Performance Report</p>' +
+        '<p style="margin:0;font-family:Calibri,sans-serif;font-size:14pt;font-weight:bold;color:#ffffff">Reporting Period: ' + esc(d.period) + '</p></td></tr>' +
+      '<tr><td colspan="2" style="border:1px solid #D0D7E2;border-top:none;background:#EAF1FB;padding:9pt 11pt">' +
+        '<p style="margin:0;font-family:Calibri,sans-serif;font-size:11pt;font-weight:bold;color:#333">Good morning,</p>' +
+        '<p style="margin:6pt 0 0;font-family:Calibri,sans-serif;font-size:11pt;color:#333">' + esc(d.intro) + '</p></td></tr>' +
+      (d.meeting ? '<tr><td colspan="2" style="border:1px solid #D0D7E2;border-top:none;background:#FFF6E5;padding:9pt 11pt">' +
+        '<p style="margin:0;font-family:Calibri,sans-serif;font-size:11pt;color:#333"><strong>📌 Next Meeting:</strong> ' + esc(d.meeting) + '</p></td></tr>' : '') +
+      band('#2E7D32', '#ffffff', '✅ Agent Performance Trends') +
+      (d.pos.length ? d.pos.map(t => trend(t, '#E8F5E9', '#2E7D32', '▲')).join('')
+        : '<tr><td colspan="2" style="border:1px solid #D0D7E2;border-top:none;padding:9pt 11pt;font-family:Calibri,sans-serif;font-size:11pt;color:#777">None recorded this week.</td></tr>') +
+      band('#C0392B', '#ffffff', '⚠️ Customer Experience Opportunity Trends') +
+      (d.neg.length ? d.neg.map(t => trend(t, '#FDECEA', '#C0392B', '▼')).join('')
+        : '<tr><td colspan="2" style="border:1px solid #D0D7E2;border-top:none;padding:9pt 11pt;font-family:Calibri,sans-serif;font-size:11pt;color:#777">None recorded this week.</td></tr>') +
+      '<tr><td colspan="2" align="center" style="border:1px solid #D0D7E2;border-top:none;background:#1F3864;padding:14pt 11pt">' +
+        '<p style="margin:0;font-family:Calibri,sans-serif;font-size:11pt;color:#ffffff">Overall QA Accuracy</p>' +
+        '<p style="margin:4pt 0;font-family:Calibri,sans-serif;font-size:17pt;font-weight:bold;color:#ffffff">' + esc(d.accuracy) +
+          ' &nbsp; <span style="color:' + d.arrowColor + '">' + d.arrow + ' ' + esc(d.change) + '</span></p>' +
+        '<p style="margin:0;font-family:Calibri,sans-serif;font-size:11pt;font-style:italic;color:#D0D7E2;letter-spacing:1pt">FY26 Target Accuracy: ' + esc(d.target) + '</p></td></tr>' +
+      '<tr><td colspan="2" style="border:1px solid #D0D7E2;border-top:none;background:#F9FAFB;padding:12pt 11pt">' +
+        '<p align="center" style="margin:0 0 8pt;font-family:Calibri,sans-serif;font-size:15pt;font-weight:bold;color:#2E7D32">SLS Genesys Reviews for ' + esc(d.monthName) + '</p>' +
+        '<table cellspacing="0" cellpadding="0" width="396" align="center" style="width:297pt;border-collapse:collapse;margin:0 auto">' +
+        '<tr><td style="border:1px solid #C5D0E0;background:#2E7D32;padding:3pt 6pt;font-family:Calibri,sans-serif;font-size:11.5pt;font-weight:bold;color:#ffffff">Evaluator</td>' +
+        '<td align="center" style="border:1px solid #C5D0E0;border-left:none;background:#2E7D32;padding:3pt 6pt;font-family:Calibri,sans-serif;font-size:11.5pt;font-weight:bold;color:#ffffff">Reviews</td></tr>' +
+        d.evals.map(evalRow).join('') +
+        '<tr><td style="border:1px solid #C5D0E0;border-top:none;background:#EAF1FB;padding:2pt 6pt;font-family:Calibri,sans-serif;font-size:10pt;font-weight:bold">Total</td>' +
+        '<td align="center" style="border:1px solid #C5D0E0;border-top:none;border-left:none;background:#EAF1FB;padding:2pt 6pt;font-family:Calibri,sans-serif;font-size:10pt;font-weight:bold">' + d.total + '</td></tr>' +
+        '</table></td></tr>' +
+      (d.dash ? '<tr><td colspan="2" style="border:1px solid #D0D7E2;border-top:none;background:#2F6FED;padding:9pt 11pt">' +
+        '<p style="margin:0;font-family:Calibri,sans-serif;font-size:12.5pt;font-weight:bold"><a href="' + esc(d.dash) + '" style="color:#0B3041;text-decoration:none">📊 View the Live DLSC QA Dashboard →</a></p>' +
+        '<p style="margin:4pt 0 0;font-family:Calibri,sans-serif;font-size:11.5pt;font-style:italic;color:#E0E8FF">Click the link, then set the date range to ' + esc(d.period) + '</p></td></tr>' : '') +
+      '</table></body></html>';
+  }
+  function qaPlain(d) {
+    return ['Weekly QA Performance Report', 'Reporting Period: ' + d.period, '', d.intro, '',
+      d.meeting ? 'Next Meeting: ' + d.meeting : '', '',
+      'Agent Performance Trends', ...d.pos.map(t => '  + ' + t.statement + ' ' + t.pct), '',
+      'Customer Experience Opportunity Trends', ...d.neg.map(t => '  - ' + t.statement + ' ' + t.pct), '',
+      'Overall QA Accuracy: ' + d.accuracy + ' (' + d.change + ') | FY26 Target: ' + d.target, '',
+      'SLS Genesys Reviews for ' + d.monthName,
+      ...d.evals.map(e => '  ' + e.name + ': ' + e.count), '  Total: ' + d.total, '',
+      d.dash].filter(l => l !== '').join('\n');
+  }
+  let qaTimer;
+  function qaPreview() { paint('qa-preview', qaHtml(qaCollect())); }
+  function qaSoon() { clearTimeout(qaTimer); qaTimer = setTimeout(qaPreview, 300); }
+
+  $g('qa-add-pos').onclick = () => { trendRow('pos', '', ''); qaPreview(); };
+  $g('qa-add-neg').onclick = () => { trendRow('neg', '', ''); qaPreview(); };
+  $g('qa-copy').onclick = () => { const d = qaCollect(); copyRich(qaHtml(d), qaPlain(d), $g('qa-status')); };
+  $g('qa-draft').onclick = () => { openDraft('Weekly QA Performance Report ' + qaCollect().period); sayTo($g('qa-status'), 'Blank draft opened. Paste the copied report into the body.'); };
+  $g('qa-download').onclick = () => { const d = qaCollect(); download(qaHtml(d), 'Weekly_QA_Report_' + d.period.replace(/[^\w]+/g, '_') + '.html'); sayTo($g('qa-status'), 'Downloaded.'); };
+  $g('qa-save').onclick = () => {
+    const d = { start: $g('qa-start').value, end: $g('qa-end').value, intro: $g('qa-intro').value, meeting: $g('qa-meeting').value,
+      acc: $g('qa-acc').value, arrow: $g('qa-arrow').value, change: $g('qa-change').value, target: $g('qa-target').value, dash: $g('qa-dash').value,
+      pos: [...document.querySelectorAll('#qa-pos .qa-trend')].map(r => ({ s: r.querySelector('select').value, p: r.querySelector('.qa-pct').value })),
+      neg: [...document.querySelectorAll('#qa-neg .qa-trend')].map(r => ({ s: r.querySelector('select').value, p: r.querySelector('.qa-pct').value })),
+      evals: {} };
+    document.querySelectorAll('#qa-evals input').forEach(i => d.evals[i.dataset.name] = i.value);
+    try { localStorage.setItem('qbert_qa_draft', JSON.stringify(d)); sayTo($g('qa-status'), 'Draft saved on this computer.'); }
+    catch (e) { sayTo($g('qa-status'), 'This browser would not store the draft.', true); }
+  };
+  $g('qa-load').onclick = () => {
+    let d; try { d = JSON.parse(localStorage.getItem('qbert_qa_draft') || 'null'); } catch (e) { d = null; }
+    if (!d) { sayTo($g('qa-status'), 'No saved draft on this computer.', true); return; }
+    $g('qa-start').value = d.start || ''; $g('qa-end').value = d.end || '';
+    $g('qa-intro').value = d.intro || ''; $g('qa-meeting').value = d.meeting || '';
+    $g('qa-acc').value = d.acc || ''; $g('qa-arrow').value = d.arrow || 'down';
+    $g('qa-change').value = d.change || ''; $g('qa-target').value = d.target || ''; $g('qa-dash').value = d.dash || '';
+    $g('qa-pos').innerHTML = ''; (d.pos || []).forEach(t => trendRow('pos', t.s, t.p));
+    $g('qa-neg').innerHTML = ''; (d.neg || []).forEach(t => trendRow('neg', t.s, t.p));
+    evalRows(d.evals || {});
+    qaPreview(); sayTo($g('qa-status'), 'Draft loaded.');
+  };
+  // Evaluation counts already live in genesys_metrics, so offer them rather
+  // than make someone retype what the collection knows.
+  $g('qa-fill-evals').onclick = async () => {
+    sayTo($g('qa-status'), 'Reading genesys_metrics…');
+    try {
+      const res = await fetch(CONFIG.url + '/api/collections/genesys_metrics/records?perPage=500');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const rows = ((await res.json()).items || []).filter(r => (r.range || '').trim().toLowerCase() === 'historic');
+      const key = n => String(n || '').toLowerCase().replace(/[.,]/g, ' ').trim().split(/\s+/).filter(Boolean).sort().join(' ');
+      const byAgent = {}; rows.forEach(r => { byAgent[key(r.agent)] = (byAgent[key(r.agent)] || 0) + (Number(r.evaluations) || 0); });
+      let hit = 0;
+      document.querySelectorAll('#qa-evals input').forEach(i => { const v = byAgent[key(i.dataset.name)]; if (v !== undefined) { i.value = v; hit++; } });
+      qaPreview();
+      sayTo($g('qa-status'), hit ? 'Filled ' + hit + ' of ' + EVALUATORS.length + ' from the Historic range. Check the rest by hand.'
+        : 'No evaluator name on this list matched an agent in genesys_metrics — the counts are unchanged.', !hit);
+    } catch (e) { sayTo($g('qa-status'), 'Could not read genesys_metrics. ' + e.message, true); }
+  };
+  ['qa-start','qa-end','qa-intro','qa-meeting','qa-acc','qa-arrow','qa-change','qa-target','qa-dash'].forEach(id => {
+    const el = $g(id); if (el) { el.addEventListener('input', qaSoon); el.addEventListener('change', qaPreview); }
+  });
+  $g('qa-pos').addEventListener('input', qaSoon); $g('qa-pos').addEventListener('change', qaPreview);
+  $g('qa-neg').addEventListener('input', qaSoon); $g('qa-neg').addEventListener('change', qaPreview);
+  $g('qa-evals').addEventListener('input', qaSoon);
+
+  (function seed() {
+    const now = new Date(), end = new Date(now), start = new Date(now);
+    start.setDate(end.getDate() - 4);
+    const iso = d => d.toISOString().slice(0, 10);
+    $g('qa-start').value = iso(start); $g('qa-end').value = iso(end);
+    $g('qa-intro').value = 'Below you will find QA performance metrics for last week. The bullets highlight strengths and opportunities. Please review with your staff to address center trends. Use the link at the bottom to access the Dashboard. To break down the reviews by Evaluator, click on "Evaluator Activity" on the side bar.';
+    $g('qa-meeting').value = 'Our next meetings with supervisors will be next Thursday, to discuss Genesys and other QC items.';
+    $g('qa-dash').value = 'https://app.powerbigov.us/groups/me/reports/f66cd54f-5ac7-4618-a9ef-55358113687e/d38cf101f44b12917695?ctid=3c89fd8a-7f68-4667-aa15-41ebf2208961';
+    trendRow('pos', '', ''); trendRow('neg', '', '');
+    evalRows({});
+    qaPreview();
+  })();
+
+  /* =================================================================
+     2. Agent Evaluation Report, built from genesys_metrics
+     ================================================================= */
+  let evHtml = '', evPlain = '', evName = 'Agent_Evaluation_Report.html';
+  const pctOf = v => { if (v === null || v === undefined || v === '') return null; const n = Number(v); return isFinite(n) ? (n <= 1 ? n * 100 : n) : null; };
+  const dur = v => { const n = Number(v) || 0; const s = n >= 10000 ? n / 1000 : n; return Math.floor(s / 60) + ':' + String(Math.round(s % 60)).padStart(2, '0'); };
+  const keyOf = n => String(n || '').toLowerCase().replace(/[.,]/g, ' ').trim().split(/\s+/).filter(Boolean).sort().join(' ');
+  const one = n => n === null ? '—' : n.toFixed(1) + '%';
+
+  function evTable(headers, rows, widths) {
+    return '<table cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse;margin:0 0 18px">' +
+      '<tr>' + headers.map((h, i) => '<td' + (i ? ' align="center"' : '') + ' style="background:#1F3864;color:#ffffff;font-family:Calibri,sans-serif;font-size:10.5pt;font-weight:bold;padding:6pt 8pt;border:1px solid #C5D0E0' +
+        (widths && widths[i] ? ';width:' + widths[i] : '') + '">' + esc(h) + '</td>').join('') + '</tr>' +
+      rows.map((r, n) => '<tr>' + r.map((c, i) => '<td' + (i ? ' align="center"' : '') + ' style="background:' + (n % 2 ? '#F7FAFC' : '#ffffff') +
+        ';font-family:Calibri,sans-serif;font-size:10pt;color:#222;padding:5pt 8pt;border:1px solid #C5D0E0;border-top:none">' + c + '</td>').join('') + '</tr>').join('') +
+      '</table>';
+  }
+  function evBar(label, value, max, color) {
+    const w = max ? Math.max(1, Math.round(value / max * 100)) : 0;
+    return '<tr><td style="font-family:Calibri,sans-serif;font-size:10pt;color:#222;padding:3pt 10pt 3pt 0;white-space:nowrap;width:180px">' + esc(label) + '</td>' +
+      '<td style="padding:3pt 0;width:100%"><table cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse"><tr>' +
+      '<td width="' + w + '%" style="width:' + w + '%;background:' + color + ';height:14px;font-size:1px;line-height:14px">&nbsp;</td>' +
+      '<td style="background:#EDEFE4;height:14px;font-size:1px;line-height:14px">&nbsp;</td></tr></table></td>' +
+      '<td style="font-family:Calibri,sans-serif;font-size:10pt;font-weight:bold;color:#1F3864;padding:3pt 0 3pt 10pt;white-space:nowrap">' + value.toFixed(1) + '%</td></tr>';
+  }
+  function evSection(t) { return '<p style="margin:22px 0 10px;font-family:Calibri,sans-serif;font-size:14pt;font-weight:bold;color:#1F3864">' + esc(t) + '</p>'; }
+
+  async function evBuild() {
+    const range = $g('ev-range').value;
+    sayTo($g('ev-status'), 'Reading genesys_metrics…');
+    ['ev-copy','ev-draft','ev-download'].forEach(id => $g(id).disabled = true);
+    try {
+      const [mRes, sRes] = await Promise.all([
+        fetch(CONFIG.url + '/api/collections/genesys_metrics/records?perPage=500&sort=agent'),
+        fetch(CONFIG.url + '/api/collections/staff/records?perPage=500')
+      ]);
+      if (!mRes.ok) throw new Error('genesys_metrics returned HTTP ' + mRes.status);
+      if (!sRes.ok) throw new Error('staff returned HTTP ' + sRes.status);
+      const all = (await mRes.json()).items || [];
+      const staff = ((await sRes.json()).items || []).filter(s => !s.inactive);
+      const rows = all.filter(r => (r.range || '').trim().toLowerCase() === range.toLowerCase());
+      if (!rows.length) { sayTo($g('ev-status'), 'No rows in genesys_metrics are ranged "' + range + '".', true); paint('ev-preview', '<p style="font-family:sans-serif;padding:20px;color:#777">Nothing to report.</p>'); return; }
+
+      const look = {}; staff.forEach(s => { const k = keyOf(s.agent); if (k) look[k] = s; });
+      const data = rows.map(r => {
+        const s = look[keyOf(r.agent)] || {};
+        return { agent: s.agent || r.agent, matched: !!s.agent, team: s.team || 'Team not set', sup: s.supervisor || 'Not assigned',
+          evals: Number(r.evaluations) || 0, calls: Number(r.calls) || 0, avg: pctOf(r.averageEvaluation), crit: pctOf(r.averageCriticalEvaluation),
+          ta: Number(r.callTalkAgent) || 0, tc: Number(r.callTalkCaller) || 0, ts: Number(r.callTalkSilence) || 0 };
+      });
+      const scored = data.filter(d => d.evals > 0 && d.avg !== null);
+      const totalEvals = data.reduce((t, d) => t + d.evals, 0);
+      const totalCalls = data.reduce((t, d) => t + d.calls, 0);
+      // Weighted by evaluation count: an agent with 17 evaluations should not
+      // carry the same weight as one with a single evaluation.
+      const wAvg = list => { const n = list.reduce((t, d) => t + d.evals, 0); return n ? list.reduce((t, d) => t + d.avg * d.evals, 0) / n : null; };
+      const overall = wAvg(scored);
+      const perfect = scored.filter(d => d.avg >= 99.95).map(d => d.agent);
+      const busiest = scored.slice().sort((a, b) => b.evals - a.evals)[0];
+      const group = (keyFn) => {
+        const m = {};
+        data.forEach(d => { const k = keyFn(d); (m[k] = m[k] || []).push(d); });
+        return Object.keys(m).sort().map(k => ({ key: k, list: m[k], evals: m[k].reduce((t, d) => t + d.evals, 0),
+          calls: m[k].reduce((t, d) => t + d.calls, 0), avg: wAvg(m[k].filter(d => d.evals > 0 && d.avg !== null)) }))
+          .sort((a, b) => (b.avg === null) - (a.avg === null) || (b.avg || 0) - (a.avg || 0));
+      };
+      const teams = group(d => d.team), sups = group(d => d.sup);
+      const byScore = scored.slice().sort((a, b) => b.avg - a.avg);
+      const unmatched = data.filter(d => !d.matched).map(d => d.agent);
+      const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      const window_ = range === 'Historic' ? 'the last two months' : 'the last two weeks';
+      const other = all.filter(r => (r.range || '').trim().toLowerCase() !== range.toLowerCase());
+      const otherAvg = (() => {
+        const list = other.map(r => ({ evals: Number(r.evaluations) || 0, avg: pctOf(r.averageEvaluation) })).filter(d => d.evals > 0 && d.avg !== null);
+        const n = list.reduce((t, d) => t + d.evals, 0);
+        return n ? list.reduce((t, d) => t + d.avg * d.evals, 0) / n : null;
+      })();
+      const otherName = range === 'Historic' ? 'Recent' : 'Historic';
+
+      evHtml = '<html><head><meta charset="utf-8"></head><body style="margin:0;padding:18px;background:#ffffff">' +
+        '<table cellspacing="0" cellpadding="0" width="820" align="center" style="width:820px;border-collapse:collapse;margin:0 auto"><tr><td>' +
+        '<p align="center" style="margin:0;font-family:Calibri,sans-serif;font-size:20pt;font-weight:bold;color:#1F3864">Agent Evaluation Score Report</p>' +
+        '<p align="center" style="margin:5pt 0 0;font-family:Calibri,sans-serif;font-size:11pt;color:#555">' + esc(range) + ' range — ' + window_ + '</p>' +
+        '<p align="center" style="margin:2pt 0 0;font-family:Calibri,sans-serif;font-size:11pt;color:#555">Generated: ' + esc(today) + '</p>' +
+
+        evSection('Executive Summary') +
+        '<p style="margin:0 0 8px;font-family:Calibri,sans-serif;font-size:11pt;color:#222">This report summarises <strong>' + totalEvals + ' evaluation' + (totalEvals === 1 ? '' : 's') +
+          '</strong> across <strong>' + data.length + ' agent' + (data.length === 1 ? '' : 's') + '</strong> in <strong>' + teams.length + ' team' + (teams.length === 1 ? '' : 's') +
+          '</strong>, over ' + totalCalls.toLocaleString() + ' call' + (totalCalls === 1 ? '' : 's') + '.</p>' +
+        '<p style="margin:0 0 8px;font-family:Calibri,sans-serif;font-size:11pt;color:#222"><strong>Overall average score: ' + one(overall) + '</strong>' +
+          (otherAvg !== null ? ' &nbsp;&middot;&nbsp; ' + otherName + ' range for comparison: ' + one(otherAvg) : '') + '</p>' +
+        '<p style="margin:0;font-family:Calibri,sans-serif;font-size:11pt;color:#222">Key observations: ' +
+          (teams.length && teams[0].avg !== null ? '&bull; Highest-scoring team: ' + esc(teams[0].key) + ' (' + one(teams[0].avg) + ') ' : '') +
+          (busiest ? '&bull; Most evaluations: ' + esc(busiest.agent) + ' (' + busiest.evals + ') ' : '') +
+          (perfect.length ? '&bull; Agents at 100%: ' + perfect.map(esc).join(', ') : '') + '</p>' +
+
+        evSection('Performance Overview') +
+        (byScore.length ? '<table cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse;margin:0 0 18px">' +
+          byScore.slice(0, 12).map(d => evBar(d.agent, d.avg, 100, '#2E7D32')).join('') + '</table>'
+          : '<p style="font-family:Calibri,sans-serif;font-size:11pt;color:#777">No scored evaluations in this range.</p>') +
+
+        evSection('Performance by Agent') +
+        evTable(['Agent', 'Team', 'Evals', 'Avg Score', 'Critical', 'Calls', 'Agent Talk', 'Caller Talk', 'Silence'],
+          data.slice().sort((a, b) => (b.avg === null) - (a.avg === null) || (b.avg || 0) - (a.avg || 0) || String(a.agent).localeCompare(String(b.agent)))
+            .map(d => { const t = d.ta + d.tc + d.ts;
+              return [esc(d.agent), esc(d.team), String(d.evals), one(d.avg), one(d.crit), d.calls.toLocaleString(), dur(d.ta), dur(d.tc), t ? Math.round(d.ts / t * 100) + '%' : '—']; }),
+          ['24%']) +
+
+        evSection('Performance by Team') +
+        evTable(['Team', 'Agents', 'Evaluations', 'Calls', 'Average Score'],
+          teams.map(t => [esc(t.key), String(t.list.length), String(t.evals), t.calls.toLocaleString(), one(t.avg)]), ['40%']) +
+
+        evSection('Performance by Supervisor') +
+        evTable(['Supervisor', 'Agents', 'Evaluations', 'Calls', 'Average Score'],
+          sups.map(t => [esc(t.key), String(t.list.length), String(t.evals), t.calls.toLocaleString(), one(t.avg)]), ['40%']) +
+
+        '<p style="margin:20px 0 0;font-family:Calibri,sans-serif;font-size:9.5pt;font-style:italic;color:#777;line-height:1.5">' +
+          'Built from the genesys_metrics collection on ' + esc(today) + ', matched against staff for team and supervisor. ' +
+          'Scores are the averages already carried on each record; per-evaluation detail, minimum and maximum scores, evaluator credit and queue are not held in this collection, so those breakdowns are not shown.' +
+          (unmatched.length ? ' Agents with no matching staff record: ' + unmatched.map(esc).join(', ') + '.' : '') +
+        '</p></td></tr></table></body></html>';
+
+      evPlain = ['Agent Evaluation Score Report', range + ' range — ' + window_, 'Generated: ' + today, '',
+        totalEvals + ' evaluations across ' + data.length + ' agents. Overall average ' + one(overall) + '.', '',
+        'By agent:', ...byScore.map(d => '  ' + d.agent + ': ' + one(d.avg) + ' (' + d.evals + ' evals)'), '',
+        'By team:', ...teams.map(t => '  ' + t.key + ': ' + one(t.avg) + ' (' + t.evals + ' evals)')].join('\n');
+      evName = 'Agent_Evaluation_Report_' + range + '_' + new Date().toISOString().slice(0, 10) + '.html';
+      paint('ev-preview', evHtml);
+      ['ev-copy','ev-draft','ev-download'].forEach(id => $g(id).disabled = false);
+      sayTo($g('ev-status'), 'Built from ' + rows.length + ' ' + range + ' row' + (rows.length === 1 ? '' : 's') + '.' + (unmatched.length ? ' ' + unmatched.length + ' agent name(s) had no staff match.' : ''));
+    } catch (e) {
+      sayTo($g('ev-status'), 'Could not build the report. ' + e.message, true);
+      paint('ev-preview', '<p style="font-family:sans-serif;padding:20px;color:#a32f58">' + esc(e.message) + '</p>');
+    }
+  }
+  $g('ev-build').onclick = evBuild;
+  $g('ev-copy').onclick = () => copyRich(evHtml, evPlain, $g('ev-status'));
+  $g('ev-draft').onclick = () => { openDraft('Agent Evaluation Score Report — ' + $g('ev-range').value); sayTo($g('ev-status'), 'Blank draft opened. Paste the copied report into the body.'); };
+  $g('ev-download').onclick = () => { download(evHtml, evName); sayTo($g('ev-status'), 'Downloaded.'); };
+})();
+
+</script>
 <script>
 // Deep links: #reviewer, #dm and #qc each open their workspace directly, so the
 // page can be bookmarked. Closing one puts the URL back to the front workspace.
