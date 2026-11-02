@@ -782,7 +782,7 @@ function describeQueue(){
  $('queue-description').textContent=state==='In Review'?'':state==='Findings'?'Supervisors close findings by noting the correction and/or corrective action':monthLabel()+' · separated by the original review outcome.';
  $('completion-controls').hidden=state!=='Completed';
  $('completed-caption').textContent=app.months.length?app.months.join(' \u00b7 '):'No month selected';
- $('date-column').textContent=state==='Findings'?'Finding due':state==='Completed'?'Completed on':'Action date';
+ $('date-column').textContent=state==='Findings'?'Finding due':state==='Completed'?'Review month':'Action date';
  const tabs=[...document.querySelectorAll('.bin')];
  tabs.forEach(tab=>{const active=tab.dataset.state===state;tab.setAttribute('aria-selected',active);tab.tabIndex=active?0:-1;if(active)$('queue-panel').setAttribute('aria-labelledby',tab.id);});
  document.querySelectorAll('[data-outcome]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.outcome===app.outcome));
@@ -809,8 +809,9 @@ function renderList(){
  if(noResults){const msg=app.loadFailed?'The database query failed. Correct the connection or setup and refresh.':app.state==='Completed'?('No completed reviews in '+monthLabel()+' match the selected filters.'):app.state==='Findings'?'No open findings match your current role and filters.':'No reviews match your current role and filters.';
  $('list').innerHTML='<div class="empty"><div class="empty-icon">'+ICONS.empty+'</div><h3>'+ (app.loadFailed?'Reviews could not be loaded':'No '+safe(app.state.toLowerCase())+' items')+'</h3><p>'+safe(msg)+'</p><button class="btn link" data-clear>Clear filters</button></div>';
  } else $('list').innerHTML=app.records.map(r=>{
- const date=r.state==='Findings'?r.findingDueOn:r.state==='Completed'?r.completedOn:r.actionDate;
- const dateText=r.state==='Completed'?completionDate(date):dateLabel(date);
+ const date=r.state==='Findings'?r.findingDueOn:r.actionDate;
+ // Completed rows are grouped and filtered by review month, so show that, not the sign-off day.
+ const dateText=r.state==='Completed'?(reviewTagOf(r).replace('-',' ')||'Not recorded'):dateLabel(date);
  const overdue=isOverdue(r);
  const stale=staleAction(r);
  const flagBadge = r.flag ? '<span class="badge" style="background:#F1CC13;color:#1e3a5f">🚩</span> ' : '';
@@ -1412,7 +1413,6 @@ disconnectedPresentation();
       <button class="btn" id="de-load">Load</button>
       <button class="btn primary" id="de-add">Add Record</button>
       
-      <button class="btn" id="de-backfill" title="One-off: fill actionMonth and reviewMonth from actionDate" style="background:#fbf2e6;border-color:#eedcc0;color:#8a5320">Backfill Months</button>
       <input id="de-search" placeholder="Filter…" style="margin-left:auto;padding:6px 10px;border:1px solid #ccc;border-radius:4px">
     </div>
     <div id="de-table" style="overflow-x:auto;max-height:400px;border:1px solid #ddd;border-radius:6px"></div>
@@ -2337,60 +2337,6 @@ document.getElementById('csh-replace').addEventListener('click', async () => {
 
 // Data Edit CRUD
 let deRecords = [];
-// Temporary: derive actionMonth / reviewMonth from actionDate across the whole
-// loan_action_reviews collection. Safe to remove once every record is stamped.
-document.getElementById('de-backfill').addEventListener('click', async () => {
-  const st = document.getElementById('de-status');
-  const btn = document.getElementById('de-backfill');
-  st.textContent = 'Reading loan_action_reviews\u2026'; st.style.color = '#5a6b80';
-  btn.disabled = true;
-  try {
-    let all = [], page = 1, pages = 1;
-    do {
-      const res = await fetch(CONFIG.url + '/api/collections/loan_action_reviews/records?perPage=200&page=' + page);
-      if (!res.ok) throw new Error('loan_action_reviews returned HTTP ' + res.status);
-      const d = await res.json();
-      all = all.concat(d.items || []); pages = d.totalPages || 1; page++;
-    } while (page <= pages);
-    const work = all.map(r => {
-      const ym = ymOf(r.actionDate);
-      if (!ym) return null;
-      const a = monthTag(ym.y, ym.m), rv = monthTag(ym.y, ym.m + 1);
-      if (String(r.actionMonth || '') === a && String(r.reviewMonth || '') === rv) return null;
-      return { id: r.id, actionMonth: a, reviewMonth: rv };
-    }).filter(Boolean);
-    const noDate = all.filter(r => !ymOf(r.actionDate)).length;
-    if (!work.length) {
-      st.textContent = 'Nothing to change \u2014 all ' + all.length + ' records already stamped' +
-        (noDate ? ' (' + noDate + ' have no action date)' : '') + '.';
-      st.style.color = '#216b50'; btn.disabled = false; return;
-    }
-    if (!confirm('Stamp ' + work.length + ' of ' + all.length + ' records?\n\n' +
-        'Example: ' + work[0].actionMonth + ' \u2192 ' + work[0].reviewMonth +
-        (noDate ? '\n\n' + noDate + ' record(s) have no action date and are skipped.' : ''))) {
-      st.textContent = ''; btn.disabled = false; return;
-    }
-    let ok = 0, fail = 0, firstErr = '';
-    for (const w of work) {
-      st.textContent = 'Stamping\u2026 ' + (ok + fail + 1) + ' of ' + work.length;
-      try {
-        const res = await fetch(CONFIG.url + '/api/collections/loan_action_reviews/records/' + encodeURIComponent(w.id),
-          { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ actionMonth: w.actionMonth, reviewMonth: w.reviewMonth }) });
-        if (res.ok) ok++; else { fail++; if (!firstErr) firstErr = (await res.text()).slice(0, 150); }
-      } catch (e) { fail++; if (!firstErr) firstErr = e.message; }
-    }
-    const summary = 'Stamped ' + ok + ' record' + (ok === 1 ? '' : 's') +
-      (noDate ? ', skipped ' + noDate + ' with no action date' : '') +
-      (fail ? ', ' + fail + ' failed \u2014 ' + firstErr : '') + '.';
-    // loadDataEdit writes to the same status line, so refresh first then report.
-    if (document.getElementById('de-collection').value === 'loan_action_reviews') await loadDataEdit();
-    st.textContent = summary;
-    st.style.color = fail ? '#a32f58' : '#216b50';
-  } catch (e) { st.textContent = 'Failed: ' + e.message; st.style.color = '#a32f58'; }
-  btn.disabled = false;
-});
-
 document.getElementById('de-load').addEventListener('click', loadDataEdit);
 document.getElementById('de-collection').addEventListener('change', loadDataEdit);
 document.getElementById('de-search').addEventListener('input', renderDataEdit);
@@ -2923,18 +2869,14 @@ async function loadDash() {
     }
     del_html += '</div>';
 
-    // ---- Action month, two months back: outcomes incl. open findings ----
-    // Keyed on actionDate, never on when the review happened, because reviews
-    // of a month's actions routinely carry over into the month after.
-    const pmStart = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-    const pmEnd = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const pmLabel = pmStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    // ---- Last completed review cycle: outcomes incl. open findings -----
+    // Keyed on reviewMonth, the month a month's actions were due to be reviewed
+    // in, never on when a review was signed off: those routinely carry over.
+    const pmTag = monthTag(now.getFullYear(), now.getMonth() - 1);
+    const pmLabel = pmTag.replace('-', ' ');
     const asDate = v => { const d = new Date(String(v || '').replace(' ', 'T')); return isNaN(d.getTime()) ? null : d; };
-    const pmRows = l.filter(r => {
-      const d = asDate(r.actionDate);
-      if (!d || d < pmStart || d >= pmEnd) return false;
-      return r.state === 'Completed' || r.state === 'Findings';
-    });
+    const pmRows = l.filter(r => reviewTagOf(r) === pmTag &&
+      (r.state === 'Completed' || r.state === 'Findings'));
     const pmOpen = pmRows.filter(r => r.state === 'Findings').length;
     const pmDone = pmRows.filter(r => r.state === 'Completed');
     const pmConcur = pmDone.filter(r => r.outcome === 'Concur').length;
@@ -2943,10 +2885,10 @@ async function loadDash() {
     const pmTotal = pmRows.length || 1;
     const pct = n => Math.round(n / pmTotal * 100);
     const seg = (n, color, label) => n ? '<div style="width:' + (n / pmTotal * 100) + '%;background:' + color + '" title="' + label + ': ' + n + '">' + (n / pmTotal > .08 ? pct(n) + '%' : '') + '</div>' : '';
-    let rep1 = '<div class="rep"><h2>Loan Action Reviews — ' + pmLabel + '</h2>' +
-      '<p class="cap">Actions dated ' + pmLabel + ', completed reviews and findings still open</p>';
+    let rep1 = '<div class="rep"><h2>Loan Action Review Report</h2>' +
+      '<p class="cap">Review month ' + pmLabel + ' \u2014 completed reviews and findings still open</p>';
     if (!pmRows.length) {
-      rep1 += '<p class="chk-empty">No reviewed actions are dated ' + pmLabel + '.</p></div>';
+      rep1 += '<p class="chk-empty">No reviews are tagged ' + pmLabel + '.</p></div>';
     } else {
       rep1 += '<div class="rep-tiles">' +
         '<div class="rep-tile"><b style="color:#216b50">' + pmConcur + '</b><span>Concur</span></div>' +
