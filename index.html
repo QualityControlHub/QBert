@@ -1437,15 +1437,9 @@ disconnectedPresentation();
   </div>
   <div id="ws-csh" hidden>
     <h2>Genesys Dashboard</h2>
-    <p>Paste the Genesys Reviews CSV. This replaces all records in genesys_reviews.</p>
-    <textarea id="csh-csv" rows="8" style="width:100%;font-family:monospace;font-size:11px" placeholder="agent,evaluations,average,averageCritical,intervalStart,intervalEnd,range"></textarea>
-    <div style="margin:10px 0">
-      <button class="btn primary" id="csh-replace">Replace Reviews</button>
-    </div>
-    <div id="csh-status"></div>
-    <hr style="margin:24px 0;border:none;border-top:1px solid #ddd">
-    <p>Paste the Genesys Metrics CSV. This replaces all records in genesys_metrics.</p>
-    <textarea id="metrics-csv" rows="8" style="width:100%;font-family:monospace;font-size:11px" placeholder="range,intervalStart,intervalEnd,agent,calls,avgTalk,avgSilence,avgHold"></textarea>
+    <p>Paste the Genesys Metrics CSV. This replaces all records in <code>genesys_metrics</code>, which is the only collection behind the Customer Service tab.</p>
+    <p style="font-size:12px;color:#555;margin-top:-6px">Columns: agent, range, calls, callTalkAgent, callTalkCaller, callTalkSilence, evaluations, averageEvaluation, averageCriticalEvaluation. The <code>range</code> value must read <strong>Historic</strong> or <strong>Recent</strong> &mdash; rows with anything else load but will not appear on the cards.</p>
+    <textarea id="metrics-csv" rows="8" style="width:100%;font-family:monospace;font-size:11px" placeholder="agent,range,calls,callTalkAgent,callTalkCaller,callTalkSilence,evaluations,averageEvaluation,averageCriticalEvaluation"></textarea>
     <div style="margin:10px 0">
       <button class="btn primary" id="metrics-replace">Replace Metrics</button>
     </div>
@@ -1539,7 +1533,7 @@ disconnectedPresentation();
 
     <section class="rpt-block soon">
       <h3>Genesys Dashboard Weekly Report <span class="rpt-tag wip">Not built yet</span></h3>
-      <p class="desc">Will build from <code>genesys_reviews</code> and <code>genesys_metrics</code> &mdash; the same data behind the Customer Service tab &mdash; as an Outlook-safe weekly summary.</p>
+      <p class="desc">Will build from <code>genesys_metrics</code> &mdash; the same data behind the Customer Service tab &mdash; as an Outlook-safe weekly summary.</p>
       <ul class="rpt-plan">
         <li>Agent scores for the week against month to date, with evaluation counts</li>
         <li>Talk, silence and hold averages per agent and rolled up per supervisor</li>
@@ -2395,51 +2389,6 @@ async function delImportCsv(textareaId, statusId, replace) {
 document.getElementById('del-add-run').addEventListener('click', () => delImportCsv('del-add-csv', 'del-add-status', false));
 document.getElementById('del-replace').addEventListener('click', () => delImportCsv('del-csv', 'del-status', true));
 
-document.getElementById('csh-replace').addEventListener('click', async () => {
-  const text = document.getElementById('csh-csv').value.trim();
-  if (!text) { alert('Paste CSV first'); return; }
-  if (!confirm('Replace all genesys_reviews records?')) return;
-  const status = document.getElementById('csh-status');
-  status.textContent = 'Clearing…';
-  try {
-    const existing = await fetch(CONFIG.url + '/api/collections/genesys_reviews/records?perPage=500').then(r => r.json());
-    for (const rec of (existing.items || [])) {
-      await fetch(CONFIG.url + '/api/collections/genesys_reviews/records/' + rec.id, { method: 'DELETE' });
-    }
-  } catch (e) { console.warn(e); }
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-  let ok = 0, fail = 0;
-  for (const line of lines.slice(1)) {
-    const vals = [];
-    let cur = '', inQ = false;
-    for (const c of line) {
-      if (c === '"') inQ = !inQ;
-      else if (c === ',' && !inQ) { vals.push(cur); cur = ''; }
-      else cur += c;
-    }
-    vals.push(cur);
-    const obj = {};
-    headers.forEach((h, i) => {
-      let v = (vals[i] || '').trim();
-      if (h === 'evaluations' || h === 'average' || h === 'averageCritical') {
-        if (v && !isNaN(Number(v))) obj[h] = Number(v);
-      } else if (h === 'intervalStart' || h === 'intervalEnd') {
-        if (v) {
-          const d = new Date(v);
-          if (!isNaN(d.getTime())) obj[h] = d.toISOString().replace('T', ' ').slice(0, 23) + 'Z';
-        }
-      } else if (v) obj[h] = v;
-    });
-    try {
-      const res = await fetch(CONFIG.url + '/api/collections/genesys_reviews/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj) });
-      if (res.ok) ok++;
-      else { fail++; if (fail === 1) { const err = await res.text(); status.textContent = 'Error: ' + err.slice(0, 200); console.log(err); } }
-    } catch (e) { fail++; if (fail === 1) status.textContent = 'Error: ' + e.message; }
-  }
-  status.textContent = 'Added ' + ok + (fail ? ', failed ' + fail : '') + '.';
-});
-
 // Data Edit CRUD
 let deRecords = [];
 document.getElementById('de-load').addEventListener('click', loadDataEdit);
@@ -3067,82 +3016,91 @@ async function loadCS() {
   // Name matching across collections: lowercase, drop punctuation, sort the words.
   // Makes "Hayes, Tonya" and "Tonya Hayes" match.
   const norm = n => (n || '').toLowerCase().replace(/[.,]/g, ' ').trim().split(/\s+/).filter(Boolean).sort().join(' ');
+  // Evaluation averages arrive either as a 0-1 fraction or as a whole percent;
+  // anything at or below 1 is read as a fraction so both exports render alike.
+  const pctOf = v => { if (v === null || v === undefined || v === '') return null; const n = Number(v); if (!isFinite(n)) return null; return Math.round(n <= 1 ? n * 100 : n); };
+  // callTalkAgent, callTalkCaller and callTalkSilence are components of one
+  // call, so they always share a unit. Genesys exports milliseconds; a figure
+  // under 10,000 is read as seconds so a seconds-based export still works.
+  const dur = v => { const n = Number(v) || 0; const secs = n >= 10000 ? n / 1000 : n; const m = Math.floor(secs / 60); return m + ':' + String(Math.round(secs % 60)).padStart(2, '0'); };
+  const silenceShare = r => { if (!r) return null; const a = Number(r.callTalkAgent) || 0, c = Number(r.callTalkCaller) || 0, s = Number(r.callTalkSilence) || 0; const t = a + c + s; return t ? Math.round(s / t * 100) : null; };
   const notes = [];
   try {
-    const [gRes, sRes, mRes] = await Promise.all([
-      fetch(CONFIG.url + '/api/collections/genesys_reviews/records?perPage=500&sort=agent'),
-      fetch(CONFIG.url + '/api/collections/staff/records?perPage=500'),
-      fetch(CONFIG.url + '/api/collections/genesys_metrics/records?perPage=500')
+    const [mRes, sRes] = await Promise.all([
+      fetch(CONFIG.url + '/api/collections/genesys_metrics/records?perPage=500&sort=agent'),
+      fetch(CONFIG.url + '/api/collections/staff/records?perPage=500')
     ]);
-    if (!gRes.ok) throw new Error('genesys_reviews returned HTTP ' + gRes.status);
+    if (!mRes.ok) throw new Error('genesys_metrics returned HTTP ' + mRes.status);
     if (!sRes.ok) throw new Error('staff returned HTTP ' + sRes.status);
-    const gData = await gRes.json();
+    const items = (await mRes.json()).items || [];
     const sData = await sRes.json();
-    const mData = mRes.ok ? await mRes.json() : { items: [] };
-    if (!mRes.ok) notes.push('genesys_metrics returned HTTP ' + mRes.status + ' — talk/silence/hold figures are omitted.');
-    const items = gData.items || [];
-    const metrics = mData.items || [];
     const allStaff = (sData.items || []).filter(s => !s.inactive);
     let allAgents = allStaff.filter(s => (s.role || '').toLowerCase() === 'agent');
     if (!allAgents.length && allStaff.length) {
       allAgents = allStaff;
       notes.push('No staff records carry the role "Agent", so all ' + allStaff.length + ' active staff were used for matching.');
     }
-    const monthItems = items.filter(r => (r.range || '').toLowerCase() === 'month');
-    const weekItems = items.filter(r => (r.range || '').toLowerCase() === 'last week');
-    if (items.length && !monthItems.length && !weekItems.length) {
+    const rangeOf = r => (r.range || '').trim().toLowerCase();
+    const histItems = items.filter(r => rangeOf(r) === 'historic');
+    const recItems = items.filter(r => rangeOf(r) === 'recent');
+    if (items.length && !histItems.length && !recItems.length) {
       const ranges = [...new Set(items.map(r => r.range || '(blank)'))].slice(0, 6);
-      notes.push(items.length + ' review rows loaded, but none have a range of "Month" or "Last Week". Values found: ' + ranges.join(', ') + '.');
+      notes.push(items.length + ' metrics rows loaded, but none have a range of "Historic" or "Recent". Values found: ' + ranges.join(', ') + '.');
     }
-    const reviewedSet = new Set(monthItems.filter(r => r.evaluations > 0).map(r => norm(r.agent)));
-    const monthWithReviews = monthItems.filter(r => r.evaluations > 0);
-    const weekWithReviews = weekItems.filter(r => r.evaluations > 0);
-    const avgMonth = monthWithReviews.length ? Math.round(monthWithReviews.reduce((s, r) => s + (r.average || 0), 0) / monthWithReviews.length * 100) : 0;
-    const avgWeek = weekWithReviews.length ? Math.round(weekWithReviews.reduce((s, r) => s + (r.average || 0), 0) / weekWithReviews.length * 100) : 0;
-    const card = (n, l) => '<div style="padding:10px 16px;background:#f0edfa;border-radius:6px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:#1e3a5f">' + n + '</div><div style="font-size:11px;color:#555">' + l + '</div></div>';
-    summary.innerHTML = card(allAgents.length, 'Total Agents') + card(reviewedSet.size, 'Reviewed') + card(avgMonth + '%', 'Month Avg') + card(avgWeek + '%', 'Week Avg');
     const agentLookup = {};
     allAgents.forEach(a => { const k = norm(a.agent); if (k) agentLookup[k] = { team: a.team || 'Other', name: a.agent }; });
+    const known = r => Object.prototype.hasOwnProperty.call(agentLookup, norm(r.agent));
+    const evaluated = r => (Number(r.evaluations) || 0) > 0;
+    const scored = r => known(r) && evaluated(r);
+    const reviewedSet = new Set(histItems.filter(scored).map(r => norm(r.agent)));
+    const mean = rows => { const v = rows.map(r => pctOf(r.averageEvaluation)).filter(n => n !== null); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : 0; };
+    const avgHist = mean(histItems.filter(scored));
+    const avgRec = mean(recItems.filter(scored));
+    const card = (n, l) => '<div style="padding:10px 16px;background:#f0edfa;border-radius:6px;text-align:center;min-width:70px"><div style="font-size:20px;font-weight:700;color:#1e3a5f">' + n + '</div><div style="font-size:11px;color:#555">' + l + '</div></div>';
+    summary.innerHTML = card(allAgents.length, 'Total Agents') + card(reviewedSet.size, 'Evaluated') + card(avgHist + '%', 'Historic Avg') + card(avgRec + '%', 'Recent Avg');
     const scoreMap = {};
     const unmatched = new Set();
     const slot = raw => {
       const k = norm(raw);
       if (!k) return null;
       if (!Object.prototype.hasOwnProperty.call(agentLookup, k)) { unmatched.add(raw); return null; }
-      if (!scoreMap[k]) scoreMap[k] = { name: agentLookup[k].name || raw, month: 0, week: null, evals: 0, metricsM: null, metricsW: null, team: agentLookup[k].team };
+      if (!scoreMap[k]) scoreMap[k] = { name: agentLookup[k].name || raw, team: agentLookup[k].team, hist: null, rec: null };
       return scoreMap[k];
     };
-    monthItems.forEach(r => { const d = slot(r.agent); if (d) { d.month = r.average || 0; d.evals = r.evaluations || 0; } });
-    weekItems.forEach(r => { const d = slot(r.agent); if (d) d.week = r.average || 0; });
-    metrics.filter(m => (m.range || '').toLowerCase() === 'month').forEach(m => { const d = slot(m.agent); if (d) d.metricsM = m; });
-    metrics.filter(m => (m.range || '').toLowerCase() === 'last week').forEach(m => { const d = slot(m.agent); if (d) d.metricsW = m; });
+    histItems.forEach(r => { const d = slot(r.agent); if (d) d.hist = r; });
+    recItems.forEach(r => { const d = slot(r.agent); if (d) d.rec = r; });
     const teamColors = {};
     // Team shades: narrow lightness band, separated by hue, all safe for white text.
     const palette = ['#24476B','#2B5070','#31496F','#215A63','#3A5580','#2A6072'];
     let colorIdx = 0;
     Object.values(scoreMap).forEach(d => { if (!teamColors[d.team]) teamColors[d.team] = palette[colorIdx++ % palette.length]; });
-    // Rank by Week + MTD combined; a missing Week counts as 0.
-    const combined = d => (d.month || 0) + (d.week || 0);
-    const rows = Object.values(scoreMap).sort((a, b) => combined(b) - combined(a) || (b.month || 0) - (a.month || 0) || String(a.name).localeCompare(String(b.name)));
+    // Rank by Recent + Historic combined; a missing range counts as 0.
+    const scoreOf = (d, k) => (d[k] ? pctOf(d[k].averageEvaluation) : null);
+    const combined = d => (scoreOf(d, 'hist') || 0) + (scoreOf(d, 'rec') || 0);
+    const rows = Object.values(scoreMap).sort((a, b) => combined(b) - combined(a) || (scoreOf(b, 'hist') || 0) - (scoreOf(a, 'hist') || 0) || String(a.name).localeCompare(String(b.name)));
+    if (unmatched.size) notes.push('These metrics rows have an agent name with no match in staff, so they are not counted anywhere on this tab: ' + [...unmatched].slice(0, 6).map(safe).join(', ') + (unmatched.size > 6 ? ' and ' + (unmatched.size - 6) + ' more' : '') + '.');
     if (!rows.length) {
-      if (unmatched.size) notes.push('These review rows have an agent name with no match in staff: ' + [...unmatched].slice(0, 6).map(safe).join(', ') + (unmatched.size > 6 ? ' and ' + (unmatched.size - 6) + ' more' : '') + '.');
       list.innerHTML = '<div class="cs-note"><strong>No agent cards to show.</strong><br>' +
-        'Loaded <code>' + items.length + '</code> genesys_reviews rows (<code>' + monthItems.length + '</code> ranged "Month", <code>' + weekItems.length + '</code> ranged "Last Week") and <code>' + allAgents.length + '</code> staff to match against.' +
+        'Loaded <code>' + items.length + '</code> genesys_metrics rows (<code>' + histItems.length + '</code> ranged "Historic", <code>' + recItems.length + '</code> ranged "Recent") and <code>' + allAgents.length + '</code> staff to match against.' +
         (notes.length ? '<br>' + notes.map(n => safe(n)).join('<br>') : '') +
         '</div>';
     } else {
       list.innerHTML = (notes.length ? '<div class="cs-note">' + notes.map(n => safe(n)).join('<br>') + '</div>' : '') + rows.map(data => {
-        const mPct = Math.round(data.month * 100);
-        const wPct = data.week !== null ? Math.round(data.week * 100) : null;
-        const metricCell = (label, value) => '<span style="flex:1;text-align:center"><span style="color:#a9c9e3">' + label + '</span> ' + value + '</span>';
-        const fmtM = m => m ? metricCell('Talk', ((m.avgTalk || 0) / 60000).toFixed(1) + 'm') + metricCell('Silence', Math.round((m.avgSilence || 0) * 100) + '%') + metricCell('Hold', ((m.avgHold || 0) / 60000).toFixed(1) + 'm') : '';
+        const hPct = scoreOf(data, 'hist'), rPct = scoreOf(data, 'rec');
+        const crit = data.hist ? pctOf(data.hist.averageCriticalEvaluation) : null;
+        const evals = data.hist ? (Number(data.hist.evaluations) || 0) : 0;
+        const cell = (label, value) => '<span style="flex:1;text-align:center;white-space:nowrap"><span style="color:#a9c9e3">' + label + '</span> ' + value + '</span>';
+        const fmtRow = r => cell('Calls', Number(r.calls) || 0) + cell('Agent', dur(r.callTalkAgent)) + cell('Caller', dur(r.callTalkCaller)) + cell('Silence', (silenceShare(r) === null ? '—' : silenceShare(r) + '%'));
         const bg = teamColors[data.team] || '#2B5070';
         return '<div style="background:' + bg + ';color:white;border:2px solid #F1CC13;border-radius:10px;padding:14px">' +
           '<div style="font-weight:600;font-size:15px">' + safe(data.name) + '</div>' +
           '<div style="font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:#a9c9e3;margin-bottom:8px">' + safe(data.team) + '</div>' +
-          '<div style="display:flex;gap:16px;font-size:13px;margin-bottom:6px"><div><span style="color:#a9c9e3">Week</span> <strong style="color:#F1CC13">' + (wPct !== null ? wPct + '%' : '—') + '</strong></div><div><span style="color:#a9c9e3">MTD</span> <strong style="color:#F1CC13">' + mPct + '%</strong></div></div>' +
-          '<div style="font-size:11px;color:#a9c9e3;margin-bottom:8px">' + data.evals + ' quality reviews</div>' +
-          (data.metricsW || data.metricsM ? '<div style="background:rgba(255,255,255,0.12);border-radius:6px;padding:8px;font-size:10px;color:#ffffff">' + (data.metricsW ? '<div style="display:flex;margin-bottom:4px"><strong style="width:32px;color:#F1CC13">Week</strong>' + fmtM(data.metricsW) + '</div>' : '') + (data.metricsM ? '<div style="display:flex"><strong style="width:32px;color:#F1CC13">MTD</strong>' + fmtM(data.metricsM) + '</div>' : '') + '</div>' : '') +
+          '<div style="display:flex;gap:16px;font-size:13px;margin-bottom:6px"><div><span style="color:#a9c9e3">Recent</span> <strong style="color:#F1CC13">' + (rPct !== null ? rPct + '%' : '—') + '</strong></div><div><span style="color:#a9c9e3">Historic</span> <strong style="color:#F1CC13">' + (hPct !== null ? hPct + '%' : '—') + '</strong></div>' +
+            (crit !== null ? '<div><span style="color:#a9c9e3">Critical</span> <strong style="color:#F1CC13">' + crit + '%</strong></div>' : '') + '</div>' +
+          '<div style="font-size:11px;color:#a9c9e3;margin-bottom:8px">' + evals + ' quality evaluation' + (evals === 1 ? '' : 's') + '</div>' +
+          (data.rec || data.hist ? '<div style="background:rgba(255,255,255,0.12);border-radius:6px;padding:8px;font-size:10px;color:#ffffff">' +
+            (data.rec ? '<div style="display:flex;margin-bottom:4px"><strong style="width:52px;color:#F1CC13">Recent</strong>' + fmtRow(data.rec) + '</div>' : '') +
+            (data.hist ? '<div style="display:flex"><strong style="width:52px;color:#F1CC13">Historic</strong>' + fmtRow(data.hist) + '</div>' : '') + '</div>' : '') +
           '</div>';
       }).join('');
     }
@@ -3153,26 +3111,28 @@ async function loadCS() {
       const supStats = supervisors.map(sup => {
         const supAgents = supAgentMap[sup.agent] || [];
         const reviewed = supAgents.filter(a => reviewedSet.has(norm(a)));
-        const monthCount = monthItems.filter(r => supAgents.some(a => norm(a) === norm(r.agent))).reduce((s, r) => s + (r.evaluations || 0), 0);
-        const teamMetricsM = metrics.filter(m => (m.range || '').toLowerCase() === 'month' && supAgents.some(a => norm(a) === norm(m.agent)));
-        const avgTalk = teamMetricsM.length ? teamMetricsM.reduce((s,m) => s + (m.avgTalk||0), 0) / teamMetricsM.length / 60000 : 0;
-        const avgSilence = teamMetricsM.length ? teamMetricsM.reduce((s,m) => s + (m.avgSilence||0), 0) / teamMetricsM.length * 100 : 0;
-        const avgHold = teamMetricsM.length ? teamMetricsM.reduce((s,m) => s + (m.avgHold||0), 0) / teamMetricsM.length / 60000 : 0;
-        return { name: sup.agent, team: sup.team || '', reviewed: reviewed.length, total: supAgents.length, count: monthCount, talk: avgTalk, silence: avgSilence, hold: avgHold, metricRows: teamMetricsM.length };
+        const mine = r => supAgents.some(a => norm(a) === norm(r.agent));
+        const teamHist = histItems.filter(mine);
+        const count = teamHist.reduce((s, r) => s + (Number(r.evaluations) || 0), 0);
+        const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+        const calls = teamHist.reduce((s, r) => s + (Number(r.calls) || 0), 0);
+        const talkA = avg(teamHist.map(r => Number(r.callTalkAgent) || 0));
+        const talkC = avg(teamHist.map(r => Number(r.callTalkCaller) || 0));
+        const sil = avg(teamHist.map(r => silenceShare(r)).filter(n => n !== null));
+        return { name: sup.agent, team: sup.team || '', reviewed: reviewed.length, total: supAgents.length, count: count, calls: calls, talkA: talkA, talkC: talkC, silence: sil, metricRows: teamHist.length };
       }).sort((a, b) => b.count - a.count);
       const maxCount = Math.max(1, ...supStats.map(s => s.count));
       const supColor = t => teamColors[t] || '#2B5070';
-      const mins = v => (v || 0).toFixed(1) + 'm';
       const bars = supStats.map(s => {
         const barW = s.count ? Math.max(3, Math.round(s.count / maxCount * 100)) : 0;
         const c = supColor(s.team);
         const chips = s.metricRows
-          ? '<span>Talk <b>' + mins(s.talk) + '</b></span><span>Silence <b>' + Math.round(s.silence) + '%</b></span><span>Hold <b>' + mins(s.hold) + '</b></span>'
+          ? '<span>Calls <b>' + s.calls + '</b></span><span>Agent <b>' + dur(s.talkA) + '</b></span><span>Caller <b>' + dur(s.talkC) + '</b></span><span>Silence <b>' + Math.round(s.silence) + '%</b></span>'
           : '<span>No call metrics</span>';
         return '<div class="sup-row">' +
           '<div class="sup-id"><span class="sup-dot" style="background:' + c + '"></span><div><div class="sup-name">' + safe(s.name) + '</div><div class="sup-team">' + safe(s.team || 'Team not set') + '</div></div></div>' +
           '<div class="sup-track"><div class="sup-fill" style="width:' + barW + '%;background:' + c + '"></div></div>' +
-          '<div class="sup-count"><b>' + s.count + '</b><span>reviews</span></div>' +
+          '<div class="sup-count"><b>' + s.count + '</b><span>evaluations</span></div>' +
           '<div class="sup-metrics">' + chips + '</div>' +
         '</div>';
       }).join('');
@@ -3193,9 +3153,9 @@ async function loadCS() {
         '</div>';
       }).join('');
       supDiv.innerHTML =
-        '<div class="cs-section-title"><h2>Quality Reviews by Supervisor</h2><span>Month to date, by evaluations completed</span></div>' +
+        '<div class="cs-section-title"><h2>Quality Reviews by Supervisor</h2><span>Historic range, by evaluations completed</span></div>' +
         '<div class="cs-panel">' + (bars || '<p class="cs-empty">No supervisor records to summarize.</p>') + '</div>' +
-        '<div class="cs-section-title"><h2>Agent Coverage</h2><span>' + covReviewed + ' of ' + covAgents + ' agents reviewed this month</span></div>' +
+        '<div class="cs-section-title"><h2>Agent Coverage</h2><span>' + covReviewed + ' of ' + covAgents + ' agents evaluated in the Historic range</span></div>' +
         '<div class="cs-panel">' + (pies ? '<div class="cov-grid">' + pies + '</div>' : '<p class="cs-empty">No agents are assigned to a supervisor yet.</p>') + '</div>';
     }
   } catch (e) {
@@ -3204,7 +3164,6 @@ async function loadCS() {
     list.innerHTML = '<div class="cs-note"><strong>Customer Service data could not be loaded.</strong><br>' + safe(e.message) + '</div>';
   }
 }
-
 // Loan add form
 async function loadLoanForm() {
   try {
@@ -3667,10 +3626,8 @@ if (metricsBtn) {
       const obj = {};
       headers.forEach((h, i) => {
         let v = (vals[i] || '').trim();
-        if (['calls','avgTalk','avgSilence','avgHold'].includes(h)) {
+        if (['calls','callTalkAgent','callTalkCaller','callTalkSilence','evaluations','averageEvaluation','averageCriticalEvaluation'].includes(h)) {
           if (v && !isNaN(Number(v))) obj[h] = Number(v);
-        } else if (h === 'intervalStart' || h === 'intervalEnd') {
-          if (v) { const d = new Date(v); if (!isNaN(d.getTime())) obj[h] = d.toISOString().replace('T', ' ').slice(0, 23) + 'Z'; }
         } else if (v) obj[h] = v;
       });
       try {
