@@ -774,12 +774,16 @@ function describeQueue(){
 function renderCounts(){const c=app.counts;$('c-in').textContent=c.inReview;$('c-find').textContent=c.findings;$('c-done').textContent=c.completed;$('outcome-all').textContent=c.completed;$('outcome-concur').textContent=c.concur;$('outcome-non').textContent=c.non;$('outcome-unknown').textContent=c.unknown;$('unclassified-button').hidden=!c.unknown&&app.outcome!=='unclassified';}
 function riskBadge(r){const risk=Number(r.risk);if(!Number.isFinite(risk)||risk<1)return '<span class="badge">No risk rank</span>';const css=risk<=3?'risk-high':risk<=7?'risk-mid':'risk-low';return '<span class="badge '+css+'" title="Risk rank '+safe(risk)+'; 1 is highest">Risk '+safe(risk)+'</span>';}
 function outcomeBadge(r){if(r.outcome==='Concur')return '<span class="badge outcome-concur">Concur</span>';if(r.outcome==='Non Concur')return '<span class="badge outcome-non">Non Concur · resolved</span>';return '<span class="badge">Unclassified</span>';}
+// An In Review action dated before the start of last month is overdue.
+// Compare calendar months taken straight from the stored string: parsing to a
+// Date would read a UTC midnight as the previous day in a negative-offset zone
+// and wrongly flag the 1st of the month.
 function staleAction(r){
- if((r.state||'In Review')!=='In Review'||!r.actionDate)return false;
- const d=new Date(String(r.actionDate).replace(' ','T'));
- if(Number.isNaN(d.getTime()))return false;
+ if(String(r.state||'In Review').trim().toLowerCase()!=='in review')return false;
+ const m=String(r.actionDate||'').match(/^(\d{4})-(\d{2})/);
+ if(!m)return false;
  const n=new Date();
- return d<new Date(n.getFullYear(),n.getMonth()-1,1);
+ return (+m[1])*12+(+m[2])-1 < n.getFullYear()*12+n.getMonth()-1;
 }
 function isOverdue(r){return !!r.findingDueOn&&r.findingDueOn.slice(0,10)<localDay()&&r.state==='Findings';}
 function renderList(){
