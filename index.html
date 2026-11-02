@@ -3078,8 +3078,8 @@ async function loadCS() {
     const scoreOf = (d, k) => (d[k] ? pctOf(d[k].averageEvaluation) : null);
     const combined = d => (scoreOf(d, 'hist') || 0) + (scoreOf(d, 'rec') || 0);
     const rows = Object.values(scoreMap).sort((a, b) => combined(b) - combined(a) || (scoreOf(b, 'hist') || 0) - (scoreOf(a, 'hist') || 0) || String(a.name).localeCompare(String(b.name)));
-    if (unmatched.size) notes.push('These metrics rows have an agent name with no match in staff, so they are not counted anywhere on this tab: ' + [...unmatched].slice(0, 6).map(safe).join(', ') + (unmatched.size > 6 ? ' and ' + (unmatched.size - 6) + ' more' : '') + '.');
     if (!rows.length) {
+      if (unmatched.size) notes.push('These metrics rows have an agent name with no match in staff: ' + [...unmatched].slice(0, 6).map(safe).join(', ') + (unmatched.size > 6 ? ' and ' + (unmatched.size - 6) + ' more' : '') + '.');
       list.innerHTML = '<div class="cs-note"><strong>No agent cards to show.</strong><br>' +
         'Loaded <code>' + items.length + '</code> genesys_metrics rows (<code>' + histItems.length + '</code> ranged "Historic", <code>' + recItems.length + '</code> ranged "Recent") and <code>' + allAgents.length + '</code> staff to match against.' +
         (notes.length ? '<br>' + notes.map(n => safe(n)).join('<br>') : '') +
@@ -3089,15 +3089,18 @@ async function loadCS() {
         const hPct = scoreOf(data, 'hist'), rPct = scoreOf(data, 'rec');
         const crit = data.hist ? pctOf(data.hist.averageCriticalEvaluation) : null;
         const evals = data.hist ? (Number(data.hist.evaluations) || 0) : 0;
+        const callsRow = data.hist || data.rec;
+        const calls = callsRow ? (Number(callsRow.calls) || 0) : 0;
         const cell = (label, value) => '<span style="flex:1;text-align:center;white-space:nowrap"><span style="color:#a9c9e3">' + label + '</span> ' + value + '</span>';
-        const fmtRow = r => cell('Calls', Number(r.calls) || 0) + cell('Agent', dur(r.callTalkAgent)) + cell('Caller', dur(r.callTalkCaller)) + cell('Silence', (silenceShare(r) === null ? '—' : silenceShare(r) + '%'));
+        const fmtRow = r => cell('Agent', dur(r.callTalkAgent)) + cell('Caller', dur(r.callTalkCaller)) + cell('Silence', (silenceShare(r) === null ? '—' : silenceShare(r) + '%'));
         const bg = teamColors[data.team] || '#2B5070';
         return '<div style="background:' + bg + ';color:white;border:2px solid #F1CC13;border-radius:10px;padding:14px">' +
           '<div style="font-weight:600;font-size:15px">' + safe(data.name) + '</div>' +
           '<div style="font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:#a9c9e3;margin-bottom:8px">' + safe(data.team) + '</div>' +
+          '<div style="font-size:9.5px;letter-spacing:.9px;text-transform:uppercase;color:#ffffff;opacity:.72;margin-bottom:4px">Quality Evaluation</div>' +
           '<div style="display:flex;gap:16px;font-size:13px;margin-bottom:6px"><div><span style="color:#a9c9e3">Recent</span> <strong style="color:#F1CC13">' + (rPct !== null ? rPct + '%' : '—') + '</strong></div><div><span style="color:#a9c9e3">Historic</span> <strong style="color:#F1CC13">' + (hPct !== null ? hPct + '%' : '—') + '</strong></div>' +
             (crit !== null ? '<div><span style="color:#a9c9e3">Critical</span> <strong style="color:#F1CC13">' + crit + '%</strong></div>' : '') + '</div>' +
-          '<div style="font-size:11px;color:#a9c9e3;margin-bottom:8px">' + evals + ' quality evaluation' + (evals === 1 ? '' : 's') + '</div>' +
+          '<div style="font-size:11px;color:#a9c9e3;margin-bottom:8px">' + calls.toLocaleString() + ' call' + (calls === 1 ? '' : 's') + ' \u00b7 ' + evals + ' quality evaluation' + (evals === 1 ? '' : 's') + '</div>' +
           (data.rec || data.hist ? '<div style="background:rgba(255,255,255,0.12);border-radius:6px;padding:8px;font-size:10px;color:#ffffff">' +
             (data.rec ? '<div style="display:flex;margin-bottom:4px"><strong style="width:52px;color:#F1CC13">Recent</strong>' + fmtRow(data.rec) + '</div>' : '') +
             (data.hist ? '<div style="display:flex"><strong style="width:52px;color:#F1CC13">Historic</strong>' + fmtRow(data.hist) + '</div>' : '') + '</div>' : '') +
