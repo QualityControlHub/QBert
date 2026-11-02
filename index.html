@@ -805,16 +805,28 @@ function reviewLink(r){return location.href.split('#')[0]+'#loan='+encodeURIComp
 function noticeFor(r){
  return {to:staffEmail(r.supervisor),
   subject:'Q-Bert finding \u00b7 Loan '+(r.title||'')+' \u00b7 response due '+dateLabel(r.findingDueOn),
-  body:['A loan action review has issued a finding on the loan below. It needs your correction, corrective action, and sign-off in Q-Bert.','',
+  body:['The following loan action is in your Finding queue. Please note the correction and/or corrective action, and sign-off.','',
    'Loan: '+(r.title||'Not recorded'),
    'Loan action: '+(r.loanAction||'Not recorded'),
    'Type: '+(r.critical||'Not classified')+(r.flag?'  (IMMEDIATE ATTENTION)':''),
    'Issued: '+dateLabel(r.findingIssuedOn),
-   'Response due: '+dateLabel(r.findingDueOn),
-   'Reviewer: '+(r.reviewer||'Unassigned'),'',
-   'Open the finding here to read the detail and record your response:',
-   reviewLink(r),'',
-   'The finding detail is held in Q-Bert and is deliberately not repeated in this message.'].join('\n')};
+   'Response due: '+dateLabel(r.findingDueOn),'',
+   'The finding details can be viewed in Q-Bert:',
+   reviewLink(r)].join('\n')};
+}
+// A mailto body is plain text by spec, so the hyperlinked sentence cannot live
+// in the draft itself. This is the same notice as HTML, put on the clipboard so
+// it can be pasted over the body in Outlook when the link should be live.
+function noticeHtml(r){
+ const row=(k,v)=>'<tr><td style="padding:1px 16px 1px 0;color:#555;white-space:nowrap">'+safe(k)+'</td><td style="padding:1px 0"><strong>'+safe(v)+'</strong></td></tr>';
+ return '<div style="font:11pt Calibri,Arial,sans-serif;color:#222;line-height:1.45">'+
+  '<p style="margin:0 0 12px">The following loan action is in your Finding queue. Please note the correction and/or corrective action, and sign-off.</p>'+
+  '<table style="border-collapse:collapse;margin:0 0 12px">'+
+   row('Loan',r.title||'Not recorded')+row('Loan action',r.loanAction||'Not recorded')+
+   row('Type',(r.critical||'Not classified')+(r.flag?'  (IMMEDIATE ATTENTION)':''))+
+   row('Issued',dateLabel(r.findingIssuedOn))+row('Response due',dateLabel(r.findingDueOn))+
+  '</table>'+
+  '<p style="margin:0"><a href="'+safe(reviewLink(r))+'">The finding details can be viewed in Q-Bert.</a></p></div>';
 }
 function mailtoFor(r){const n=noticeFor(r);return 'mailto:'+encodeURIComponent(n.to)+'?subject='+encodeURIComponent(n.subject)+'&body='+encodeURIComponent(n.body);}
 function pbStamp(d){return d.toISOString().replace('T',' ');}
@@ -977,10 +989,21 @@ const buttons=reviewing?'<button class="btn" data-command="save-review">Save Dra
  if(finding){
   const openBtn=$('notify-open'),markBtn=$('notify-mark');
   if(openBtn)openBtn.onclick=()=>{
-   // An anchor click hands the mailto to the OS without navigating the page.
+   // Open the addressed draft first: an anchor click hands the mailto to the OS
+   // without navigating the page, and it must happen while the click gesture
+   // is still live. The clipboard write is started in the same tick for the
+   // same reason, and is best-effort - not every browser carries text/html.
    const a=document.createElement('a');a.href=mailtoFor(r);a.style.display='none';
    document.body.appendChild(a);a.click();a.remove();
-   $('notify-state').textContent='Draft opened in your mail client. Mark it as notified once it has gone out.';
+   const base='Draft opened in your mail client. Mark it as notified once it has gone out.';
+   $('notify-state').textContent=base;
+   try{
+    navigator.clipboard.write([new ClipboardItem({
+     'text/html':new Blob([noticeHtml(r)],{type:'text/html'}),
+     'text/plain':new Blob([noticeFor(r).body],{type:'text/plain'})})])
+     .then(()=>{$('notify-state').textContent='Draft opened. A formatted copy with the sentence hyperlinked is on your clipboard \u2014 press Ctrl+V in the message body to use it. '+base.replace('Draft opened in your mail client. ','');})
+     .catch(()=>{});
+   }catch(e){}
   };
   if(markBtn)markBtn.onclick=()=>markNotified(r);
  }
