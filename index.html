@@ -791,6 +791,51 @@ function describeQueue(){
 }
 function renderCounts(){const c=app.counts;$('c-in').textContent=c.inReview;$('c-find').textContent=c.findings;$('c-done').textContent=c.completed;$('outcome-all').textContent=c.completed;$('outcome-concur').textContent=c.concur;$('outcome-non').textContent=c.non;$('outcome-unknown').textContent=c.unknown;$('unclassified-button').hidden=!c.unknown&&app.outcome!=='unclassified';}
 function riskBadge(r){const risk=Number(r.risk);if(!Number.isFinite(risk)||risk<1)return '<span class="badge">No risk rank</span>';const css=risk<=3?'risk-high':risk<=7?'risk-mid':'risk-low';return '<span class="badge '+css+'" title="Risk rank '+safe(risk)+'; 1 is highest">Risk '+safe(risk)+'</span>';}
+// Supervisor notices. The address comes from staff so the reviewer never types
+// it; the message itself is a pointer back to this record, never a copy of the
+// finding, so loan detail stays inside Q-Bert and out of mail systems.
+function staffEmail(name){
+ if(!name)return '';
+ const k=v=>String(v||'').trim().toLowerCase().replace(/[.,]/g,'').replace(/\s+/g,' ');
+ const want=k(name),roster=app.staff||[];
+ const hit=roster.find(s=>k(W.nameOf(s))===want&&W.roleOf(s)==='Supervisor')||roster.find(s=>k(W.nameOf(s))===want);
+ return hit?String(hit.email||'').trim():'';
+}
+function reviewLink(r){return location.href.split('#')[0]+'#loan='+encodeURIComponent(r.id);}
+function noticeFor(r){
+ return {to:staffEmail(r.supervisor),
+  subject:'Q-Bert finding \u00b7 Loan '+(r.title||'')+' \u00b7 response due '+dateLabel(r.findingDueOn),
+  body:['A loan action review has issued a finding on the loan below. It needs your correction, corrective action, and sign-off in Q-Bert.','',
+   'Loan: '+(r.title||'Not recorded'),
+   'Loan action: '+(r.loanAction||'Not recorded'),
+   'Type: '+(r.critical||'Not classified')+(r.flag?'  (IMMEDIATE ATTENTION)':''),
+   'Issued: '+dateLabel(r.findingIssuedOn),
+   'Response due: '+dateLabel(r.findingDueOn),
+   'Reviewer: '+(r.reviewer||'Unassigned'),'',
+   'Open the finding here to read the detail and record your response:',
+   reviewLink(r),'',
+   'The finding detail is held in Q-Bert and is deliberately not repeated in this message.'].join('\n')};
+}
+function mailtoFor(r){const n=noticeFor(r);return 'mailto:'+encodeURIComponent(n.to)+'?subject='+encodeURIComponent(n.subject)+'&body='+encodeURIComponent(n.body);}
+function pbStamp(d){return d.toISOString().replace('T',' ');}
+async function markNotified(r){
+ const at=pbStamp(new Date()),btn=$('notify-mark');
+ if(btn)btn.disabled=true;
+ try{
+  if(app.mode!=='preview'){
+   const res=await fetch(CONFIG.url+'/api/collections/loan_action_reviews/records/'+encodeURIComponent(r.id),
+    {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({notifiedOn:at})});
+   if(!res.ok)throw new Error((await res.text()).slice(0,160));
+  }
+  r.notifiedOn=at;
+  if(app.openRecord&&app.openRecord.id===r.id)app.openRecord.notifiedOn=at;
+  const row=(app.records||[]).find(x=>x.id===r.id);if(row)row.notifiedOn=at;
+  const snap=app.snapshot&&Array.isArray(app.snapshot.loans)?app.snapshot.loans.find(x=>x.id===r.id):null;if(snap)snap.notifiedOn=at;
+  toast('Supervisor notice recorded'+(app.mode==='preview'?' \u00b7 preview only.':'.'));
+  renderList();renderReview(app.openRecord||r);
+ }catch(e){showError('review-error','The notified date could not be saved. '+e.message);}
+ finally{const b=$('notify-mark');if(b)b.disabled=false;}
+}
 function outcomeBadge(r){if(r.outcome==='Concur')return '<span class="badge outcome-concur">Concur</span>';if(r.outcome==='Non Concur')return '<span class="badge outcome-non">Non Concur · resolved</span>';return '<span class="badge">Unclassified</span>';}
 // An In Review action dated before the start of last month is overdue.
 // Compare calendar months taken straight from the stored string: parsing to a
@@ -816,7 +861,8 @@ function renderList(){
  const stale=staleAction(r);
  const flagBadge = r.flag ? '<span class="badge" style="background:#F1CC13;color:#1e3a5f">🚩</span> ' : '';
  const critBadge = r.critical === 'Critical' ? '<span class="badge" style="background:#c45c26;color:white">Critical</span>' : r.critical === 'Non Critical' ? '<span class="badge" style="background:#f9a825;color:#333">Non Critical</span>' : '';
- const extra=r.state==='Completed'?outcomeBadge(r):r.state==='Findings'?flagBadge+critBadge:'';
+ const notifyBadge=(r.state==='Findings'&&!String(r.notifiedOn||'').trim())?' <span class="badge" style="background:#edeaf5;color:#5a5480">Not notified</span>':'';
+ const extra=r.state==='Completed'?outcomeBadge(r):r.state==='Findings'?flagBadge+critBadge+notifyBadge:'';
  return '<article class="review-item"><button class="review-row" data-review="'+safe(r.id)+'" aria-label="Open loan '+safe(r.title)+', '+safe(r.loanAction)+', '+safe(r.state)+'">'+
  '<div><div class="loan-title"><strong>'+safe(r.title||'Untitled loan')+'</strong> '+(r.state==='Findings'?extra:'')+'</div><div class="row-action">'+safe(r.loanAction||'No action recorded')+(r.risk?' · Risk '+safe(r.risk):'')+'</div></div>'+
  '<div class="row-line row-team">'+safe(r.team||'Unassigned')+'</div><div class="row-line row-reviewer">'+safe(r.reviewer||'Unassigned')+'</div>'+
@@ -910,6 +956,15 @@ function renderReview(r){
  const signoff=supervising?'<div class="signoff"><h3>'+(isStandIn?'Sign-off':'Supervisor sign-off')+'</h3><p class="hint">Approve every documented response. At least one approval is required to complete this finding.</p>'+standInField+'<label class="checkbox-label"><input type="checkbox" id="approve-correction">I reviewed and approve the correction.</label><label class="checkbox-label"><input type="checkbox" id="approve-action">I reviewed and approve the corrective action.</label>'+textField('edit-signoff-notes','Sign-off notes (optional)',r.supervisorSignOffNotes,false,(isStandIn?'The name above':'Your name')+' and the sign-off timestamp are recorded automatically.')+'</div>':'';
  const resolution=(finding||r.outcome==='Non Concur')?'<section class="form-section"><h3><span class="section-number">03</span> Correction &amp; corrective action</h3><p class="hint">A correction fixes this issue. A corrective action helps prevent it from happening again.</p><div class="form-grid">'+textField('edit-correction','Correction · the fix',r.correction,!responding,'Document what was fixed on this loan action.')+textField('edit-corrective-action','Corrective action · prevent recurrence',r.correctiveAction,!supervising,'Document the change in process, training, or controls to prevent a repeat.')+'</div>'+(!responding&&finding?'<div class="form-callout">Only the assigned Supervisor can update this response and sign off.</div>':'')+signoff+'</section>':'';
  const completion=completed?'<div class="signoff"><h3>Completed '+outcomeBadge(r)+'</h3><p class="hint">Completed '+safe(dateLabel(r.completedOn,true))+'</p>'+(r.outcome==='Non Concur'?'<p>Signed off by: <strong>'+safe(r.supervisorSignedOffBy||'Not recorded')+'</strong>'+((r.supervisorSignedOffBy&&r.supervisor&&r.supervisorSignedOffBy!==r.supervisor)?' <span class="badge">In place of '+safe(r.supervisor)+'</span>':'')+'<br><span class="subtle">'+safe(dateLabel(r.supervisorSignedOffOn,true))+'</span></p><p class="hint">'+(r.supervisorApprovedCorrection?'✓ Correction approved. ':'')+(r.supervisorApprovedCorrectiveAction?'✓ Corrective action approved.':'')+'</p>'+(r.supervisorSignOffNotes?'<p>'+safe(r.supervisorSignOffNotes)+'</p>':''):r.outcome==='Concur'?'<p class="hint">Original decision: Concur. No finding was issued.</p>':'<p class="hint">The original outcome was not recorded. Reconcile this legacy item in Database.</p>')+'</div>':'';
+ const notifiedAt=String(r.notifiedOn||'').trim();
+ const supEmail=staffEmail(r.supervisor);
+ const notice=finding?'<section class="form-section"><h3><span class="section-number">04</span> Supervisor notice</h3>'+
+  '<p class="hint" id="notify-state">'+(notifiedAt?'Notified '+safe(dateLabel(notifiedAt,true))+'.':'The Supervisor has not been notified of this finding.')+'</p>'+
+  '<dl class="read-only-grid"><div><dt>Supervisor</dt><dd>'+safe(r.supervisor||'Unassigned')+'</dd></div><div><dt>Email on file</dt><dd>'+(supEmail?safe(supEmail):'<span class="subtle">None in the staff table</span>')+'</dd></div></dl>'+
+  (supEmail?'':'<div class="form-callout amber">No email is on file for this Supervisor. The draft opens with an empty To line for you to fill in. Add the address to the staff table under Data Edit to skip that step next time.</div>')+
+  '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" class="btn primary" id="notify-open">'+(notifiedAt?'Open the notice again':'Open notice in email')+'</button>'+
+  '<button type="button" class="btn" id="notify-mark">'+(notifiedAt?'Update the notified date':'Mark as notified')+'</button></div>'+
+  '<p class="hint" style="margin-top:9px">The message carries the loan number, the dates and a link back to this record. The finding text stays in Q-Bert.</p></section>':'';
  const history=Array.isArray(r.reviewHistory)?r.reviewHistory:[];
  const historyHtml='';
  const returnBtn=(role==='Reviewer'&&(finding||completed))?'<button class="btn" data-command="return-to-review">Return to In Review</button>':'';
@@ -917,8 +972,18 @@ const buttons=reviewing?'<button class="btn" data-command="save-review">Save Dra
  $('review-content').innerHTML='<div class="dialog-header"><div><div class="eyebrow">'+safe(r.state)+'</div><h2 id="review-title">Loan '+safe(r.title)+'</h2><p>'+safe(r.loanAction)+' · '+safe(r.team)+' · '+safe(r.reviewer||'Unassigned Reviewer')+'</p></div><button class="close-btn" data-close="review-dialog" aria-label="Close review">×</button></div><form id="review-form" novalidate><div class="dialog-body"><div class="steps" aria-label="Current stage: '+safe(r.state)+'">'+steps+'</div>'+completion+
  '<section class="form-section"><h3><span class="section-number">01</span> Review assignment</h3><dl class="read-only-grid"><div><dt>Loan action</dt><dd>'+safe(r.loanAction)+'</dd></div><div><dt>Action date</dt><dd>'+safe(dateLabel(r.actionDate))+'</dd></div><div><dt>Reviewer</dt><dd>'+safe(r.reviewer||'Unassigned')+'</dd></div></dl><div class="form-grid">'+assignment+'</div><div id="supervisor-warning" class="form-callout amber" hidden></div></section>'+
  '<section class="form-section"><h3><span class="section-number">02</span> Review checklist</h3><p class="hint">Check any items that apply. A loan action can have more than one finding.</p>'+checklistHtml+checklistWarning+'</section>'+
- ((inReview||finding||r.outcome==='Non Concur')?'<section class="form-section"><h3>Findings and Notes'+(reviewing?' <span class="subtle" style="font-weight:400;font-size:11px">for Non Concur only</span>':'')+'</h3>'+findingInputs+'</section>':'')+resolution+'<div id="review-error" class="inline-error" role="alert" tabindex="-1" hidden></div></div><div class="dialog-footer"><span class="save-hint" id="save-hint">'+(app.mode==='preview'?'':'')+'</span>'+buttons+'</div></form>';
+ ((inReview||finding||r.outcome==='Non Concur')?'<section class="form-section"><h3>Findings and Notes'+(reviewing?' <span class="subtle" style="font-weight:400;font-size:11px">for Non Concur only</span>':'')+'</h3>'+findingInputs+'</section>':'')+resolution+notice+'<div id="review-error" class="inline-error" role="alert" tabindex="-1" hidden></div></div><div class="dialog-footer"><span class="save-hint" id="save-hint">'+(app.mode==='preview'?'':'')+'</span>'+buttons+'</div></form>';
  if(reviewing)updateSupervisor();
+ if(finding){
+  const openBtn=$('notify-open'),markBtn=$('notify-mark');
+  if(openBtn)openBtn.onclick=()=>{
+   // An anchor click hands the mailto to the OS without navigating the page.
+   const a=document.createElement('a');a.href=mailtoFor(r);a.style.display='none';
+   document.body.appendChild(a);a.click();a.remove();
+   $('notify-state').textContent='Draft opened in your mail client. Mark it as notified once it has gone out.';
+  };
+  if(markBtn)markBtn.onclick=()=>markNotified(r);
+ }
  $('review-form').addEventListener('submit',e=>e.preventDefault());
  $('review-form').addEventListener('input',()=>{app.dirty=true;$('save-hint').textContent='Unsaved changes';});
  $('review-form').addEventListener('change',e=>{app.dirty=true;$('save-hint').textContent='Unsaved changes';if(e.target.id==='edit-agent')updateSupervisor();});
@@ -933,6 +998,21 @@ function updateSupervisor(){
   showError('supervisor-warning',agent&&name&&!valid?'The staff table lists '+(name)+' for this Agent, but no matching Supervisor record is available.':'');
 }
 async function openReview(id,trigger){let r=app.records.find(r=>r.id===id);if(!r)return;app.returnFocus=trigger;app.openRecord=copy(r);app.dirty=false;renderReview(app.openRecord);$('review-dialog').showModal();}
+// Opens one record straight from a #loan=<id> link, whatever bin it sits in:
+// the record is fetched on its own rather than found in the loaded page.
+async function openLoanDeepLink(id){
+ if(!id)return;
+ if(!app.ready){app.pendingDeepLink=id;return;}
+ let r=(app.records||[]).find(x=>x.id===id);
+ if(!r&&app.snapshot&&Array.isArray(app.snapshot.loans))r=app.snapshot.loans.find(x=>x.id===id);
+ if(!r&&app.mode!=='preview'){
+  try{const res=await fetch(CONFIG.url+'/api/collections/loan_action_reviews/records/'+encodeURIComponent(id));if(res.ok)r=await res.json();}catch(e){}
+ }
+ if(!r){showError('load-error','That notice link points to a review this workspace cannot open. Search for the loan number instead.');return;}
+ showSection('loans');
+ app.returnFocus=null;app.openRecord=copy(r);app.dirty=false;renderReview(app.openRecord);$('review-dialog').showModal();
+}
+window.openLoanDeepLink=openLoanDeepLink;
 function gatherReview(){const get=id=>$(id)?$(id).value.trim():'';const checked=id=>!!($(id)&&$(id).checked);const answers={};document.querySelectorAll('[data-check]').forEach(el=>{if(el.checked)answers[el.dataset.check]=true;});if(checked('manual-confirm'))answers.__manualReviewConfirmed=true;return {agent:get('edit-agent'),team:get('edit-team'),supervisor:get('edit-supervisor'),findingCategory:get('edit-category'),findingText:get('edit-finding'),findingIssuedOn:get('edit-issued'),findingDueOn:get('edit-due'),critical:get('edit-critical'),flag:checked('edit-flag'),checklistResponses:answers,correction:get('edit-correction'),correctiveAction:get('edit-corrective-action'),supervisorApprovedCorrection:checked('approve-correction'),supervisorApprovedCorrectiveAction:checked('approve-action'),supervisorSignOffNotes:get('edit-signoff-notes'),signedOffBy:get('edit-signed-off-by')};}
 async function confirmAction(title,message,accept='Continue',cancel='Cancel'){const dialog=$('confirm-dialog');$('confirm-title').textContent=title;$('confirm-message').textContent=message;$('confirm-accept').textContent=accept;$('confirm-cancel').textContent=cancel;dialog.showModal();return new Promise(resolve=>{function finish(value){dialog.close();$('confirm-accept').onclick=null;$('confirm-cancel').onclick=null;dialog.oncancel=null;resolve(value);}$('confirm-accept').onclick=()=>finish(true);$('confirm-cancel').onclick=()=>finish(false);dialog.oncancel=e=>{e.preventDefault();finish(false);};});}
 async function closeReview(){if(app.busy)return;if(app.dirty&&!await confirmAction('Discard unsaved changes?','Your edits have not been saved.','Discard changes','Keep editing'))return;$('review-dialog').close();app.openRecord=null;app.dirty=false;if(app.returnFocus&&document.contains(app.returnFocus))app.returnFocus.focus();else $('queue-title').scrollIntoView({block:'nearest'});}
@@ -1212,6 +1292,8 @@ showSection('loans');
   fillSort();
   fillPeople();
   query();
+  app.ready=true;
+  if(app.pendingDeepLink){const id=app.pendingDeepLink;app.pendingDeepLink='';openLoanDeepLink(id);}
 })();
 
 // Layout width control
@@ -3726,9 +3808,17 @@ if (metricsBtn) {
     if (el) el.addEventListener('click', () => go(''));
   });
 
-  window.addEventListener('popstate', () => showWorkspace(nameFromHash()));
-  window.addEventListener('hashchange', () => showWorkspace(nameFromHash()));
-  showWorkspace(nameFromHash());   // honour a bookmarked hash on load
+  // #loan=<id> is not a workspace: it stays on the front page and opens that
+  // review, so a notice link lands the Supervisor on the finding itself.
+  function loanFromHash(){const m=String(location.hash||'').match(/^#loan=([A-Za-z0-9_-]+)$/i);return m?m[1]:'';}
+  function handleRoute(){
+    showWorkspace(nameFromHash());
+    const id=loanFromHash();
+    if(id&&typeof window.openLoanDeepLink==='function')window.openLoanDeepLink(id);
+  }
+  window.addEventListener('popstate', handleRoute);
+  window.addEventListener('hashchange', handleRoute);
+  handleRoute();   // honour a bookmarked hash on load
 })();
 </script>
 </body></html>
