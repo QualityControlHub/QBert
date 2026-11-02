@@ -19,6 +19,15 @@ body[data-width="full"]{--page-w:100%}
 .review-row>*{min-width:0}
 .row-line,.row-meta,.row-action{overflow-wrap:anywhere}
 .row-team,.row-reviewer{hyphens:auto}.review-row strong{font-size:14.5px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.3px}.row-action{font-size:12.5px;color:var(--muted);margin-top:4px}.row-line{font-size:12.5px}.row-meta{font-size:11.5px;color:var(--muted);margin-top:2px}.loan-title{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.badge{display:inline-flex;align-items:center;gap:5px;border-radius:6px;padding:3px 8px;font-size:10.5px;font-weight:600;letter-spacing:.2px;white-space:nowrap;background:#efedf8;color:#564f7d}.risk-high{background:#fbeaf1;color:#9b2f55}.risk-mid{background:#fbf1e2;color:#7f4f1d}.risk-low{background:#eef2fe;color:#4a559a}.outcome-concur{background:var(--green-bg);color:var(--green)}.outcome-non{background:var(--amber-bg);color:var(--amber)}.row-arrow{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#efedf8;color:var(--navy)}.row-arrow svg{width:15px;height:15px}.finding-preview{display:grid;grid-template-columns:1fr;gap:18px;padding:0 20px 15px;border-top:0;font-size:12px}.finding-preview div{background:#faf9fd;border-left:2px solid var(--gold);border-radius:0 6px 6px 0;padding:9px 12px;min-width:0}.finding-preview b{display:block;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px}.finding-preview p{margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.overdue{color:var(--danger);font-weight:700}
+.month-checks{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.month-checks .lbl{font-size:11.5px;font-weight:600;color:#4b4475;margin-right:3px}
+.mchk{display:flex;flex-direction:column;align-items:center;gap:4px;padding:5px 9px;border:1px solid var(--line);
+ border-radius:8px;background:white;cursor:pointer;min-width:58px;user-select:none}
+.mchk:hover{background:#f6f6ee}
+.mchk span{font-size:11px;font-weight:700;letter-spacing:.4px;color:var(--muted);white-space:nowrap}
+.mchk input{width:15px;height:15px;accent-color:var(--navy);margin:0;cursor:pointer}
+.mchk:has(input:checked){border-color:var(--navy);background:#eef4f7;box-shadow:0 0 0 1px var(--navy)}
+.mchk:has(input:checked) span{color:var(--header)}
 .stale-date{display:inline-block;padding:2px 7px;border-radius:5px;background:#fdf1f5;
  border:1px solid #efc6d7;color:var(--danger);font-weight:700}.pagination{display:flex;justify-content:space-between;align-items:center;padding:13px 20px;border-top:1px solid var(--line);background:#fbfaff;gap:12px;font-size:12.5px;color:var(--muted)}.page-actions{display:flex;gap:8px;align-items:center}.page-actions select{min-height:35px;border:1px solid var(--line);border-radius:5px;padding:4px 7px;background:white;color:var(--ink)}.page-actions .btn{min-height:34px;padding:5px 10px}.empty{padding:52px 20px;text-align:center;color:var(--muted)}.empty-icon{height:48px;width:48px;display:grid;place-items:center;margin:0 auto 14px;background:#efedf8;color:var(--navy);border-radius:50%}.empty-icon svg{width:24px;height:24px}.empty h3{color:var(--ink);font-family:var(--font-serif);font-size:18px;font-weight:700}.empty p{font-size:13.5px;max-width:430px;margin:8px auto}.inline-error{padding:12px 15px;background:#fdf1f5;border:1px solid #efc6d7;color:#8e2b4f;border-radius:8px;margin:12px 0;white-space:pre-wrap;font-size:13px}.workspace>.inline-error{margin:15px 20px}.workspace-footer{display:flex;justify-content:flex-end;align-items:center;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:11.5px;margin-top:14px}.legend{display:flex;gap:12px;align-items:center}.legend b{font-weight:600;color:#4b4475}.placeholder{background:white;border:1px solid var(--line);border-radius:14px;text-align:center;padding:60px 24px;max-width:900px;margin:24px auto;color:var(--muted)}.guide{background:white;border:1px solid var(--line);border-radius:14px;max-width:880px;margin:0 auto;padding:40px 48px;font-size:15.5px;line-height:1.72}.guide h1{font-size:30px;border-bottom:3px solid var(--gold);padding-bottom:16px;margin-bottom:22px}.guide h2{margin:30px 0 12px;font-size:20px;color:var(--header)}.guide h3{margin:20px 0 10px}.guide table{border-collapse:collapse;width:100%;margin:18px 0;font-size:13.5px}.guide th,.guide td{border:1px solid var(--line);padding:9px 11px;text-align:left}.guide th{background:var(--header);color:white;font-weight:600;letter-spacing:.2px}.guide li{margin-bottom:5px}dialog{color:var(--ink);border:0;border-radius:16px;padding:0;box-shadow:0 24px 90px #2b255447;max-height:92dvh;width:min(820px,calc(100vw - 32px))}dialog::backdrop{background:#2b255499;backdrop-filter:blur(3px)}.dialog-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:21px 25px;border-bottom:1px solid var(--line);position:sticky;top:0;background:white;z-index:3}.dialog-header h2{font-size:24px;letter-spacing:-.3px}.dialog-header p{margin:3px 0 0;font-size:12px;color:var(--muted)}.close-btn{font-size:23px;line-height:1;background:#f0edfa;border:0;width:36px;height:36px;border-radius:50%;color:var(--navy2)}.dialog-body{padding:20px 25px 26px}.steps{display:flex;gap:8px;align-items:center;margin:0 0 22px;font-size:11.5px}.step{display:flex;align-items:center;gap:7px;color:#5f5885;flex:1}.step b{height:23px;width:23px;display:grid;place-items:center;border:1px solid #bdb5dd;border-radius:50%;font-size:10.5px}.step.active{font-weight:700;color:var(--navy)}.step.active b{border-color:var(--navy);background:var(--navy);color:white}.step.done b{background:var(--green-bg);color:var(--green);border-color:#a9cdb9}.form-section{padding:18px 0;border-bottom:1px solid var(--line)}.form-section:first-of-type{padding-top:0}.form-section:last-child{border-bottom:0}.form-section h3{display:flex;align-items:center;gap:8px}.section-number{font-size:10.5px;font-weight:700;letter-spacing:.5px;background:#efedf8;color:var(--navy2);border-radius:5px;padding:3px 6px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px}.form-grid .full{grid-column:1/-1}.read-only-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:12px 0 0}.read-only-grid dt{font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}.read-only-grid dd{margin:0;font-size:13.5px}.hint{font-size:12.5px;color:var(--muted);margin:4px 0 12px}.form-callout{border-radius:8px;background:var(--blue-bg);border:1px solid var(--peri);padding:12px 14px;color:#3b4a90;font-size:12.5px;margin:12px 0}.form-callout.amber{background:var(--amber-bg);border-color:#eedcc0;color:#7b501f}.check-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #ebe8f5}.check-item label{font-size:12.5px;flex:1;line-height:1.55;display:flex;align-items:flex-start;gap:8px}.check-item input[type=checkbox]{width:16px;height:16px;margin-top:2px;flex:none;accent-color:var(--navy)}.check-item small{color:var(--muted);font-size:10.5px;font-weight:700;margin-right:4px}.check-item:last-child{border-bottom:0}.checkbox-label{display:flex;align-items:flex-start;gap:9px;font-size:12.5px;font-weight:500;margin:12px 0}.checkbox-label input{width:16px;height:16px;margin:2px 0 0;flex:none;accent-color:var(--navy)}.dialog-footer{position:sticky;bottom:0;background:#fbfaff;border-top:1px solid var(--line);padding:15px 25px;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;z-index:2}.dialog-footer .save-hint{margin-right:auto;color:var(--muted);font-size:11.5px}.signoff{background:#f3faf6;padding:16px;border:1px solid #cfe3d7;border-radius:10px;margin-top:18px}.history{margin:14px 0 0;padding:0;list-style:none}.history li{border-left:2px solid #ddd8ef;margin-left:5px;padding:0 0 16px 15px;font-size:12.5px}.history li:last-child{padding-bottom:0}.history small{color:var(--muted);display:block;font-size:10.5px;margin:3px 0}.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--header);color:white;padding:13px 21px;border-radius:10px;box-shadow:0 8px 26px #2b255440;font-size:13.5px;z-index:100;max-width:calc(100vw - 32px)}.small-dialog{width:min(480px,calc(100vw - 32px))}.small-dialog .dialog-body{font-size:13px}.loading-line{height:3px;background:linear-gradient(90deg,#e6e2f5,#6e62aa,#d5acd1,#e6e2f5);background-size:200% 100%;animation:loading 1s infinite}.busy-ui{pointer-events:none;opacity:.75}.version-note{font-size:10.5px;color:#7a7498}.sort-wrap{display:flex;gap:5px;align-items:end}.sort-wrap .field{flex:1}.icon-btn{width:40px;padding:8px}.icon-btn svg{width:16px;height:16px}.filter-reset{min-height:40px}.no-wrap{white-space:nowrap}.issue-info{background:#fbf5fa;border-left:3px solid var(--gold);border-radius:0 7px 7px 0;padding:13px 15px;white-space:pre-wrap;font-size:13.5px}.workload-note{font-size:11.5px;color:var(--muted);margin:4px 0 0}.danger-text{color:var(--danger)}.dialog-body details{padding-top:16px}.dialog-body summary{cursor:pointer;font-weight:600;color:var(--navy2);font-size:12.5px}.help-block h3{margin-top:20px}.help-block table{border-collapse:collapse;width:100%;font-size:12.5px}.help-block td,.help-block th{border:1px solid var(--line);padding:7px;text-align:left}
 @keyframes loading{to{background-position:-200% 0}}@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -228,7 +237,7 @@ body[data-width="full"]{--page-w:100%}
    <div id="loading-bar" class="loading-line" hidden></div>
    <div class="workspace-top"><div><div class="queue-title"><h2 id="queue-title">In Review</h2><span class="count-tag" id="queue-count">40 reviews</span></div><p class="workload-note" id="queue-description"></p></div><button class="btn" id="refresh-button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1"/></svg> Refresh</button></div>
    <div class="completion-controls" id="completion-controls" hidden>
-    <div class="month-picker"><label for="completed-month">Completed in</label><input type="month" id="completed-month"><button class="btn link" id="undated-button" aria-pressed="false">Missing date</button></div>
+    <div class="month-checks" id="month-checks"><span class="lbl">Review month</span></div>
     <div class="segments" role="group" aria-label="Completed review outcome"><button data-outcome="" aria-pressed="true">All outcomes <span id="outcome-all">0</span></button><button data-outcome="Concur" aria-pressed="false">Concur <span id="outcome-concur">0</span></button><button data-outcome="Non Concur" aria-pressed="false">Non Concur <span id="outcome-non">0</span></button><button data-outcome="unclassified" aria-pressed="false" id="unclassified-button" hidden>Unclassified <span id="outcome-unknown">0</span></button></div>
    </div>
    <div class="filters" aria-label="Review filters">
@@ -694,7 +703,7 @@ const ICONS = {
  chevron:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>',
  empty:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="m8 12 3 3 5-6"/></svg>'
 };
-const app = {mode:'preview',snapshot:copy(originalSnapshot),staff:copy(originalSnapshot.staff),checks:copy(originalSnapshot.checklists),state:'In Review',outcome:'',undated:false,page:1,size:25,sort:'actionDate',direction:1,q:'',personRole:'',personName:'',team:'',records:[],total:0,counts:{inReview:0,findings:0,completed:0,concur:0,non:0,unknown:0},actor:null,token:'',url:CONFIG.url,request:0,controller:null,openRecord:null,busy:false,dirty:false,returnFocus:null,checklistError:'',loadFailed:false};
+const app = {mode:'preview',snapshot:copy(originalSnapshot),staff:copy(originalSnapshot.staff),checks:copy(originalSnapshot.checklists),state:'In Review',outcome:'',months:[],page:1,size:25,sort:'actionDate',direction:1,q:'',personRole:'',personName:'',team:'',records:[],total:0,counts:{inReview:0,findings:0,completed:0,concur:0,non:0,unknown:0},actor:null,token:'',url:CONFIG.url,request:0,controller:null,openRecord:null,busy:false,dirty:false,returnFocus:null,checklistError:'',loadFailed:false};
 const SORTS = {
  Reviewer:[['actionDate','Action date'],['risk','Risk rank'],['title','Loan number'],['agent','Agent'],['reviewer','Reviewer'],['supervisor','Supervisor']],
  Supervisor:[['findingDueOn','Finding due date'],['findingIssuedOn','Finding issued date'],['actionDate','Action date'],['agent','Agent'],['risk','Risk rank'],['completedOn','Completion date'],['reviewer','Reviewer']],
@@ -706,7 +715,15 @@ function toast(message){$('toast').textContent=message;$('toast').hidden=false;c
 function localDay(value=new Date()){return new Intl.DateTimeFormat('en-CA',{timeZone:CONFIG.zone,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(value));}
 function dateLabel(value,withTime=false){if(!value)return 'Not recorded';const d=new Date(String(value).replace(' ','T'));if(Number.isNaN(d.getTime()))return 'Not recorded';return new Intl.DateTimeFormat('en-US',withTime?{timeZone:CONFIG.zone,month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}:{timeZone:'UTC',month:'short',day:'numeric',year:'numeric'}).format(d);}
 function completionDate(value){if(!value)return 'Not recorded';const d=new Date(String(value).replace(' ','T'));return Number.isNaN(d.getTime())?'Not recorded':new Intl.DateTimeFormat('en-US',{timeZone:CONFIG.zone,month:'short',day:'numeric',year:'numeric'}).format(d);}
-function monthLabel(){if(app.undated)return 'Missing completion date';const [y,m]=$('completed-month').value.split('-').map(Number);return new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(Date.UTC(y,m-1,1)));}
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+// "2026-09-13 ..." -> {y:2026,m:8}; month index may be passed back overflowed.
+function ymOf(v){const m=String(v||'').match(/^(\d{4})-(\d{2})/);return m?{y:+m[1],m:+m[2]-1}:null;}
+function monthTag(y,m){const d=new Date(Date.UTC(y,m,1));return MON[d.getUTCMonth()]+'-'+d.getUTCFullYear();}
+function actionTagOf(r){const v=String(r.actionMonth||'').trim();if(v)return v;const ym=ymOf(r.actionDate);return ym?monthTag(ym.y,ym.m):'';}
+// Fall back to actionDate + 1 so records predating the backfill still filter.
+function reviewTagOf(r){const v=String(r.reviewMonth||'').trim();if(v)return v;const ym=ymOf(r.actionDate);return ym?monthTag(ym.y,ym.m+1):'';}
+function lastSixMonths(){const n=new Date(),out=[];for(let i=5;i>=0;i--){const d=new Date(n.getFullYear(),n.getMonth()-i,1);out.push(monthTag(d.getFullYear(),d.getMonth()));}return out;}
+function monthLabel(){const n=app.months.length;return n?app.months.join(', '):'no month selected';}
 function monthRange(month){
  const [year,monthNumber]=month.split('-').map(Number);
  function midnight(y,m){
@@ -725,7 +742,7 @@ function isAccessible(r){const role=W.roleOf(app.actor),name=W.nameOf(app.actor)
  // Any Supervisor may open an outstanding finding so they can sign off for an absent colleague.
  if(app.state==='Findings'&&role==='Supervisor')return true;
  return role==='Reviewer'||role==='Director'||(role==='Agent'&&r.agent===name)||(role==='Supervisor'&&r.supervisor===name);}
-function inMonth(r){if(app.undated)return !r.completedOn;if(!r.completedOn)return false;const [start,end]=monthRange($('completed-month').value);const date=new Date(String(r.completedOn).replace(' ','T')).getTime();return date>=Date.parse(start)&&date<Date.parse(end);}
+function inMonth(r){return app.months.includes(reviewTagOf(r));}
 function baseMatches(r){return isAccessible(r)&&personMatches(r)&&(!app.team||String(r.team||'').toLowerCase().includes(app.team.toLowerCase()))&&(!app.q||[r.title,r.loanAction,r.team].some(v=>String(v||'').toLowerCase().includes(app.q.toLowerCase())));}
 function unknownOutcome(r){return !['Concur','Non Concur'].includes(r.outcome);}
 function buildFilter(state,outcome){
@@ -739,8 +756,9 @@ function buildFilter(state,outcome){
  if(app.team)filters.push(contains('team',app.team));
  if(app.personName)filters.push('('+(app.personRole?[app.personRole]:['reviewer','agent','supervisor']).map(f=>contains(f,app.personName)).join(' || ')+')');
  if(state==='Completed'){
-  if(app.undated)filters.push('completedOn = ""');
-  else {const [start,end]=monthRange($('completed-month').value);filters.push('completedOn >= '+escapedFilter(pbDate(start)),'completedOn < '+escapedFilter(pbDate(end)));}
+  filters.push(app.months.length
+   ? '('+app.months.map(t=>'reviewMonth = '+escapedFilter(t)).join(' || ')+')'
+   : 'reviewMonth = "__none__"');
   if(outcome==='unclassified')filters.push('(outcome != "Concur" && outcome != "Non Concur")');
   else if(outcome)filters.push('outcome = '+escapedFilter(outcome));
  }
@@ -763,12 +781,12 @@ function describeQueue(){
  $('queue-title').textContent=state;
  $('queue-description').textContent=state==='In Review'?'':state==='Findings'?'Supervisors close findings by noting the correction and/or corrective action':monthLabel()+' · separated by the original review outcome.';
  $('completion-controls').hidden=state!=='Completed';
- $('completed-caption').textContent=monthLabel();
+ $('completed-caption').textContent=app.months.length?app.months.join(' \u00b7 '):'No month selected';
  $('date-column').textContent=state==='Findings'?'Finding due':state==='Completed'?'Completed on':'Action date';
  const tabs=[...document.querySelectorAll('.bin')];
  tabs.forEach(tab=>{const active=tab.dataset.state===state;tab.setAttribute('aria-selected',active);tab.tabIndex=active?0:-1;if(active)$('queue-panel').setAttribute('aria-labelledby',tab.id);});
  document.querySelectorAll('[data-outcome]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.outcome===app.outcome));
- $('undated-button').setAttribute('aria-pressed',app.undated);$('completed-month').disabled=app.undated;
+
  $('sort-direction').title=app.direction===1?'Ascending · click for descending':'Descending · click for ascending';$('sort-direction').setAttribute('aria-label',$('sort-direction').title);
 }
 function renderCounts(){const c=app.counts;$('c-in').textContent=c.inReview;$('c-find').textContent=c.findings;$('c-done').textContent=c.completed;$('outcome-all').textContent=c.completed;$('outcome-concur').textContent=c.concur;$('outcome-non').textContent=c.non;$('outcome-unknown').textContent=c.unknown;$('unclassified-button').hidden=!c.unknown&&app.outcome!=='unclassified';}
@@ -788,7 +806,7 @@ function staleAction(r){
 function isOverdue(r){return !!r.findingDueOn&&r.findingDueOn.slice(0,10)<localDay()&&r.state==='Findings';}
 function renderList(){
  const noResults=app.records.length===0;
- if(noResults){const msg=app.loadFailed?'The database query failed. Correct the connection or setup and refresh.':app.state==='Completed'?(app.undated?'No completed reviews are missing a completion date.':'No completed reviews match '+monthLabel()+' and the selected filters.'):app.state==='Findings'?'No open findings match your current role and filters.':'No reviews match your current role and filters.';
+ if(noResults){const msg=app.loadFailed?'The database query failed. Correct the connection or setup and refresh.':app.state==='Completed'?('No completed reviews in '+monthLabel()+' match the selected filters.'):app.state==='Findings'?'No open findings match your current role and filters.':'No reviews match your current role and filters.';
  $('list').innerHTML='<div class="empty"><div class="empty-icon">'+ICONS.empty+'</div><h3>'+ (app.loadFailed?'Reviews could not be loaded':'No '+safe(app.state.toLowerCase())+' items')+'</h3><p>'+safe(msg)+'</p><button class="btn link" data-clear>Clear filters</button></div>';
  } else $('list').innerHTML=app.records.map(r=>{
  const date=r.state==='Findings'?r.findingDueOn:r.state==='Completed'?r.completedOn:r.actionDate;
@@ -1123,8 +1141,18 @@ $('person-role').addEventListener('change',()=>{
 [['search','q'],['person-name','personName'],['team-filter','team']].forEach(([id,key])=>$(id).addEventListener('input',()=>{app[key]=$(id).value.trim();scheduleQuery();}));
 $('sort-field').addEventListener('change',()=>{app.sort=$('sort-field').value;query(true);});
 $('sort-direction').addEventListener('click',()=>{app.direction*=-1;query(true);});
-$('completed-month').addEventListener('change',()=>{if(!/^\d{4}-\d{2}$/.test($('completed-month').value)){$('completed-month').value=localDay().slice(0,7);}query(true);});
-$('undated-button').addEventListener('click',()=>{app.undated=!app.undated;query(true);});
+function renderMonthChecks(){
+ const box=$('month-checks');if(!box)return;
+ const months=lastSixMonths();
+ box.innerHTML='<span class="lbl">Review month</span>'+months.map(t=>
+   '<label class="mchk"><input type="checkbox" value="'+safe(t)+'"'+(app.months.includes(t)?' checked':'')+'><span>'+safe(t.replace('-',' '))+'</span></label>').join('');
+ box.querySelectorAll('input').forEach(el=>{
+   el.onchange=()=>{
+     app.months=[...box.querySelectorAll('input:checked')].map(x=>x.value);
+     query(true);
+   };
+ });
+}
 $('page-size').addEventListener('change',()=>{app.size=Number($('page-size').value);query(true);});
 $('previous-page').addEventListener('click',()=>{if(app.page>1){app.page--;query();}});
 $('next-page').addEventListener('click',()=>{if(app.page*app.size<app.total){app.page++;query();}});
@@ -1142,7 +1170,8 @@ const accountBtn = $('account-button');
 if (accountBtn) accountBtn.addEventListener('click',()=>app.mode==='live'?disconnect():$('connection-dialog').showModal());
 $('connection-form').addEventListener('submit',connect);
 $('reset-preview').addEventListener('click',async()=>{if(await confirmAction('Reset the preview?','This restores the uploaded snapshot and discards all changes made in this preview tab.','Reset preview','Keep changes')){app.snapshot=copy(originalSnapshot);query(true);toast('Preview restored to the uploaded snapshot.');}});
-$('completed-month').value=localDay().slice(0,7);
+app.months=lastSixMonths().slice(-2);   // current month and the one before
+renderMonthChecks();
 document.querySelector('.bins').addEventListener('keydown',e=>{const tabs=[...document.querySelectorAll('.bin')];const index=tabs.indexOf(document.activeElement);if(index<0)return;let next;if(e.key==='ArrowRight')next=(index+1)%3;if(e.key==='ArrowLeft')next=(index+2)%3;if(e.key==='Home')next=0;if(e.key==='End')next=2;if(next!==undefined){e.preventDefault();tabs[next].focus();tabs[next].click();}});
 window.addEventListener('beforeunload',e=>{if(app.dirty||app.busy){e.preventDefault();e.returnValue='';}});
 const cachedRole = localStorage.getItem('qbert_role');
@@ -1383,6 +1412,7 @@ disconnectedPresentation();
       <button class="btn" id="de-load">Load</button>
       <button class="btn primary" id="de-add">Add Record</button>
       
+      <button class="btn" id="de-backfill" title="One-off: fill actionMonth and reviewMonth from actionDate" style="background:#fbf2e6;border-color:#eedcc0;color:#8a5320">Backfill Months</button>
       <input id="de-search" placeholder="Filter…" style="margin-left:auto;padding:6px 10px;border:1px solid #ccc;border-radius:4px">
     </div>
     <div id="de-table" style="overflow-x:auto;max-height:400px;border:1px solid #ddd;border-radius:6px"></div>
@@ -2307,6 +2337,60 @@ document.getElementById('csh-replace').addEventListener('click', async () => {
 
 // Data Edit CRUD
 let deRecords = [];
+// Temporary: derive actionMonth / reviewMonth from actionDate across the whole
+// loan_action_reviews collection. Safe to remove once every record is stamped.
+document.getElementById('de-backfill').addEventListener('click', async () => {
+  const st = document.getElementById('de-status');
+  const btn = document.getElementById('de-backfill');
+  st.textContent = 'Reading loan_action_reviews\u2026'; st.style.color = '#5a6b80';
+  btn.disabled = true;
+  try {
+    let all = [], page = 1, pages = 1;
+    do {
+      const res = await fetch(CONFIG.url + '/api/collections/loan_action_reviews/records?perPage=200&page=' + page);
+      if (!res.ok) throw new Error('loan_action_reviews returned HTTP ' + res.status);
+      const d = await res.json();
+      all = all.concat(d.items || []); pages = d.totalPages || 1; page++;
+    } while (page <= pages);
+    const work = all.map(r => {
+      const ym = ymOf(r.actionDate);
+      if (!ym) return null;
+      const a = monthTag(ym.y, ym.m), rv = monthTag(ym.y, ym.m + 1);
+      if (String(r.actionMonth || '') === a && String(r.reviewMonth || '') === rv) return null;
+      return { id: r.id, actionMonth: a, reviewMonth: rv };
+    }).filter(Boolean);
+    const noDate = all.filter(r => !ymOf(r.actionDate)).length;
+    if (!work.length) {
+      st.textContent = 'Nothing to change \u2014 all ' + all.length + ' records already stamped' +
+        (noDate ? ' (' + noDate + ' have no action date)' : '') + '.';
+      st.style.color = '#216b50'; btn.disabled = false; return;
+    }
+    if (!confirm('Stamp ' + work.length + ' of ' + all.length + ' records?\n\n' +
+        'Example: ' + work[0].actionMonth + ' \u2192 ' + work[0].reviewMonth +
+        (noDate ? '\n\n' + noDate + ' record(s) have no action date and are skipped.' : ''))) {
+      st.textContent = ''; btn.disabled = false; return;
+    }
+    let ok = 0, fail = 0, firstErr = '';
+    for (const w of work) {
+      st.textContent = 'Stamping\u2026 ' + (ok + fail + 1) + ' of ' + work.length;
+      try {
+        const res = await fetch(CONFIG.url + '/api/collections/loan_action_reviews/records/' + encodeURIComponent(w.id),
+          { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ actionMonth: w.actionMonth, reviewMonth: w.reviewMonth }) });
+        if (res.ok) ok++; else { fail++; if (!firstErr) firstErr = (await res.text()).slice(0, 150); }
+      } catch (e) { fail++; if (!firstErr) firstErr = e.message; }
+    }
+    const summary = 'Stamped ' + ok + ' record' + (ok === 1 ? '' : 's') +
+      (noDate ? ', skipped ' + noDate + ' with no action date' : '') +
+      (fail ? ', ' + fail + ' failed \u2014 ' + firstErr : '') + '.';
+    // loadDataEdit writes to the same status line, so refresh first then report.
+    if (document.getElementById('de-collection').value === 'loan_action_reviews') await loadDataEdit();
+    st.textContent = summary;
+    st.style.color = fail ? '#a32f58' : '#216b50';
+  } catch (e) { st.textContent = 'Failed: ' + e.message; st.style.color = '#a32f58'; }
+  btn.disabled = false;
+});
+
 document.getElementById('de-load').addEventListener('click', loadDataEdit);
 document.getElementById('de-collection').addEventListener('change', loadDataEdit);
 document.getElementById('de-search').addEventListener('input', renderDataEdit);
@@ -2335,6 +2419,12 @@ function showLoanAddForm() {
         '<div><label for="la-date" style="' + fld + '">Action Date</label>' +
           '<input type="date" id="la-date" style="' + inp + '"></div>' +
       '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+        '<div><label for="la-amonth" style="' + fld + '">Action Month</label>' +
+          '<input id="la-amonth" readonly tabindex="-1" value="\u2014" style="' + inp + ';background:#f5f3fb;color:#5d5680"></div>' +
+        '<div><label for="la-rmonth" style="' + fld + '">Review Month</label>' +
+          '<input id="la-rmonth" readonly tabindex="-1" value="\u2014" style="' + inp + ';background:#f5f3fb;color:#5d5680"></div>' +
+      '</div>' +
       '<div><label for="la-risk" style="' + fld + '">Risk</label>' +
         '<input id="la-risk" readonly tabindex="-1" value="—" style="' + inp + ';background:#f5f3fb;color:#5d5680">' +
         '<small style="display:block;margin-top:3px;font-size:10.5px;color:#5a6b80">Taken from the checklist for the selected loan action.</small></div>' +
@@ -2344,6 +2434,12 @@ function showLoanAddForm() {
       '<button class="btn primary" onclick="submitLoanAdd()">Add</button>' +
       '<button class="btn" onclick="document.getElementById(\'loan-modal\').remove()">Cancel</button>' +
     '</div></div></div>');
+  const dateEl = document.getElementById('la-date');
+  if (dateEl) dateEl.onchange = () => {
+    const ym = ymOf(dateEl.value);
+    document.getElementById('la-amonth').value = ym ? monthTag(ym.y, ym.m) : '\u2014';
+    document.getElementById('la-rmonth').value = ym ? monthTag(ym.y, ym.m + 1) : '\u2014';
+  };
   loadLoanFormDropdowns();
 }
 
@@ -2383,7 +2479,9 @@ window.submitLoanAdd = async function() {
   const checks = window._checklists || [];
   const match = checks.find(c => (c.category || '').toLowerCase() === loanAction.toLowerCase());
   const risk = match ? (match.riskRating || 0) : 0;
-  const body = { title, loanAction, reviewer, actionDate: actionDate + ' 00:00:00.000Z', risk, state: 'In Review' };
+  const ym = ymOf(actionDate);
+  const body = { title, loanAction, reviewer, actionDate: actionDate + ' 00:00:00.000Z', risk, state: 'In Review',
+    actionMonth: ym ? monthTag(ym.y, ym.m) : '', reviewMonth: ym ? monthTag(ym.y, ym.m + 1) : '' };
   try {
     const res = await fetch(CONFIG.url + '/api/collections/loan_action_reviews/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (res.ok) {
