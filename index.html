@@ -206,6 +206,11 @@ body[data-width="full"]{--page-w:100%}
 .qa-eval span{flex:1;font-size:12.5px;min-width:0;overflow-wrap:anywhere}
 .qa-eval input{width:66px;flex:none;min-height:32px;border:1px solid #cdc7e4;border-radius:6px;font-size:12.5px;padding:4px 7px;text-align:center}
 .qa-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.g-checks{max-height:200px;overflow:auto;border:1px solid #cdc7e4;border-radius:7px;background:white;padding:7px 9px;display:flex;flex-direction:column;gap:5px}
+.g-checks label{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.45;cursor:pointer;padding:2px 0}
+.g-checks input{margin:2px 0 0;flex:none;width:14px;height:14px;accent-color:var(--navy);cursor:pointer}
+.g-checks .g-id{font-weight:700;color:var(--navy);flex:none}
+.g-checks .g-none{color:var(--muted);font-size:12px}
 .rpt-plan{margin:0;padding-left:18px;font-size:12.5px;color:var(--muted);line-height:1.7}
 .rpt-plan li{margin:0}
 .dm-group{margin:0 0 22px}
@@ -1074,8 +1079,10 @@ async function saveReview(command){
  try{
   if(command==='return-to-review'){
    if(!await confirmAction('Return to In Review?','This clears findings, outcome, and completion data. The record returns to In Review.','Return','Cancel'))return;
-   const keep=['id','title','loanAction','team','risk','reviewer','created','updated','actionDate'];
-   const patch={state:'In Review',outcome:'',completedOn:'',supervisor:'',agent:'',critical:'',flag:false,findingCategory:'',findingText:'',findingIssuedOn:'',findingDueOn:'',correction:'',correctiveAction:'',supervisorApprovedCorrection:false,supervisorApprovedCorrectiveAction:false,supervisorSignOffNotes:'',supervisorSignedOffBy:'',supervisorSignedOffOn:'',supervisorSignedOffStaff:'',checklistResponses:{},checklistSnapshot:[]};
+   // Team is derived from the Recommending Official's staff record, so it is
+   // cleared with the agent; leaving it behind blocks the new team from taking.
+   const keep=['id','title','loanAction','risk','reviewer','created','updated','actionDate'];
+   const patch={state:'In Review',outcome:'',completedOn:'',supervisor:'',agent:'',team:'',critical:'',flag:false,findingCategory:'',findingText:'',findingIssuedOn:'',findingDueOn:'',correction:'',correctiveAction:'',supervisorApprovedCorrection:false,supervisorApprovedCorrectiveAction:false,supervisorSignOffNotes:'',supervisorSignedOffBy:'',supervisorSignedOffOn:'',supervisorSignedOffStaff:'',checklistResponses:{},checklistSnapshot:[]};
    app.busy=true;
    await fetch(CONFIG.url+'/api/collections/loan_action_reviews/records/'+encodeURIComponent(record.id),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
    app.dirty=false;$('review-dialog').close();query(true);return;
@@ -1397,7 +1404,7 @@ disconnectedPresentation();
 
     <section class="rpt-block">
       <h3>Add Customer Service Review</h3>
-      <p class="desc">Record a single finding against a Genesys call or a Customer Service Hub case. Supervisor and Team fill in from the agent&rsquo;s staff record, and the checklist follows the communication type.</p>
+      <p class="desc">Record a finding against a Genesys call or a Customer Service Hub case. Tick every check that failed &mdash; they are stored as check IDs in <code>findingCategory</code>, the same way loan action findings are. Supervisor and Team fill in from the agent&rsquo;s staff record, and the checklist follows the communication type.</p>
     <form id="genesys-form" style="display:grid;gap:14px;max-width:600px">
       <div class="field"><label for="g-reviewer">Reviewer</label>
         <select id="g-reviewer"><option value="">Select reviewer…</option><option>Robert Thompson</option><option>Tonya Hayes</option></select>
@@ -1414,8 +1421,8 @@ disconnectedPresentation();
       <div class="field"><label>Team</label>
         <input id="g-team" readonly>
       </div>
-      <div class="field"><label>Checklist</label>
-        <select id="g-checklist"><option value="">Select check…</option></select>
+      <div class="field"><label>Checklist <span class="subtle" style="font-weight:400;font-size:11px">tick every check that failed</span></label>
+        <div id="g-checks" class="g-checks"></div>
       </div>
       <div class="field"><label>Genesys Call ID / CSH Case Number</label>
         <input id="g-csid">
@@ -1723,7 +1730,7 @@ let gChecklists = [];
 // The Checklist dropdown follows the Communication type: Genesys shows the
 // GENESYS checks, CSH shows the CSH checks.
 function gFillChecklist() {
-  const sel = document.getElementById('g-checklist');
+  const sel = document.getElementById('g-checks');
   if (!sel) return;
   const type = (document.getElementById('g-type') || {}).value || 'Genesys';
   const want = /^csh$/i.test(type)
@@ -1732,17 +1739,12 @@ function gFillChecklist() {
   const list = gChecklists
     .filter(c => want(String(c.category || '').trim()))
     .sort((a, b) => String(a.checkID || '').localeCompare(String(b.checkID || ''), undefined, { numeric: true }));
-  sel.innerHTML = '<option value="">' + (list.length ? 'Select check…' : 'No ' + type + ' checks found') + '</option>';
-  list.forEach(c => {
-    // checkFailed is a text field: store exactly the label the reviewer picked.
-    const label = (c.checkID || '') + ' — ' + (c.check || '');
-    const opt = document.createElement('option');
-    opt.value = label;
-    opt.textContent = label;
-    opt.dataset.checkId = c.checkID || '';
-    opt.dataset.recordId = c.id;
-    sel.appendChild(opt);
-  });
+  if (!list.length) { sel.innerHTML = '<span class="g-none">No ' + safe(type) + ' checks found in the checklists collection.</span>'; return; }
+  // findingCategory stores the check IDs, comma separated, exactly as a loan
+  // action finding does; the full wording is looked up again when it is shown.
+  sel.innerHTML = list.map(c =>
+    '<label><input type="checkbox" value="' + safe(c.checkID || c.id) + '">' +
+    '<span><span class="g-id">' + safe(c.checkID || '') + '</span> ' + safe(c.check || '') + '</span></label>').join('');
 }
 
 async function loadGenesysLists() {
@@ -1781,6 +1783,9 @@ document.getElementById('g-save').addEventListener('click', async () => {
   if (!agent) { status.textContent = 'Select an agent.'; status.style.color = '#a32f58'; return; }
   const reviewer = val('g-reviewer');
   if (!reviewer) { status.textContent = 'Select a reviewer.'; status.style.color = '#a32f58'; return; }
+  const checks = [...document.querySelectorAll('#g-checks input:checked')].map(i => i.value);
+  const finding = val('g-finding').trim();
+  if (!checks.length && !finding) { status.textContent = 'Tick at least one check, or write a finding.'; status.style.color = '#a32f58'; return; }
   const body = {
     contactID: recId,
     type: val('g-type'),
@@ -1789,9 +1794,9 @@ document.getElementById('g-save').addEventListener('click', async () => {
     agent: agent,
     supervisor: val('g-supervisor'),
     team: val('g-team'),
-    checkFailed: val('g-checklist'),
+    findingCategory: checks.join(', '),
     loanNumber: val('g-loan').trim(),
-    findingComment: val('g-finding').trim()
+    findingText: finding
   };
   status.textContent = 'Saving…'; status.style.color = '#5a6b80';
   try {
@@ -1799,7 +1804,7 @@ document.getElementById('g-save').addEventListener('click', async () => {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
     });
     if (res.ok) {
-      status.textContent = 'Saved ' + recId + '.'; status.style.color = '#216b50';
+      status.textContent = 'Saved ' + recId + (checks.length ? ' with ' + checks.length + ' check' + (checks.length === 1 ? '' : 's') : '') + '.'; status.style.color = '#216b50';
       document.getElementById('genesys-form').reset();
       gFillChecklist();
     } else {
@@ -1949,6 +1954,34 @@ document.getElementById('dl-edit-search').addEventListener('keydown', e => {
 
 // ---- Edit Reviews: CRUD over the customer_service collection -----------
 const QC_REVIEWERS = ['Robert Thompson', 'Tonya Hayes'];
+// Records written before the multi-check change carry checkFailed and
+// findingComment. Read through to those so old reviews still show, and so
+// editing one carries its value forward into the new field.
+function csValue(r, k) {
+  if (k === 'findingText') return r.findingText || r.findingComment || '';
+  if (k === 'findingCategory') {
+    if (r.findingCategory) return r.findingCategory;
+    const m = String(r.checkFailed || '').trim().match(/^([A-Za-z]*\d+)/);
+    return m ? m[1] : '';
+  }
+  return r[k] == null ? '' : r[k];
+}
+// A record's checks, as a list. findingCategory is comma separated IDs; a
+// legacy checkFailed is one whole label and is never split, because the check
+// wording itself can contain commas.
+function csChecks(r) {
+  const cat = String(r.findingCategory || '').trim();
+  if (cat) return cat.split(/\s*,\s*/).map(x => x.trim()).filter(Boolean);
+  const legacy = String(r.checkFailed || '').trim();
+  return legacy ? [legacy] : [];
+}
+let CHECK_BY_ID = {};
+function checkText(tok) {
+  const m = String(tok).trim().match(/^([A-Za-z]*\d+)/);
+  const hit = m ? CHECK_BY_ID[m[1].toUpperCase()] : null;
+  if (hit) return displayCheck((hit.checkID || m[1]) + ' \u2014 ' + (hit.check || ''));
+  return displayCheck(tok);
+}
 const CS_FIELDS = [
   ['sent','Sent?'],
   ['contactID','Genesys Call ID / CSH Case Number'],
@@ -1957,9 +1990,9 @@ const CS_FIELDS = [
   ['agent','Agent'],
   ['supervisor','Supervisor'],
   ['team','Team'],
-  ['checkFailed','Checklist'],
+  ['findingCategory','Checks'],
   ['loanNumber','Loan Number'],
-  ['findingComment','Finding']
+  ['findingText','Finding']
 ];
 let csEditRecords = [];
 
@@ -1986,7 +2019,7 @@ function renderCsEdit() {
   const td = (v, cls) => '<td' + (cls ? ' class="' + cls + '"' : '') + ' title="' + safe(v) + '">' + safe(v) + '</td>';
   const cell = (r, k) => k === 'sent'
     ? (r.sent === true ? '<td style="color:#216b50;font-weight:700">Yes</td>' : '<td style="color:#8a5320;font-weight:700">No</td>')
-    : td(r[k] == null ? '' : r[k], k === 'contactID' ? 'mono' : '');
+    : td(csValue(r, k), k === 'contactID' ? 'mono' : '');
   table.innerHTML = '<table class="dt"><thead><tr>' +
     CS_FIELDS.map(([k, label]) => '<th>' + safe(label) + '</th>').join('') + '<th class="act"></th></tr></thead><tbody>' +
     shown.map(r => '<tr>' + CS_FIELDS.map(([k]) => cell(r, k)).join('') +
@@ -2016,9 +2049,9 @@ window.csEditOpen = function (id) {
         '<select id="cse-' + k + '" style="' + inp + '">' +
         ['Genesys', 'CSH'].map(o => '<option' + (o === v ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
     }
-    if (k === 'findingComment' || k === 'checkFailed') {
+    if (k === 'findingText' || k === 'findingCategory') {
       return '<div><label for="cse-' + k + '" style="' + fld + '">' + safe(label) + '</label>' +
-        '<textarea id="cse-' + k + '" rows="' + (k === 'findingComment' ? 3 : 2) + '" style="' + inp + ';resize:vertical">' + safe(r[k] || '') + '</textarea></div>';
+        '<textarea id="cse-' + k + '" rows="' + (k === 'findingText' ? 3 : 2) + '" style="' + inp + ';resize:vertical">' + safe(csValue(r, k)) + '</textarea></div>';
     }
     return '<div><label for="cse-' + k + '" style="' + fld + '">' + safe(label) + '</label>' +
       '<input id="cse-' + k + '" value="' + safe(r[k] == null ? '' : r[k]) + '" style="' + inp + '"></div>';
@@ -2122,15 +2155,18 @@ function rptIntro(greeting) {
 }
 
 function rptRecord(r) {
-  const finding = safe(r.findingComment || '');
+  const finding = safe(r.findingText || r.findingComment || '');
   const findingHtml = finding
     ? "<tr><td style='background-color:#E8EBD2;padding:8px 10px;'>" + rp(finding, 'font-size:14px;line-height:18px;color:#1B1E29;') + "</td></tr>"
     : '';
+  // Every failed check is listed first, then the narrative underneath.
+  const checks = csChecks(r);
+  const checkHtml = checks.length
+    ? checks.map(c => rp('&bull;&nbsp; ' + safe(checkText(c)), 'font-size:13px;line-height:17px;font-weight:bold;color:#1B1E29;')).join(rpSpacer(3))
+    : rp('Unspecified Checklist', 'font-size:13px;line-height:17px;font-weight:bold;color:#1B1E29;');
   return "<table role='presentation' width='100%' cellpadding='0' cellspacing='0' border='0' style='" + RTABLE +
     "border:1px solid #8FC1DA;margin:0 0 8px 0;background-color:#FFFFFF;border-radius:6px;'>" +
-    "<tr><td style='padding:8px 10px 4px 10px;'>" +
-      rp(safe(displayCheck(r.checkFailed) || 'Unspecified Checklist'), 'font-size:13px;line-height:17px;font-weight:bold;color:#1B1E29;') +
-    "</td></tr>" + findingHtml +
+    "<tr><td style='padding:8px 10px 4px 10px;'>" + checkHtml + "</td></tr>" + findingHtml +
     "<tr><td valign='top' style='padding:8px 10px;'>" +
       rp(safe(r.agent || 'Unknown Agent'), 'font-size:15px;line-height:18px;font-weight:bold;color:#1B1E29;') +
       rp('Supervisor: ' + safe(r.supervisor || 'N/A'), 'font-size:12px;line-height:16px;color:#5C5C5C;') +
@@ -2167,7 +2203,7 @@ function rptTeamCard(team, rows) {
       "<tr><td style='background-color:#F1CC13;padding:8px 12px;'>" +
       rp(header, 'font-size:14px;line-height:18px;font-weight:bold;color:#1B1E29;') +
       "</td></tr><tr><td style='padding:10px 12px;background-color:#F7F3E0;'>");
-    group.slice().sort((a, b) => cmpKey(checkSortKey(a.checkFailed), checkSortKey(b.checkFailed)) ||
+    group.slice().sort((a, b) => cmpKey(checkSortKey(csChecks(a)[0] || ''), checkSortKey(csChecks(b)[0] || '')) ||
       String(a.agent || '').localeCompare(String(b.agent || ''))).forEach(r => parts.push(rptRecord(r)));
     parts.push("</td></tr></table>");
   });
@@ -2198,9 +2234,12 @@ document.getElementById('ws-gen-report').addEventListener('click', async () => {
     if (type) conds.push('type = "' + type + '"');
     const url = CONFIG.url + '/api/collections/customer_service/records?perPage=500&sort=team,agent' +
       (conds.length ? '&filter=' + encodeURIComponent(conds.join(' && ')) : '');
-    const res = await fetch(url);
+    const [res, ckRes] = await Promise.all([fetch(url), fetch(CONFIG.url + '/api/collections/checklists/records?perPage=500')]);
     if (!res.ok) throw new Error('customer_service returned HTTP ' + res.status);
     const items = (await res.json()).items || [];
+    // Stored check IDs are expanded back to their full wording for the email.
+    CHECK_BY_ID = {};
+    if (ckRes.ok) ((await ckRes.json()).items || []).forEach(c => { if (c.checkID) CHECK_BY_ID[String(c.checkID).trim().toUpperCase()] = c; });
     if (!items.length) { st.textContent = 'No unsent reviews match those filters.'; st.style.color = '#8a5320';
       out.innerHTML = ''; rptIds = [];
       ['rpt-copy','rpt-download','rpt-mark-sent'].forEach(id => document.getElementById(id).hidden = true);
