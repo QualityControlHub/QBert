@@ -3312,7 +3312,12 @@ async function loadCS() {
             '" stroke-width="' + w + '" stroke-linecap="round" stroke-dasharray="' + (circ * pct).toFixed(2) + ' ' + circ.toFixed(2) +
             '" transform="rotate(-90 46 46)"/>' : '');
       };
-      const pies = supStats.slice().sort((a, b) => (b.total ? b.covHist / b.total : 0) - (a.total ? a.covHist / a.total : 0)).map(s => {
+      // Ranked by the two coverage percentages added together, so a supervisor
+      // at 100% in both ranges leads and partial coverage falls in behind.
+      const covSum = s => s.total ? (s.covHist + s.covRec) / s.total : 0;
+      const pies = supStats.slice().sort((a, b) => covSum(b) - covSum(a) ||
+        (b.total ? b.covHist / b.total : 0) - (a.total ? a.covHist / a.total : 0) ||
+        String(a.name).localeCompare(String(b.name))).map(s => {
         const pH = s.total ? s.covHist / s.total : 0, pR = s.total ? s.covRec / s.total : 0;
         const c = supColor(s.team);
         const leg = (lab, pct, n, faded) => '<span><i style="background:' + c + (faded ? ';opacity:.5' : '') + '"></i>' + lab +
