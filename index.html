@@ -3960,7 +3960,10 @@ if (metricsBtn) {
       pos: trends('pos'), neg: trends('neg'),
       accuracy: $g('qa-acc').value.trim(), arrow: up ? '▲' : '▼', arrowColor: up ? '#9CE6A8' : '#FF9A8B',
       change: $g('qa-change').value.trim(), target: $g('qa-target').value.trim(),
-      evals: evals, total: evals.reduce((t, e) => t + e.count, 0),
+      // The sent table reads busiest first; the form above keeps its fixed
+      // order so the inputs do not reshuffle under the cursor while typing.
+      evals: evals.slice().sort((x, y) => y.count - x.count || x.name.localeCompare(y.name)),
+      total: evals.reduce((t, e) => t + e.count, 0),
       dash: $g('qa-dash').value.trim()
     };
   }
