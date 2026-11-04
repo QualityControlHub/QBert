@@ -189,6 +189,16 @@ body[data-width="full"]{--page-w:100%}
 .rpt-block.soon{background:#fbfcf6;border-style:dashed}
 .rpt-tag{font-size:9px;letter-spacing:1.1px;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:5px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--peri);white-space:nowrap}
 .rpt-tag.wip{background:#fbf2e6;color:var(--amber);border-color:#eedcc0}
+.hdr-pills{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.lk-wrap{position:relative}
+.lk-btn{font-size:11px;font-weight:700;color:#ffffff;background:#ffffff26;border:1px solid #ffffff4d;border-radius:10px;padding:2px 10px;min-height:0;cursor:pointer;line-height:1.55;display:inline-flex;align-items:center;gap:5px}
+.lk-btn:hover{background:#ffffff38}
+.lk-btn[aria-expanded=true]{background:#ffffff;color:var(--header);border-color:#ffffff}
+.lk-menu{position:absolute;top:calc(100% + 7px);right:0;z-index:60;min-width:168px;background:#ffffff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px #1e3a5f33;padding:6px;max-height:70vh;overflow:auto}
+.lk-menu a{display:block;padding:7px 11px;border-radius:7px;text-decoration:none;color:var(--ink)}
+.lk-menu a:hover,.lk-menu a:focus-visible{background:#f0edfa;outline:none}
+.lk-menu b{font-size:12.5px;letter-spacing:.4px;color:var(--navy)}
+
 .qa-form{display:flex;flex-direction:column;gap:12px;max-width:860px}
 .qa-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
 .qa-grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
@@ -244,7 +254,13 @@ body[data-width="full"]{--page-w:100%}
 <header class="app-header">
  <div class="brand"><span class="brand-mark" aria-hidden="true">Q</span><div><div class="brand-title">Q-Bert<span style="color:var(--gold)">.</span></div><div class="brand-sub">DLSLC Quality Control Workspace</div></div></div>
  <div class="session-controls" style="flex-direction:column;align-items:flex-end;gap:6px;padding-bottom:4px">
-  <a href="#" id="qc-docs-link" style="font-size:11px;color:#1e3a5f;background:#F1CC13;font-weight:700;text-decoration:none;display:inline-block;padding:2px 10px;border-radius:10px;text-align:center;margin-bottom:3px">QC Docs</a>
+  <div class="hdr-pills">
+   <div class="lk-wrap">
+    <button type="button" id="links-btn" class="lk-btn" aria-haspopup="true" aria-expanded="false" aria-controls="links-menu">Links <span aria-hidden="true">▾</span></button>
+    <div class="lk-menu" id="links-menu" role="menu" hidden><a href="https://caweb.sba.gov/cls/" target="_blank" rel="noopener noreferrer"><b>CAFS</b></a><a href="https://login.usw2.pure.cloud/?rid=GLfKkx1j87oyYJGEK-dKndfmfUVHbPKJQ_Cd4l8dY2M#/authenticate-adv/org/sba" target="_blank" rel="noopener noreferrer"><b>GENESYS</b></a><a href="https://sbacustomerservice.crm9.dynamics.com/" target="_blank" rel="noopener noreferrer"><b>CSH</b></a><a href="https://app.powerbigov.us/groups/me/reports/f66cd54f-5ac7-4618-a9ef-55358113687e/d38cf101f44b12917695?ctid=3c89fd8a-7f68-4667-aa15-41ebf2208961" target="_blank" rel="noopener noreferrer"><b>DASHBOARD</b></a><a href="https://signin.lexisnexis.com/lnaccess/app/signin?aci=la&amp;back=https%3A%2F%2Fadvance.lexis.com%3A443%2Fpublicrecordshome" target="_blank" rel="noopener noreferrer"><b>LEXIS</b></a><a href="https://wta.nfc.usda.gov/core/Login" target="_blank" rel="noopener noreferrer"><b>GOVTA</b></a><a href="https://workplace-sba.csodfed.com/" target="_blank" rel="noopener noreferrer"><b>TMC</b></a><a href="https://lending.sba.gov/" target="_blank" rel="noopener noreferrer"><b>ULP</b></a><a href="https://www.nfc.usda.gov/EPPS/index.aspx" target="_blank" rel="noopener noreferrer"><b>EPP</b></a><a href="https://opf.opm.gov/login/" target="_blank" rel="noopener noreferrer"><b>eOPF</b></a></div>
+   </div>
+   <a href="#" id="qc-docs-link" style="font-size:11px;color:#1e3a5f;background:#F1CC13;font-weight:700;text-decoration:none;display:inline-block;padding:2px 10px;border-radius:10px;text-align:center">QC Docs</a>
+  </div>
   <div style="display:flex;gap:10px;align-items:flex-end">
     <div class="session-field"><label for="role">Role</label><select id="role"><option>Reviewer</option><option>Supervisor</option><option>Director</option></select></div>
     <div class="session-field"><label for="identity" id="identity-label">Signed in as</label><select id="identity"></select></div>
@@ -4347,6 +4363,21 @@ if (metricsBtn) {
     const id=loanFromHash();
     if(id&&typeof window.openLoanDeepLink==='function')window.openLoanDeepLink(id);
   }
+  // Links menu: closes on a second click, on Escape, or on a click elsewhere.
+  (function () {
+    const btn = document.getElementById('links-btn'), menu = document.getElementById('links-menu');
+    if (!btn || !menu) return;
+    const shut = () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
+    btn.addEventListener('click', e => {
+      e.preventDefault(); e.stopPropagation();
+      const open = menu.hidden;
+      menu.hidden = !open; btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    document.addEventListener('click', e => { if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) shut(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') shut(); });
+    menu.addEventListener('click', e => { if (e.target.closest('a')) shut(); });
+  })();
+
   window.addEventListener('popstate', handleRoute);
   window.addEventListener('hashchange', handleRoute);
   handleRoute();   // honour a bookmarked hash on load
