@@ -148,6 +148,8 @@ body[data-width="full"]{--page-w:100%}
 .del-f label{display:block;font-size:10.5px;font-weight:600;color:#4b4475;letter-spacing:.3px;margin-bottom:3px}
 .del-f input,.del-f select,.del-f textarea{width:100%;padding:6px 8px;border:1px solid #cdc7e4;border-radius:6px;font:inherit;font-size:12.5px;background:white;color:var(--ink)}
 .del-f input[readonly]{background:#f5f3fb;color:#5d5680}
+.del-f input.del-fr{width:150px;max-width:100%;background:#fdeff2;border-color:#e6bcc6;color:#8a2d45;font-weight:600}
+.del-f input.del-fr:focus{outline:2px solid #e6bcc6;outline-offset:1px}
 .del-f textarea{resize:vertical;min-height:58px;line-height:1.5}
 .del-full{grid-column:1/-1}
 .del-concur{display:flex;gap:16px;align-items:center;padding-top:19px}
@@ -222,8 +224,8 @@ body[data-width="full"]{--page-w:100%}
 .qa-eval input{width:66px;flex:none;min-height:32px;border:1px solid #cdc7e4;border-radius:6px;font-size:12.5px;padding:4px 7px;text-align:center}
 .qa-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
 .g-checks{max-height:200px;overflow:auto;border:1px solid #cdc7e4;border-radius:7px;background:white;padding:7px 9px;display:flex;flex-direction:column;gap:5px}
-.g-checks label{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.45;cursor:pointer;padding:2px 0}
-.g-checks input{margin:2px 0 0;flex:none;width:14px;height:14px;accent-color:var(--navy);cursor:pointer}
+.g-checks label{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;font-weight:400;line-height:1.45;letter-spacing:0;color:var(--ink);cursor:pointer;padding:1px 0}
+.g-checks input{margin:1px 0 0;flex:none;width:14px;height:14px;min-height:0;padding:0;border:0;border-radius:0;box-shadow:none;background:none;accent-color:var(--navy);cursor:pointer}
 .g-checks .g-id{font-weight:700;color:var(--navy);flex:none}
 .g-checks .g-none{color:var(--muted);font-size:12px}
 .rpt-plan{margin:0;padding-left:18px;font-size:12.5px;color:var(--muted);line-height:1.7}
@@ -1945,7 +1947,7 @@ window.dlEditOpen = function (id) {
     '<div><label for="dle-dateLastPay" style="' + fld + '">Date Last Pay</label>' +
       '<input id="dle-dateLastPay" type="date" value="' + day(r.dateLastPay) + '" style="' + inp + '"></div>' +
     '<div><label for="dle-fileReview" style="' + fld + '">File Review Date</label>' +
-      '<input id="dle-fileReview" type="date" value="' + day(r.fileReview) + '" style="' + inp + '"></div>' +
+      '<input id="dle-fileReview" type="date" value="' + day(r.fileReview) + '" style="' + inp + ';width:150px;background:#fdeff2;border-color:#e6bcc6;color:#8a2d45;font-weight:600"></div>' +
     text('findingCategory', 'Checks (IDs, comma separated)', r.findingCategory) +
     '<div><label for="dle-qualityConcur" style="' + fld + '">Outcome</label><select id="dle-qualityConcur" style="' + inp + '">' +
       '<option value="">Not recorded</option>' +
@@ -2472,7 +2474,7 @@ function delCard(r) {
       '<div class="del-f"><label for="' + i('sup') + '">Supervisor</label><input id="' + i('sup') + '" readonly value="' + safe(r.supervisor || '') + '"></div>' +
     '</div>' +
     '<div class="del-grid">' +
-      '<div class="del-f"><label for="' + i('fr') + '">File Review date</label><input type="date" id="' + i('fr') + '" value="' + safe(String(r.fileReview || '').slice(0, 10) || delToday()) + '"></div>' +
+      '<div class="del-f"><label for="' + i('fr') + '">File Review date</label><input type="date" class="del-fr" id="' + i('fr') + '" value="' + safe(String(r.fileReview || '').slice(0, 10) || delToday()) + '"></div>' +
     '</div>' +
     '<div class="del-grid">' +
       '<div class="del-f del-full"><label>Checks <span class="subtle" style="font-weight:400;font-size:11px">tick every check that failed \u2014 leave empty to concur</span></label>' +
