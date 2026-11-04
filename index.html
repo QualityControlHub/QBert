@@ -1977,11 +1977,14 @@ window.dlEditOpen = async function (id) {
       '<input id="dle-dateLastPay" type="date" value="' + day(r.dateLastPay) + '" style="' + inp + '"></div>' +
     '<div><label for="dle-fileReview" style="' + fld + '">File Review Date</label>' +
       '<input id="dle-fileReview" type="date" value="' + day(r.fileReview) + '" style="' + inp + ';width:150px;background:#fdeff2;border-color:#e6bcc6;color:#8a2d45;font-weight:600"></div>' +
-    text('findingCategory', 'Check ID (comma separated)', r.findingCategory) +
+    // One dropdown feeds both fields: the ID goes to findingCategory and the
+    // wording to findingText, so there is nothing to keep in step by hand.
     '<div><label for="dle-findingText" style="' + fld + '">Check</label><select id="dle-findingText" style="' + inp + '">' +
-      '<option value="">' + (delChecks.length ? 'Select check\u2026' : 'No DELINQUENCY checks found') + '</option>' +
-      (r.findingText && !delChecks.some(c => c.check === r.findingText) ? '<option selected>' + safe(r.findingText) + '</option>' : '') +
-      delChecks.map(c => '<option value="' + safe(c.check || '') + '"' + (r.findingText === c.check ? ' selected' : '') + '>' +
+      '<option value="" data-id="">' + (delChecks.length ? 'Select check\u2026' : 'No DELINQUENCY checks found') + '</option>' +
+      (r.findingText && !delChecks.some(c => c.check === r.findingText)
+        ? '<option selected data-id="' + safe(r.findingCategory || '') + '">' + safe(r.findingText) + '</option>' : '') +
+      delChecks.map(c => '<option value="' + safe(c.check || '') + '" data-id="' + safe(c.checkID || '') + '"' +
+        (r.findingText === c.check ? ' selected' : '') + '>' +
         safe((c.checkID ? c.checkID + ' \u2014 ' : '') + (c.check || '')) + '</option>').join('') +
       '</select></div>' +
     '<div><label for="dle-qualityConcur" style="' + fld + '">Outcome</label><select id="dle-qualityConcur" style="' + inp + '">' +
@@ -2015,8 +2018,11 @@ window.dlEditSave = async function (id) {
   const loan = val('loanNumber');
   if (!loan) { st.textContent = 'Enter the loan number.'; st.style.color = '#a32f58'; return; }
   const body = { loanNumber: loan, borrowerName: val('borrowerName'), agent: val('agent'),
-    supervisor: val('supervisor'), team: val('team'), findingCategory: val('findingCategory'),
+    supervisor: val('supervisor'), team: val('team'),
     findingText: val('findingText'), qualityNotes: val('qualityNotes') };
+  // The check ID travels on the selected option rather than its own box.
+  const chk = document.getElementById('dle-findingText');
+  body.findingCategory = chk && chk.selectedOptions[0] ? (chk.selectedOptions[0].dataset.id || '') : '';
   const dpd = val('daysPastDue');
   if (dpd !== '' && !isNaN(Number(dpd))) body.daysPastDue = Number(dpd);
   ['nextDueDate','dateLastPay','fileReview'].forEach(k => { const d = val(k); body[k] = d ? d + ' 00:00:00.000Z' : ''; });
