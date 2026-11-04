@@ -239,7 +239,8 @@ body[data-width="full"]{--page-w:100%}
 .g-checks .g-none{color:var(--muted);font-size:12px}
 .rpt-plan{margin:0;padding-left:18px;font-size:12.5px;color:var(--muted);line-height:1.7}
 .rpt-plan li{margin:0}
-.dm-group{margin:0 0 18px;border:1px solid var(--line);border-radius:12px;padding:13px 15px 6px;background:#fbfbf5;box-shadow:0 1px 5px #1e4d6b0d}
+.dm-group{margin:0 0 30px;border:1px solid var(--line);border-radius:12px;padding:15px 16px 8px;background:#fbfbf5;box-shadow:0 1px 5px #1e4d6b0d}
+.dm-group:last-child{margin-bottom:6px}
 .dm-group:last-child{margin-bottom:0}
 .dm-glabel{display:flex;align-items:center;gap:11px;margin:0 0 12px;font-size:14px;letter-spacing:.6px;
  text-transform:uppercase;font-weight:700;color:var(--header)}
@@ -3513,7 +3514,7 @@ async function loadLoanForm() {
 
 <div id="dm-workspace" style="display:none;max-width:920px;margin:40px auto;padding:24px">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-    <h1 style="margin:0;color:#4a6fa5">DM Workspace</h1>
+    <h1 style="margin:0;color:#4a6fa5">Jenny Workspace</h1>
     <button class="btn" id="dm-close" style="background:#1e3a5f;color:white;border-color:#1e3a5f;font-size:18px;padding:6px 12px" title="Home">🏠</button>
   </div>
     <section class="rpt-block">
@@ -3529,7 +3530,7 @@ async function loadLoanForm() {
         <option>CSH</option>
       </select>
     </div>
-    <div class="field"><label for="dm-dmtext">DM Comments</label><textarea id="dm-dmtext" rows="6" required></textarea></div>
+    <div class="field"><label for="dm-dmtext">Jenny Comments</label><textarea id="dm-dmtext" rows="6" required></textarea></div>
     <div class="field"><label for="dm-roberttext">Robert Comments</label><textarea id="dm-roberttext" rows="6"></textarea></div>
     <div><button type="submit" class="btn primary">Submit</button></div>
     <div id="dm-status" style="font-size:12px;min-height:16px"></div>
@@ -3590,7 +3591,7 @@ function dmGroups(rows, archived, empty) {
     groups[k].map(r =>
       '<div class="dm-card" data-dm="' + safe(r.id) + '">' +
         '<div class="dm-main"><div class="dm-loan">' + safe(r.title || 'No loan number') + '</div>' +
-          (String(r.dmText || '').trim() ? '<div class="dm-note"><span class="lab">DM</span><p>' + safe(r.dmText) + '</p></div>' : '') +
+          (String(r.dmText || '').trim() ? '<div class="dm-note"><span class="lab">Jenny</span><p>' + safe(r.dmText) + '</p></div>' : '') +
           (String(r.robertText || '').trim() ? '<div class="dm-note rb"><span class="lab">Robert</span><p>' + safe(r.robertText) + '</p></div>' : '') +
           (!String(r.dmText || '').trim() && !String(r.robertText || '').trim()
             ? '<p class="dm-text">' + safe(r.findingText || 'No comments recorded.') + '</p>' : '') +
