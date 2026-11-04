@@ -3055,14 +3055,13 @@ async function loadAging() {
     cards.innerHTML = order.map(gname => {
       const rows = groups[gname];
       return '<section class="dq-group">' +
-        '<div class="dq-head"><h2>' + safe(gname) + '</h2>' +
+        '<div class="dq-head"><h2>' + (gname === 'No group recorded' ? safe(gname) : 'Group ' + safe(gname)) + '</h2>' +
           '<span class="n">' + rows.length + (rows.length === 1 ? ' review' : ' reviews') + '</span></div>' +
         '<div class="dq-cards">' + rows.map(r =>
           '<article class="dq-card">' +
             '<div class="loan"><h3>' + safe(r.loanNumber || 'No loan number') + '</h3>' + dqConcurTag(r) + '</div>' +
             '<p class="nm">Borrower: ' + safe(r.borrowerName || 'Name not recorded') + '</p>' +
             '<dl class="dq-meta">' +
-              '<dt>Group</dt><dd>' + safe(r.group || 'Not recorded') + '</dd>' +
               '<dt>Past due</dt><dd>' + safe(r.daysPastDue == null ? '—' : r.daysPastDue + ' days') + '</dd>' +
               '<dt>Next due</dt><dd>' + safe(dqDate(r.nextDueDate)) + '</dd>' +
             '</dl>' + dqReviewBlock(r) +
