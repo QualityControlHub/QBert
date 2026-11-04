@@ -3605,12 +3605,14 @@ function dmGroups(rows, archived, empty) {
         '<div class="dm-side">' +
           '<label class="dm-chk"><input type="checkbox" data-added' + (archived ? ' checked' : '') + '> Added</label>' +
           '<button class="btn" onclick="dmSaveAdded(this)">Save</button>' +
+          '<button class="btn primary" onclick="dmEditOpen(\'' + safe(r.id) + '\')">Edit</button>' +
           '<button class="btn dm-del" onclick="deleteDM(\'' + safe(r.id) + '\')">Delete</button>' +
           '<span class="st" style="font-size:10.5px"></span>' +
         '</div>' +
       '</div>').join('') + '</section>').join('');
 }
 
+let dmRecords = [];
 async function loadDMRecords() {
   const list = document.getElementById('dm-records');
   const arch = document.getElementById('dm-archive');
@@ -3619,6 +3621,7 @@ async function loadDMRecords() {
     const res = await fetch(CONFIG.url + '/api/collections/dm_findings/records?perPage=200&sort=-created');
     if (!res.ok) throw new Error('dm_findings returned HTTP ' + res.status);
     const items = (await res.json()).items || [];
+    dmRecords = items;
     list.innerHTML = dmGroups(items.filter(r => r.addedFinding !== true), false, 'No outstanding findings.');
     arch.innerHTML = dmGroups(items.filter(r => r.addedFinding === true), true, 'Nothing archived yet.');
   } catch (e) {
@@ -3626,6 +3629,54 @@ async function loadDMRecords() {
     list.innerHTML = msg; arch.innerHTML = '';
   }
 }
+
+// Full editor for a finding: everything the card shows, in one modal.
+window.dmEditOpen = function (id) {
+  const r = dmRecords.find(x => x.id === id);
+  if (!r) return;
+  const fld = 'display:block;font-size:11px;font-weight:600;color:#4b4475;margin-bottom:3px';
+  const inp = 'width:100%;padding:6px 8px;border:1px solid #cdc7e4;border-radius:6px;font:inherit;font-size:12.5px';
+  document.body.insertAdjacentHTML('beforeend',
+    '<div id="dm-edit-modal" style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999">' +
+    '<div style="background:white;padding:20px;border-radius:10px;max-width:520px;width:92%;max-height:86vh;overflow:auto">' +
+    '<h3 style="margin:0 0 12px">Edit Finding</h3>' +
+    '<div style="display:grid;gap:10px">' +
+      '<div><label for="dme-title" style="' + fld + '">Loan Number</label>' +
+        '<input id="dme-title" value="' + safe(r.title || '') + '" style="' + inp + '"></div>' +
+      '<div><label for="dme-type" style="' + fld + '">Type</label><select id="dme-type" style="' + inp + '">' +
+        DM_TYPES.map(t => '<option' + (r.typeAction === t ? ' selected' : '') + '>' + safe(t) + '</option>').join('') +
+        (r.typeAction && !DM_TYPES.includes(r.typeAction) ? '<option selected>' + safe(r.typeAction) + '</option>' : '') +
+        '</select></div>' +
+      '<div><label for="dme-dm" style="' + fld + '">Jenny Comments</label>' +
+        '<textarea id="dme-dm" rows="5" style="' + inp + ';resize:vertical">' + safe(r.dmText || r.findingText || '') + '</textarea></div>' +
+      '<div><label for="dme-rb" style="' + fld + '">Robert Comments</label>' +
+        '<textarea id="dme-rb" rows="5" style="' + inp + ';resize:vertical">' + safe(r.robertText || '') + '</textarea></div>' +
+      '<label class="dm-chk" style="font-size:12.5px"><input type="checkbox" id="dme-added"' + (r.addedFinding === true ? ' checked' : '') + '> Added to the log</label>' +
+    '</div>' +
+    '<div id="dme-status" style="margin:10px 0 0;font-size:12px;min-height:16px"></div>' +
+    '<div style="margin-top:12px;display:flex;gap:8px">' +
+      '<button class="btn primary" onclick="dmEditSave(\'' + safe(id) + '\')">Save</button>' +
+      '<button class="btn" onclick="document.getElementById(\'dm-edit-modal\').remove()">Cancel</button>' +
+    '</div></div></div>');
+};
+window.dmEditSave = async function (id) {
+  const st = document.getElementById('dme-status');
+  const v = k => { const el = document.getElementById('dme-' + k); return el ? el.value.trim() : ''; };
+  const body = { title: v('title'), typeAction: v('type'), dmText: v('dm'), robertText: v('rb'),
+    addedFinding: document.getElementById('dme-added').checked };
+  if (!body.title || !body.typeAction || (!body.dmText && !body.robertText)) {
+    st.textContent = 'Fill in the loan number, the type, and at least one set of comments.';
+    st.style.color = '#a32f58'; return;
+  }
+  st.textContent = 'Saving\u2026'; st.style.color = '#5a6b80';
+  try {
+    const res = await fetch(CONFIG.url + '/api/collections/dm_findings/records/' + encodeURIComponent(id),
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) { const t = await res.text(); throw new Error(t.slice(0, 160)); }
+    document.getElementById('dm-edit-modal').remove();
+    loadDMRecords();
+  } catch (e) { st.textContent = 'Failed: ' + e.message; st.style.color = '#a32f58'; }
+};
 
 window.dmSaveAdded = async function (btn) {
   const card = btn.closest('.dm-card');
