@@ -172,6 +172,12 @@ body[data-width="full"]{--page-w:100%}
 .dq-meta dt{color:var(--muted)}
 .dq-meta dd{margin:0;font-weight:600;overflow-wrap:anywhere}
 .dq-note{margin:0;font-size:12.5px;padding:10px 11px;border-radius:7px;line-height:1.5}
+.dq-review{margin:11px 0 0;padding:10px 12px;border-radius:8px}
+.dq-review p.when{margin:0;font-size:10.5px;letter-spacing:.45px;text-transform:uppercase;color:#4b5a6b;font-weight:700}
+.dq-review .dq-rev{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12.5px;margin:8px 0 0}
+.dq-review .dq-rev dt{font-weight:700;color:#4b4475;white-space:nowrap}
+.dq-review .dq-rev dd{margin:0;line-height:1.5}
+.dq-card .sup{display:block;font-size:11px;color:var(--muted);margin-top:1px}
 .dcia-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
 .dcia-card{border:1px solid #d8c3cd;border-radius:12px;overflow:hidden;background:white;box-shadow:0 3px 12px #6d1f3c1a}
 .dcia-bar{background:#6d1f3c;color:white;padding:10px 14px;display:flex;align-items:center;gap:9px}
@@ -324,7 +330,7 @@ body[data-width="full"]{--page-w:100%}
   <div id="dcia-cards" class="dcia-cards"></div>
 </div>
 <div id="section-aging" style="display:none">
-  <div class="page-heading"><div><h1>Delinquency File Reviews</h1><p class="subtle">Delinquency file reviews from the last 30 days.</p></div></div>
+  <div class="page-heading"><div><h1>Delinquency File Reviews</h1><p class="subtle">Every delinquency file that has been reviewed, grouped by team.</p></div></div>
   <div id="aging-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px"></div>
 </div>
 
@@ -2990,6 +2996,22 @@ function dqConcurTag(r) {
   return r.qualityConcur === true ? '<span class="badge outcome-concur">Concur</span>'
        : r.qualityConcur === false ? '<span class="badge outcome-non">Non Concur</span>' : '';
 }
+// The three review facts sit together in one shaded block at the foot of the
+// card: when it was reviewed, which checks failed, and the notes. Checks are
+// left out entirely when the record carries none.
+function dqReviewBlock(r) {
+  const checks = delChecksOf(r).map(delCheckText).filter(Boolean);
+  const notes = String(r.findingText || r.qualityNotes || '').trim();
+  const row = (k, v) => '<dt>' + k + '</dt><dd>' + v + '</dd>';
+  return '<div class="dq-review" style="background:' + dqNoteBg(r) + '">' +
+    '<p class="when">Review Performed ' + safe(dqDate(r.fileReview)) + '</p>' +
+    (checks.length || notes
+      ? '<dl class="dq-rev">' +
+          (checks.length ? row('Checks', checks.map(safe).join('<br>')) : '') +
+          (notes ? row('Notes', safe(notes)) : '') +
+        '</dl>' : '') +
+  '</div>';
+}
 function dqNoteBg(r) {
   return r.qualityConcur === true ? '#eaf5ef' : r.qualityConcur === false ? '#fbf2e6' : '#f6f7f0';
 }
@@ -3007,47 +3029,36 @@ async function loadAging() {
   if (!cards) return;
   cards.className = '';
   cards.innerHTML = '<p class="cards-empty">Loading…</p>';
-  const monthAgo = new Date(); monthAgo.setDate(monthAgo.getDate() - 30);
-  const cutoff = monthAgo.toISOString().replace('T', ' ').slice(0, 19);
   try {
     // The check wording lives in checklists; load it so the cards can show
     // more than a bare check ID.
     if (typeof delLoadLists === 'function') { try { await delLoadLists(); } catch (e) {} }
     // A file counts as reviewed once it carries a fileReview date.
-    const items = (await dqFetch('fileReview != "" && daysPastDue <= 179 && fileReview >= "' + cutoff + '"', '-fileReview'))
+    const items = (await dqFetch('fileReview != "" && daysPastDue <= 179', '-fileReview'))
       .filter(r => String(r.fileReview || '').trim());
-    if (!items.length) { cards.innerHTML = '<p class="cards-empty">No delinquency file reviews in the last 30 days.</p>'; return; }
+    if (!items.length) { cards.innerHTML = '<p class="cards-empty">No delinquency files have been reviewed yet.</p>'; return; }
     const groups = {};
     items.forEach(r => {
-      const sup = String(r.supervisor || '').trim() || 'Unassigned';
-      const team = String(r.team || '').trim();
-      const key = sup + '\u0000' + team;
-      (groups[key] = groups[key] || { sup, team, rows: [] }).rows.push(r);
+      const team = String(r.team || '').trim() || 'No team recorded';
+      (groups[team] = groups[team] || []).push(r);
     });
-    const order = Object.keys(groups).sort((a, b) => {
-      const A = groups[a], B = groups[b];
-      if ((A.sup === 'Unassigned') !== (B.sup === 'Unassigned')) return A.sup === 'Unassigned' ? 1 : -1;
-      return A.sup.localeCompare(B.sup) || A.team.localeCompare(B.team);
-    });
-    cards.innerHTML = order.map(k => {
-      const g = groups[k];
+    const order = Object.keys(groups).sort((a, b) =>
+      (a === 'No team recorded') - (b === 'No team recorded') || a.localeCompare(b));
+    cards.innerHTML = order.map(team => {
+      const rows = groups[team];
       return '<section class="dq-group">' +
-        '<div class="dq-head"><h2>' + safe(g.sup) + '</h2>' +
-          (g.team ? '<span class="team">' + safe(g.team) + '</span>' : '') +
-          '<span class="n">' + g.rows.length + (g.rows.length === 1 ? ' review' : ' reviews') + '</span></div>' +
-        '<div class="dq-cards">' + g.rows.map(r =>
+        '<div class="dq-head"><h2>' + safe(team) + '</h2>' +
+          '<span class="n">' + rows.length + (rows.length === 1 ? ' review' : ' reviews') + '</span></div>' +
+        '<div class="dq-cards">' + rows.map(r =>
           '<article class="dq-card">' +
             '<div class="loan"><h3>' + safe(r.loanNumber || 'No loan number') + '</h3>' + dqConcurTag(r) + '</div>' +
             '<p class="nm">' + safe(r.borrowerName || 'Name not recorded') + '</p>' +
-            '<p class="when">Review Performed ' + safe(dqDate(r.fileReview)) + '</p>' +
             '<dl class="dq-meta">' +
-              '<dt>Agent</dt><dd>' + safe(r.agent || 'Unassigned') + '</dd>' +
+              '<dt>Agent</dt><dd>' + safe(r.agent || 'Unassigned') +
+                '<span class="sup">Supervisor: ' + safe(r.supervisor || 'Unassigned') + '</span></dd>' +
               '<dt>Past due</dt><dd>' + safe(r.daysPastDue == null ? '—' : r.daysPastDue + ' days') + '</dd>' +
               '<dt>Next due</dt><dd>' + safe(dqDate(r.nextDueDate)) + '</dd>' +
-              '<dt>Checks</dt><dd>' + safe(delChecksOf(r).map(delCheckText).join('; ') || '—') + '</dd>' +
-            '</dl>' +
-            (String(r.findingText || r.qualityNotes || '').trim()
-              ? '<p class="dq-note" style="background:' + dqNoteBg(r) + '">' + safe(r.findingText || r.qualityNotes) + '</p>' : '') +
+            '</dl>' + dqReviewBlock(r) +
           '</article>').join('') + '</div></section>';
     }).join('');
   } catch (e) { cards.innerHTML = '<p class="cards-empty">Failed to load: ' + safe(e.message) + '</p>'; }
@@ -3071,16 +3082,12 @@ async function loadDcia() {
           '<div class="dcia-days"><b>' + safe(r.daysPastDue == null ? '—' : r.daysPastDue) + '</b>' +
             '<span>Days<br>Past Due</span>' + (dqConcurTag(r) ? '<span style="margin-left:auto">' + dqConcurTag(r) + '</span>' : '') + '</div>' +
           '<p class="nm">' + safe(r.borrowerName || 'Name not recorded') + '</p>' +
-          '<p class="when">Review Performed ' + safe(dqDate(r.fileReview)) + '</p>' +
           '<dl class="dq-meta">' +
             '<dt>Agent</dt><dd>' + safe(r.agent || 'Unassigned') + '</dd>' +
             '<dt>Supervisor</dt><dd>' + safe(r.supervisor || 'Unassigned') + '</dd>' +
             '<dt>Team</dt><dd>' + safe(r.team || '—') + '</dd>' +
             '<dt>Last pay</dt><dd>' + safe(dqDate(r.dateLastPay)) + '</dd>' +
-            '<dt>Checks</dt><dd>' + safe(delChecksOf(r).map(delCheckText).join('; ') || '—') + '</dd>' +
-          '</dl>' +
-          (String(r.findingText || r.qualityNotes || '').trim()
-            ? '<p class="dq-note" style="background:' + dqNoteBg(r) + '">' + safe(r.findingText || r.qualityNotes) + '</p>' : '') +
+          '</dl>' + dqReviewBlock(r) +
         '</div>' +
       '</article>').join('');
   } catch (e) { cards.innerHTML = '<p class="cards-empty">Failed to load: ' + safe(e.message) + '</p>'; }
