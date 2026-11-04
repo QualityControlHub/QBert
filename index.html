@@ -1411,14 +1411,19 @@ disconnectedPresentation();
   <div id="ws-loans">
     <h2>Loan Action Reviews</h2>
     <p class="ws-warn">Loan reviews are performed on the front workspace</p>
-    <p>Paste production loans (CSV). Columns should match loan_action_reviews fields.</p>
-    <textarea id="ws-loans-input" rows="8" style="width:100%;font-family:monospace;font-size:12px" placeholder="title,loanAction,team,risk,actionDate,reviewer"></textarea>
-    <div style="margin:10px 0;display:flex;gap:8px">
-      <button class="btn" id="ws-generate-sample">Generate 80-Loan Sample</button>
-      <button class="btn primary" id="ws-append-sample" disabled>Append Sample to Reviews</button>
-    </div>
-    <div id="ws-sample-preview"></div>
-    <div id="ws-loans-status"></div>
+    <section class="rpt-block">
+      <h3>Add to Collection <span class="rpt-tag">Nothing is deleted</span></h3>
+      <p class="desc">Paste the review sample CSV. Every row is added to <code>loan_action_reviews</code> as a new record &mdash; existing reviews are left untouched, so this can be run each month.
+        Columns: title, actionDate, loanAction, actionMonth, reviewMonth, state, risk, reviewer. Only <strong>title</strong> and <strong>actionDate</strong> are required;
+        <code>actionMonth</code> and <code>reviewMonth</code> are worked out from the action date when the column is missing, and <code>state</code> defaults to In Review.</p>
+      <textarea id="ws-loans-input" rows="8" style="width:100%;font-family:monospace;font-size:11.5px" placeholder="title,actionDate,loanAction,actionMonth,reviewMonth,state,risk,reviewer"></textarea>
+      <div style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="ws-loans-preview">Check CSV</button>
+        <button class="btn primary" id="ws-loans-append" disabled>Add to Reviews</button>
+      </div>
+      <div id="ws-sample-preview"></div>
+      <div id="ws-loans-status" style="margin-top:8px;font-size:12px"></div>
+    </section>
   </div>
   <div id="ws-genesys" hidden>
     <h2 style="margin-bottom:18px">Customer Service Reviews</h2>
@@ -1685,63 +1690,94 @@ document.querySelectorAll('[data-ws]').forEach(btn => {
   });
 });
 
-// Loan sample generation
-let currentSample = [];
-document.getElementById('ws-generate-sample').addEventListener('click', () => {
-  const text = document.getElementById('ws-loans-input').value.trim();
-  if (!text) return;
-  const lines = text.split('\n').filter(l => l.trim());
-  const headers = lines[0].split(',').map(h => h.trim());
-  const rows = lines.slice(1).map(line => {
-    const vals = line.split(',');
-    const obj = {};
-    headers.forEach((h, i) => obj[h] = (vals[i] || '').trim());
-    return obj;
+// Loan action reviews: append a pasted CSV. This never deletes, so running it
+// twice adds the rows twice - the check step reports the count before posting.
+let loanRows = [];
+function laParseCsv(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return { headers: [], rows: [] };
+  const split = line => {
+    const out = []; let cur = '', q = false;
+    for (const c of line) {
+      if (c === '"') q = !q;
+      else if (c === ',' && !q) { out.push(cur); cur = ''; }
+      else cur += c;
+    }
+    out.push(cur); return out.map(v => v.trim().replace(/^"|"$/g, ''));
+  };
+  const headers = split(lines[0]);
+  return { headers, rows: lines.slice(1).map(l => {
+    const v = split(l), o = {};
+    headers.forEach((h, i) => o[h] = (v[i] || '').trim());
+    return o;
+  }) };
+}
+function laNormalise(r) {
+  let d = String(r.actionDate || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) d += ' 00:00:00.000Z';
+  else if (/^\d{4}-\d{2}-\d{2}T/.test(d)) d = d.replace('T', ' ');
+  const ym = ymOf(d);
+  return {
+    title: String(r.title || '').trim(),
+    actionDate: d,
+    loanAction: String(r.loanAction || '').trim(),
+    actionMonth: String(r.actionMonth || '').trim() || (ym ? monthTag(ym.y, ym.m) : ''),
+    reviewMonth: String(r.reviewMonth || '').trim() || (ym ? monthTag(ym.y, ym.m + 1) : ''),
+    state: String(r.state || '').trim() || 'In Review',
+    risk: Number(r.risk) || 0,
+    reviewer: String(r.reviewer || '').trim(),
+    team: String(r.team || '').trim()
+  };
+}
+document.getElementById('ws-loans-preview').addEventListener('click', () => {
+  const st = document.getElementById('ws-loans-status');
+  const prev = document.getElementById('ws-sample-preview');
+  const btn = document.getElementById('ws-loans-append');
+  btn.disabled = true; loanRows = [];
+  const { headers, rows } = laParseCsv(document.getElementById('ws-loans-input').value.trim());
+  if (!rows.length) { st.textContent = 'Paste a CSV with a header row first.'; st.style.color = '#a32f58'; prev.innerHTML = ''; return; }
+  const bad = [];
+  rows.forEach((r, i) => {
+    const n = laNormalise(r);
+    if (!n.title) bad.push('row ' + (i + 2) + ': no title');
+    else if (!/^\d{4}-\d{2}-\d{2}/.test(n.actionDate)) bad.push('row ' + (i + 2) + ': action date "' + (r.actionDate || '') + '"');
+    else loanRows.push(n);
   });
-  // Weight by inverse risk (lower risk number = higher priority)
-  rows.forEach(r => r._weight = r.risk ? (20 - Number(r.risk)) : 1);
-  // Shuffle weighted
-  const weighted = [];
-  rows.forEach(r => { for (let i = 0; i < r._weight; i++) weighted.push(r); });
-  for (let i = weighted.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [weighted[i], weighted[j]] = [weighted[j], weighted[i]];
-  }
-  // Pick unique 80
-  const seen = new Set();
-  currentSample = [];
-  for (const r of weighted) {
-    const key = r.title + '|' + r.loanAction;
-    if (!seen.has(key)) { seen.add(key); currentSample.push(r); }
-    if (currentSample.length >= 80) break;
-  }
-  // Assign reviewers evenly
-  const reviewers = ['Robert Thompson', 'Tonya Hayes'];
-  currentSample.forEach((r, i) => { r.reviewer = reviewers[i % reviewers.length]; r.state = 'In Review'; });
-  // Preview
-  const preview = document.getElementById('ws-sample-preview');
-  preview.innerHTML = '<p><strong>' + currentSample.length + ' loans selected</strong></p><table style="width:100%;font-size:12px;border-collapse:collapse"><tr><th>Loan</th><th>Action</th><th>Team</th><th>Risk</th><th>Reviewer</th></tr>' +
-    currentSample.slice(0, 20).map(r => '<tr><td>' + r.title + '</td><td>' + r.loanAction + '</td><td>' + (r.team||'') + '</td><td>' + (r.risk||'') + '</td><td>' + r.reviewer + '</td></tr>').join('') +
-    (currentSample.length > 20 ? '<tr><td colspan="5">… and ' + (currentSample.length - 20) + ' more</td></tr>' : '') + '</table>';
-  document.getElementById('ws-append-sample').disabled = false;
-  document.getElementById('ws-loans-status').textContent = '';
+  const by = {}, who = {};
+  loanRows.forEach(r => { by[r.loanAction || '(none)'] = (by[r.loanAction || '(none)'] || 0) + 1;
+    who[r.reviewer || '(unassigned)'] = (who[r.reviewer || '(unassigned)'] || 0) + 1; });
+  const months = [...new Set(loanRows.map(r => r.reviewMonth))].join(', ');
+  prev.innerHTML = '<div class="dt-wrap" style="margin-top:4px"><table class="dt"><thead><tr><th>Loan</th><th>Action</th><th>Action date</th><th>Action month</th><th>Review month</th><th>Risk</th><th>Reviewer</th><th>State</th></tr></thead><tbody>' +
+    loanRows.slice(0, 15).map(r => '<tr><td>' + safe(r.title) + '</td><td>' + safe(r.loanAction) + '</td><td>' + safe(r.actionDate.slice(0, 10)) +
+      '</td><td>' + safe(r.actionMonth) + '</td><td>' + safe(r.reviewMonth) + '</td><td>' + r.risk + '</td><td>' + safe(r.reviewer || '\u2014') + '</td><td>' + safe(r.state) + '</td></tr>').join('') +
+    '</tbody></table><div class="dt-foot">Showing ' + Math.min(15, loanRows.length) + ' of ' + loanRows.length + '</div></div>' +
+    '<p style="font-size:12px;color:var(--muted);margin:8px 0 0">Review month: <strong>' + safe(months || '\u2014') + '</strong> \u00b7 ' +
+      Object.keys(by).length + ' loan action' + (Object.keys(by).length === 1 ? '' : 's') + ' \u00b7 ' +
+      Object.keys(who).sort().map(k => safe(k) + ' ' + who[k]).join(' \u00b7 ') + '</p>' +
+    (bad.length ? '<p style="font-size:12px;color:#a32f58;margin:6px 0 0">Skipped ' + bad.length + ': ' + bad.slice(0, 4).map(safe).join('; ') + (bad.length > 4 ? '\u2026' : '') + '</p>' : '');
+  btn.disabled = !loanRows.length;
+  st.textContent = loanRows.length + ' row' + (loanRows.length === 1 ? '' : 's') + ' ready to add.' + (bad.length ? ' ' + bad.length + ' skipped.' : '');
+  st.style.color = bad.length ? '#8a5320' : '#216b50';
 });
-
-document.getElementById('ws-append-sample').addEventListener('click', async () => {
-  if (!currentSample.length) return;
-  if (!confirm('Are you sure you want to add the sample for QC Reviews?')) return;
-  const status = document.getElementById('ws-loans-status');
-  status.textContent = 'Appending…';
-  let ok = 0, fail = 0;
-  for (const r of currentSample) {
-    const body = { title: r.title, loanAction: r.loanAction, team: r.team || '', risk: Number(r.risk) || 0, actionDate: r.actionDate || '', reviewer: r.reviewer, state: 'In Review' };
+document.getElementById('ws-loans-append').addEventListener('click', async () => {
+  if (!loanRows.length) return;
+  const st = document.getElementById('ws-loans-status');
+  const btn = document.getElementById('ws-loans-append');
+  if (!confirm('Add ' + loanRows.length + ' records to loan_action_reviews?\n\nNothing is deleted. Running this twice adds the rows twice.')) return;
+  btn.disabled = true; st.textContent = 'Adding\u2026'; st.style.color = '#5a6b80';
+  let ok = 0, fail = 0, firstErr = '';
+  for (const r of loanRows) {
     try {
-      const res = await fetch(CONFIG.url + '/api/collections/loan_action_reviews/records', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (res.ok) ok++; else fail++;
-    } catch { fail++; }
+      const res = await fetch(CONFIG.url + '/api/collections/loan_action_reviews/records',
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(r) });
+      if (res.ok) ok++; else { fail++; if (!firstErr) firstErr = (await res.text()).slice(0, 160); }
+    } catch (e) { fail++; if (!firstErr) firstErr = e.message; }
+    if ((ok + fail) % 20 === 0) st.textContent = 'Adding\u2026 ' + (ok + fail) + ' of ' + loanRows.length;
   }
-  status.textContent = 'Added ' + ok + ' records' + (fail ? ', ' + fail + ' failed' : '') + '.';
-  document.getElementById('ws-append-sample').disabled = true;
+  st.textContent = 'Added ' + ok + ' record' + (ok === 1 ? '' : 's') + (fail ? ', ' + fail + ' failed \u2014 ' + firstErr : '') + '. Nothing was deleted.';
+  st.style.color = fail ? '#a32f58' : '#216b50';
+  if (!fail) { loanRows = []; document.getElementById('ws-sample-preview').innerHTML = ''; }
+  else btn.disabled = false;
 });
 
 
