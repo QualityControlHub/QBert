@@ -342,7 +342,7 @@ body[data-width="full"]{--page-w:100%}
   <div id="dcia-cards" class="dcia-cards"></div>
 </div>
 <div id="section-aging" style="display:none">
-  <div class="page-heading"><div><h1>Delinquency File Reviews</h1><p class="subtle">File reviews in the last 30 days, grouped by team.</p></div></div>
+  <div class="page-heading"><div><h1>Delinquency File Reviews</h1><p class="subtle">File reviews in the last 30 days, grouped by group.</p></div></div>
   <div id="aging-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px"></div>
 </div>
 
@@ -1604,7 +1604,7 @@ disconnectedPresentation();
     <section class="rpt-block">
       <h3>Add to Collection <span class="rpt-tag">Keeps existing records</span></h3>
       <p class="del-hint">Paste a CSV to append rows to the delinquency collection. Nothing already in the collection is removed.
-        Columns: loanNumber, borrowerName, agent, team, supervisor, daysPastDue, nextDueDate, dateLastPay, fileReview, findingCategory, findingText, qualityNotes, qualityConcur.</p>
+        Columns: loanNumber, borrowerName, group, daysPastDue, nextDueDate, dateLastPay, fileReview, findingCategory, findingText, qualityNotes, qualityConcur.</p>
       <textarea id="del-add-csv" rows="7" style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px" placeholder="Paste CSV with headers"></textarea>
       <div style="margin:10px 0;display:flex;gap:8px;align-items:center">
         <button class="btn primary" id="del-add-run">Add Records</button>
@@ -1616,7 +1616,7 @@ disconnectedPresentation();
       <h3>Replace Collection <span class="rpt-tag wip">Deletes all records not reviewed</span></h3>
 
       <p class="del-hint">Paste the delinquency CSV. Records with no <code>fileReview</code> date are deleted and replaced; any file that has already been reviewed is kept.
-        Columns: loanNumber, borrowerName, agent, team, supervisor, daysPastDue, nextDueDate, dateLastPay, fileReview, findingCategory, findingText, qualityNotes, qualityConcur.</p>
+        Columns: loanNumber, borrowerName, group, daysPastDue, nextDueDate, dateLastPay, fileReview, findingCategory, findingText, qualityNotes, qualityConcur.</p>
       <textarea id="del-csv" rows="7" style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px" placeholder="Paste CSV with headers"></textarea>
       <div style="margin:10px 0;display:flex;gap:8px;align-items:center">
         <button class="btn danger" id="del-replace">Replace Collection</button>
@@ -1648,9 +1648,9 @@ disconnectedPresentation();
 
     <section class="rpt-block">
       <h3>Edit Delinquency Records</h3>
-      <p class="desc">The collection is large, so the filter searches the database directly across loan number, borrower, agent, supervisor and team. Leave it blank to load the most delinquent files.</p>
+      <p class="desc">The collection is large, so the filter searches the database directly across loan number, borrower and group. Leave it blank to load the most delinquent files.</p>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
-        <input id="dl-edit-search" placeholder="Loan number, borrower, agent…" style="flex:1;min-width:220px;padding:6px 10px;border:1px solid #cdc7e4;border-radius:6px;font:inherit;font-size:12.5px">
+        <input id="dl-edit-search" placeholder="Loan number, borrower, group…" style="flex:1;min-width:220px;padding:6px 10px;border:1px solid #cdc7e4;border-radius:6px;font:inherit;font-size:12.5px">
         <button class="btn" id="dl-edit-load">Load</button>
         <button class="btn primary" id="dl-edit-add">Add Record</button>
       </div>
@@ -1896,12 +1896,11 @@ document.getElementById('g-save').addEventListener('click', async () => {
 // The collection is large, so the filter queries the server rather than
 // paging everything into the browser.
 const DL_COLS = [
-  ['loanNumber','Loan Number'],['borrowerName','Borrower'],['agent','Agent'],
-  ['supervisor','Supervisor'],['team','Team'],['daysPastDue','Days Past Due'],
+  ['loanNumber','Loan Number'],['borrowerName','Borrower'],['group','Group'],['daysPastDue','Days Past Due'],
   ['nextDueDate','Next Due'],['dateLastPay','Last Pay'],['fileReview','File Review'],
   ['findingCategory','Checks'],['qualityConcur','Outcome'],['findingText','Finding']
 ];
-const DL_SEARCH = ['loanNumber','borrowerName','agent','supervisor','team'];
+const DL_SEARCH = ['loanNumber','borrowerName','group'];
 let dlEditRecords = [];
 
 async function loadDlEdit() {
@@ -1958,17 +1957,9 @@ window.dlEditOpen = async function (id) {
   const body =
     text('loanNumber', 'Loan Number', r.loanNumber) +
     text('borrowerName', 'Borrower', r.borrowerName) +
-    '<div><label for="dle-agent" style="' + fld + '">Agent</label><select id="dle-agent" style="' + inp + '">' +
-      '<option value="">Select agent\u2026</option>' +
-      (r.agent && !delStaff.some(x => x.agent === r.agent) ? '<option selected>' + safe(r.agent) + '</option>' : '') +
-      delStaff.slice().sort((a, b) => String(a.agent || '').localeCompare(String(b.agent || '')))
-        .map(x => '<option value="' + safe(x.agent) + '"' + (r.agent === x.agent ? ' selected' : '') +
-          ' data-sup="' + safe(x.supervisor || '') + '" data-team="' + safe(x.team || '') + '">' + safe(x.agent) + '</option>').join('') +
-      '</select></div>' +
-    '<div><label for="dle-supervisor" style="' + fld + '">Supervisor</label>' +
-      '<input id="dle-supervisor" readonly value="' + safe(r.supervisor || '') + '" style="' + inp + ';background:#f5f3fb;color:#5d5680"></div>' +
-    '<div><label for="dle-team" style="' + fld + '">Team</label>' +
-      '<input id="dle-team" readonly value="' + safe(r.team || '') + '" style="' + inp + ';background:#f5f3fb;color:#5d5680"></div>' +
+    '<div><label for="dle-group" style="' + fld + '">Group</label>' +
+      '<input id="dle-group" list="dle-group-list" value="' + safe(r.group || '') + '" style="' + inp + '">' +
+      '<datalist id="dle-group-list">' + delGroups.map(g => '<option value="' + safe(g) + '"></option>').join('') + '</datalist></div>' +
     '<div><label for="dle-daysPastDue" style="' + fld + '">Days Past Due</label>' +
       '<input id="dle-daysPastDue" type="number" value="' + safe(r.daysPastDue == null ? '' : r.daysPastDue) + '" style="' + inp + '"></div>' +
     '<div><label for="dle-nextDueDate" style="' + fld + '">Next Due Date</label>' +
@@ -2004,12 +1995,6 @@ window.dlEditOpen = async function (id) {
       '<button class="btn" onclick="document.getElementById(\'dl-edit-modal\').remove()">Cancel</button>' +
       (id ? '<button class="btn" style="margin-left:auto;background:#8b1e1e;color:white" onclick="dlEditDelete(\'' + safe(id) + '\')">Delete</button>' : '') +
     '</div></div></div>');
-  const ag = document.getElementById('dle-agent');
-  if (ag) ag.onchange = () => {
-    const o = ag.selectedOptions[0];
-    document.getElementById('dle-supervisor').value = o ? (o.dataset.sup || '') : '';
-    document.getElementById('dle-team').value = o ? (o.dataset.team || '') : '';
-  };
 };
 
 window.dlEditSave = async function (id) {
@@ -2017,8 +2002,7 @@ window.dlEditSave = async function (id) {
   const val = k => { const el = document.getElementById('dle-' + k); return el ? el.value.trim() : ''; };
   const loan = val('loanNumber');
   if (!loan) { st.textContent = 'Enter the loan number.'; st.style.color = '#a32f58'; return; }
-  const body = { loanNumber: loan, borrowerName: val('borrowerName'), agent: val('agent'),
-    supervisor: val('supervisor'), team: val('team'),
+  const body = { loanNumber: loan, borrowerName: val('borrowerName'), group: val('group'),
     findingText: val('findingText'), qualityNotes: val('qualityNotes') };
   // The check ID travels on the selected option rather than its own box.
   const chk = document.getElementById('dle-findingText');
@@ -2426,11 +2410,11 @@ document.getElementById('rpt-download').addEventListener('click', () => {
 });
 
 // ---- Delinquency workspace: replace, reviews, DCIA ---------------------
-const DEL_FIELDS = ['loanNumber','borrowerName','agent','team','supervisor','daysPastDue','nextDueDate','dateLastPay','fileReview','findingCategory','findingText','qualityNotes','qualityConcur'];
+const DEL_FIELDS = ['loanNumber','borrowerName','group','daysPastDue','nextDueDate','dateLastPay','fileReview','findingCategory','findingText','qualityNotes','qualityConcur'];
 const DEL_NUM = ['daysPastDue'];
 const DEL_DATE = ['nextDueDate','dateLastPay','fileReview'];
 const DEL_BOOL = ['qualityConcur'];
-let delStaff = [], delChecks = [], delRows = {};
+let delChecks = [], delRows = {}, delGroups = [];
 
 const delNorm = h => String(h || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 const DEL_LOOKUP = {};
@@ -2473,13 +2457,9 @@ function delShowDate(v) {
 
 
 async function delLoadLists() {
-  if (delStaff.length && delChecks.length) return;
+  if (delChecks.length) return;
   try {
-    const [st, ck] = await Promise.all([
-      fetch(CONFIG.url + '/api/collections/staff/records?perPage=500').then(r => r.json()),
-      fetch(CONFIG.url + '/api/collections/checklists/records?perPage=500').then(r => r.json())
-    ]);
-    delStaff = (st.items || []).filter(x => String(x.role || '').trim().toLowerCase() === 'agent');
+    const ck = await fetch(CONFIG.url + '/api/collections/checklists/records?perPage=500').then(r => r.json());
     delChecks = (ck.items || []).filter(c => /^delinquen/i.test(String(c.category || '').trim()))
       .sort((a, b) => String(a.checkID || '').localeCompare(String(b.checkID || ''), undefined, { numeric: true }));
   } catch (e) { console.warn('Delinquency lists failed', e); }
@@ -2500,9 +2480,6 @@ function delCheckText(tok) {
 }
 function delToday() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
 function delCard(r) {
-  const agentOpts = '<option value="">Select agent…</option>' + delStaff
-    .sort((a, b) => String(a.agent || '').localeCompare(String(b.agent || '')))
-    .map(sx => '<option value="' + safe(sx.agent) + '"' + (r.agent === sx.agent ? ' selected' : '') + '>' + safe(sx.agent) + '</option>').join('');
   const on = new Set(delChecksOf(r).map(x => x.toUpperCase()));
   const checkBoxes = delChecks.length
     ? delChecks.map(c => '<label><input type="checkbox" data-check value="' + safe(c.checkID || c.id) + '"' +
@@ -2516,9 +2493,8 @@ function delCard(r) {
       '<span class="meta"><strong>' + safe(r.daysPastDue == null ? '—' : r.daysPastDue) + '</strong> days past due<br>' +
       'Next due ' + safe(delShowDate(r.nextDueDate)) + ' · Last pay ' + safe(delShowDate(r.dateLastPay)) + '</span></div>' +
     '<div class="del-grid">' +
-      '<div class="del-f"><label for="' + i('agent') + '">Agent</label><select id="' + i('agent') + '" data-agent>' + agentOpts + '</select></div>' +
-      '<div class="del-f"><label for="' + i('team') + '">Team</label><input id="' + i('team') + '" readonly value="' + safe(r.team || '') + '"></div>' +
-      '<div class="del-f"><label for="' + i('sup') + '">Supervisor</label><input id="' + i('sup') + '" readonly value="' + safe(r.supervisor || '') + '"></div>' +
+      '<div class="del-f del-full"><label for="' + i('group') + '">Group</label>' +
+        '<input id="' + i('group') + '" data-group list="del-group-list" value="' + safe(r.group || '') + '" placeholder="Group"></div>' +
     '</div>' +
     '<div class="del-grid">' +
       '<div class="del-f"><label for="' + i('fr') + '">File Review date</label><input type="date" class="del-fr" id="' + i('fr') + '" value="' + safe(String(r.fileReview || '').slice(0, 10) || delToday()) + '"></div>' +
@@ -2538,15 +2514,11 @@ function delCard(r) {
   '</div>';
 }
 
-function delWire(listEl) {
-  listEl.querySelectorAll('[data-agent]').forEach(sel => {
-    sel.onchange = () => {
-      const st = delStaff.find(x => x.agent === sel.value) || {};
-      const card = sel.closest('.del-card');
-      card.querySelector('input[id^="d-team-"]').value = st.team || '';
-      card.querySelector('input[id^="d-sup-"]').value = st.supervisor || '';
-    };
-  });
+// The groups already in use are offered as suggestions so the spelling stays
+// consistent, without locking the field to a fixed list.
+function delGroupList() {
+  return '<datalist id="del-group-list">' +
+    delGroups.map(g => '<option value="' + safe(g) + '"></option>').join('') + '</datalist>';
 }
 
 window.delSave = async function (btn) {
@@ -2565,9 +2537,7 @@ window.delSave = async function (btn) {
     st.textContent = 'Non Concur needs a check ticked or a finding written.'; st.style.color = '#a32f58'; return;
   }
   const body = {
-    agent: q('[data-agent]').value,
-    team: q('input[id^="d-team-"]').value,
-    supervisor: q('input[id^="d-sup-"]').value,
+    group: q('[data-group]').value.trim(),
     fileReview: day + ' 00:00:00.000Z',
     findingCategory: checks.join(', '),
     findingText: finding,
@@ -2605,11 +2575,12 @@ async function delPull(kind) {
       return;
     }
     delRows = {}; items.forEach(r => delRows[r.id] = r);
+    items.forEach(r => { const g = String(r.group || '').trim(); if (g && !delGroups.includes(g)) delGroups.push(g); });
+    delGroups.sort();
     stEl.textContent = items.length + (items.length === 1 ? ' file' : ' files') +
       (delChecks.length ? '' : ' · no DELINQUENCY checks found in checklists');
     stEl.style.color = delChecks.length ? '#216b50' : '#8a5320';
-    listEl.innerHTML = items.map(delCard).join('');
-    delWire(listEl);
+    listEl.innerHTML = delGroupList() + items.map(delCard).join('');
   } catch (e) { stEl.textContent = 'Failed: ' + e.message; stEl.style.color = '#a32f58'; }
 }
 document.getElementById('del-review-pull').addEventListener('click', () => delPull('review'));
@@ -3076,23 +3047,22 @@ async function loadAging() {
     if (!items.length) { cards.innerHTML = '<p class="cards-empty">No delinquency files have been reviewed yet.</p>'; return; }
     const groups = {};
     items.forEach(r => {
-      const team = String(r.team || '').trim() || 'No team recorded';
-      (groups[team] = groups[team] || []).push(r);
+      const g = String(r.group || '').trim() || 'No group recorded';
+      (groups[g] = groups[g] || []).push(r);
     });
     const order = Object.keys(groups).sort((a, b) =>
-      (a === 'No team recorded') - (b === 'No team recorded') || a.localeCompare(b));
-    cards.innerHTML = order.map(team => {
-      const rows = groups[team];
+      (a === 'No group recorded') - (b === 'No group recorded') || a.localeCompare(b));
+    cards.innerHTML = order.map(gname => {
+      const rows = groups[gname];
       return '<section class="dq-group">' +
-        '<div class="dq-head"><h2>' + safe(team) + '</h2>' +
+        '<div class="dq-head"><h2>' + safe(gname) + '</h2>' +
           '<span class="n">' + rows.length + (rows.length === 1 ? ' review' : ' reviews') + '</span></div>' +
         '<div class="dq-cards">' + rows.map(r =>
           '<article class="dq-card">' +
             '<div class="loan"><h3>' + safe(r.loanNumber || 'No loan number') + '</h3>' + dqConcurTag(r) + '</div>' +
             '<p class="nm">Borrower: ' + safe(r.borrowerName || 'Name not recorded') + '</p>' +
             '<dl class="dq-meta">' +
-              '<dt>Agent</dt><dd>' + safe(r.agent || 'Unassigned') +
-                '<span class="sup">Supervisor: ' + safe(r.supervisor || 'Unassigned') + '</span></dd>' +
+              '<dt>Group</dt><dd>' + safe(r.group || 'Not recorded') + '</dd>' +
               '<dt>Past due</dt><dd>' + safe(r.daysPastDue == null ? '—' : r.daysPastDue + ' days') + '</dd>' +
               '<dt>Next due</dt><dd>' + safe(dqDate(r.nextDueDate)) + '</dd>' +
             '</dl>' + dqReviewBlock(r) +
@@ -3120,9 +3090,7 @@ async function loadDcia() {
             '<span>Days<br>Past Due</span>' + (dqConcurTag(r) ? '<span style="margin-left:auto">' + dqConcurTag(r) + '</span>' : '') + '</div>' +
           '<p class="nm">Borrower: ' + safe(r.borrowerName || 'Name not recorded') + '</p>' +
           '<dl class="dq-meta">' +
-            '<dt>Agent</dt><dd>' + safe(r.agent || 'Unassigned') + '</dd>' +
-            '<dt>Supervisor</dt><dd>' + safe(r.supervisor || 'Unassigned') + '</dd>' +
-            '<dt>Team</dt><dd>' + safe(r.team || '—') + '</dd>' +
+            '<dt>Group</dt><dd>' + safe(r.group || 'Not recorded') + '</dd>' +
             '<dt>Last pay</dt><dd>' + safe(dqDate(r.dateLastPay)) + '</dd>' +
           '</dl>' + dqReviewBlock(r) +
         '</div>' +
