@@ -239,12 +239,18 @@ body[data-width="full"]{--page-w:100%}
 .g-checks .g-none{color:var(--muted);font-size:12px}
 .rpt-plan{margin:0;padding-left:18px;font-size:12.5px;color:var(--muted);line-height:1.7}
 .rpt-plan li{margin:0}
-.dm-group{margin:0 0 22px}
+.dm-group{margin:0 0 18px;border:1px solid var(--line);border-radius:12px;padding:13px 15px 6px;background:#fbfbf5;box-shadow:0 1px 5px #1e4d6b0d}
 .dm-group:last-child{margin-bottom:0}
-.dm-glabel{display:flex;align-items:center;gap:11px;margin:0 0 11px;font-size:10.5px;letter-spacing:1.7px;
+.dm-glabel{display:flex;align-items:center;gap:11px;margin:0 0 12px;font-size:14px;letter-spacing:.6px;
  text-transform:uppercase;font-weight:700;color:var(--header)}
-.dm-glabel::after{content:"";flex:1;height:2px;background:var(--gold);border-radius:1px}
-.dm-glabel .n{font-size:10px;letter-spacing:.3px;text-transform:none;color:var(--muted);font-weight:600}
+.dm-glabel::after{content:"";flex:1;height:3px;background:var(--gold);border-radius:2px}
+.dm-glabel .n{font-size:11px;letter-spacing:.2px;text-transform:none;color:var(--navy);font-weight:700;
+ background:var(--blue-bg);border:1px solid var(--peri);border-radius:99px;padding:2px 9px;white-space:nowrap}
+.dm-note{margin:7px 0 0;display:grid;grid-template-columns:62px 1fr;gap:10px;align-items:baseline}
+.dm-note .lab{font-size:9.5px;letter-spacing:1.1px;text-transform:uppercase;font-weight:700;color:var(--navy);
+ background:var(--blue-bg);border-radius:5px;padding:2px 0;text-align:center}
+.dm-note.rb .lab{color:#8a5320;background:#fbf2e6}
+.dm-note p{margin:0;font-size:12.5px;line-height:1.55;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere}
 .dm-card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:0 0 9px;background:white;
  display:flex;gap:16px;align-items:flex-start;box-shadow:0 1px 5px #1e4d6b0d}
 .dm-card:last-child{margin-bottom:0}
@@ -258,6 +264,8 @@ body[data-width="full"]{--page-w:100%}
 .dm-del{background:#8b1e1e;color:white;border-color:#8b1e1e}
 .dm-archive-block{background:#fdf2f4;border-color:#eccfd7}
 .dm-archive-block .dm-card{background:#fffafb;border-color:#f0d8de}
+.dm-archive-block .dm-group{background:#fdf7f8;border-color:#f0d8de}
+.dm-archive-block .dm-glabel .n{color:#8e2b4f;background:#fbe9ee;border-color:#e7b9c6}
 .dm-archive-block .dm-glabel{color:#8e2b4f}
 .dm-archive-block .dm-glabel::after{background:#e7b9c6}
 .ws-warn{margin:0 0 16px;font-size:12.5px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--danger);
@@ -3521,7 +3529,8 @@ async function loadLoanForm() {
         <option>CSH</option>
       </select>
     </div>
-    <div class="field"><label for="dm-finding">Comments</label><textarea id="dm-finding" rows="8" required></textarea></div>
+    <div class="field"><label for="dm-dmtext">DM Comments</label><textarea id="dm-dmtext" rows="6" required></textarea></div>
+    <div class="field"><label for="dm-roberttext">Robert Comments</label><textarea id="dm-roberttext" rows="6"></textarea></div>
     <div><button type="submit" class="btn primary">Submit</button></div>
     <div id="dm-status" style="font-size:12px;min-height:16px"></div>
   </form>
@@ -3547,10 +3556,12 @@ document.getElementById('dm-form').addEventListener('submit', async e => {
   const body = {
     title: document.getElementById('dm-title').value.trim(),
     typeAction: document.getElementById('dm-type').value,
-    findingText: document.getElementById('dm-finding').value.trim()
+    dmText: document.getElementById('dm-dmtext').value.trim(),
+    robertText: document.getElementById('dm-roberttext').value.trim()
   };
-  if (!body.title || !body.typeAction || !body.findingText) {
-    status.textContent = 'Fill in the loan number, type and comments.'; status.style.color = '#a32f58'; return;
+  if (!body.title || !body.typeAction || (!body.dmText && !body.robertText)) {
+    status.textContent = 'Fill in the loan number, the type, and at least one set of comments.';
+    status.style.color = '#a32f58'; return;
   }
   status.textContent = 'Saving…'; status.style.color = '#5a6b80';
   try {
@@ -3579,7 +3590,11 @@ function dmGroups(rows, archived, empty) {
     groups[k].map(r =>
       '<div class="dm-card" data-dm="' + safe(r.id) + '">' +
         '<div class="dm-main"><div class="dm-loan">' + safe(r.title || 'No loan number') + '</div>' +
-          '<p class="dm-text">' + safe(r.findingText || '') + '</p></div>' +
+          (String(r.dmText || '').trim() ? '<div class="dm-note"><span class="lab">DM</span><p>' + safe(r.dmText) + '</p></div>' : '') +
+          (String(r.robertText || '').trim() ? '<div class="dm-note rb"><span class="lab">Robert</span><p>' + safe(r.robertText) + '</p></div>' : '') +
+          (!String(r.dmText || '').trim() && !String(r.robertText || '').trim()
+            ? '<p class="dm-text">' + safe(r.findingText || 'No comments recorded.') + '</p>' : '') +
+        '</div>' +
         '<div class="dm-side">' +
           '<label class="dm-chk"><input type="checkbox" data-added' + (archived ? ' checked' : '') + '> Added</label>' +
           '<button class="btn" onclick="dmSaveAdded(this)">Save</button>' +
