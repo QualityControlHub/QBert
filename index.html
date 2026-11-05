@@ -200,6 +200,13 @@ body[data-width="full"]{--page-w:100%}
 .rpt-block.soon{background:#fbfcf6;border-style:dashed}
 .rpt-tag{font-size:9px;letter-spacing:1.1px;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:5px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--peri);white-space:nowrap}
 .rpt-tag.wip{background:#fbf2e6;color:var(--amber);border-color:#eedcc0}
+.dm-alert{display:inline-flex;align-items:center;gap:8px;border:1px solid #c0392b;background:#c0392b;color:#fff;
+ border-radius:99px;padding:7px 15px;font-size:12.5px;font-weight:700;letter-spacing:.2px;cursor:pointer;
+ box-shadow:0 2px 10px #c0392b55;white-space:nowrap}
+.dm-alert:hover{background:#a93226;border-color:#a93226}
+.dm-alert .dot{width:8px;height:8px;border-radius:50%;background:#fff;flex:none;animation:dmpulse 1.6s ease-in-out infinite}
+@keyframes dmpulse{0%,100%{opacity:1}50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.dm-alert .dot{animation:none}}
 .hdr-pills{display:flex;align-items:center;gap:8px;margin-bottom:3px}
 .hdr-pill{display:inline-flex;align-items:center;justify-content:center;gap:5px;box-sizing:border-box;
  font-family:inherit;font-size:11px;font-weight:700;line-height:1;letter-spacing:.2px;white-space:nowrap;
@@ -1416,6 +1423,10 @@ disconnectedPresentation();
   <div style="position:relative;height:120px;margin:-24px -24px 20px;border-radius:8px 8px 0 0;overflow:hidden">
     <div style="position:absolute;inset:0;background:url('workspace-header.jpg') center/cover;opacity:0.35"></div>
     <h1 style="position:relative;z-index:1;margin:0;padding:40px 24px;color:#1a1a2e">Reviewer Workspace</h1>
+    <button type="button" id="dm-alert" class="dm-alert" hidden style="position:absolute;top:12px;right:62px;z-index:2"
+            title="New findings from Jenny. Click once you have seen them.">
+      <span class="dot"></span><span id="dm-alert-text">New findings</span>
+    </button>
     <button class="btn" id="ws-close" style="position:absolute;top:12px;right:12px;z-index:2;background:#1e3a5f;color:white;border-color:#1e3a5f;font-size:18px;padding:6px 12px" title="Home">🏠</button>
   </div>
   <nav style="display:flex;gap:8px;margin:16px 0;border-bottom:1px solid #ddd;padding-bottom:8px;flex-wrap:wrap">
@@ -4459,6 +4470,113 @@ if (metricsBtn) {
 
 </script>
 <script>
+/* ===================================================================
+   New-findings toggle for dm_findings.
+
+   Two paths, deliberately independent:
+     - on open, compare the newest finding against the watermark held in
+       app_state, so anything added while away is caught;
+     - a PocketBase realtime subscription, so it lights up live while the
+       workspace is open. If that connection never establishes the feature
+       still works, it just waits for the next open.
+   The watermark is the newest `created` string rather than a count, because
+   a count drops when a finding is archived and a later add would not show.
+   =================================================================== */
+(function () {
+  const USER = 'robert';
+  const btn = document.getElementById('dm-alert');
+  const label = document.getElementById('dm-alert-text');
+  if (!btn) return;
+  let stateId = '', lastSeen = '', newest = '', pending = 0, es = null, wired = false;
+
+  const show = n => {
+    pending = n;
+    btn.hidden = n <= 0;
+    if (n > 0) label.textContent = n + ' new finding' + (n === 1 ? '' : 's');
+  };
+
+  async function readState() {
+    const url = CONFIG.url + '/api/collections/app_state/records?perPage=1&filter=' +
+      encodeURIComponent('user = "' + USER + '"');
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('app_state returned HTTP ' + r.status);
+    const rec = ((await r.json()).items || [])[0];
+    if (rec) { stateId = rec.id; lastSeen = String(rec.lastSeenDM || '').trim(); }
+  }
+  // Ask the server to count, rather than paging findings into the browser.
+  async function countNew() {
+    const filter = lastSeen ? 'created > "' + lastSeen + '"' : '';
+    const url = CONFIG.url + '/api/collections/dm_findings/records?perPage=1&sort=-created' +
+      (filter ? '&filter=' + encodeURIComponent(filter) : '');
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('dm_findings returned HTTP ' + r.status);
+    const j = await r.json();
+    const first = (j.items || [])[0];
+    if (first && first.created) newest = String(first.created);
+    return j.totalItems == null ? (j.items || []).length : j.totalItems;
+  }
+
+  async function refresh() {
+    try {
+      if (!stateId) await readState();
+      show(await countNew());
+    } catch (e) { console.warn('DM alert check failed', e); }
+  }
+
+  // Clicking is the acknowledgement: stamp the newest finding as seen.
+  btn.addEventListener('click', async () => {
+    const mark = newest;
+    btn.disabled = true;
+    try {
+      if (stateId && mark) {
+        const r = await fetch(CONFIG.url + '/api/collections/app_state/records/' + encodeURIComponent(stateId),
+          { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lastSeenDM: mark }) });
+        if (!r.ok) throw new Error((await r.text()).slice(0, 140));
+        lastSeen = mark;
+      }
+      show(0);
+    } catch (e) {
+      console.warn('Could not save the seen marker', e);
+      btn.title = 'Could not save to app_state, so this will light up again. ' + e.message;
+    }
+    btn.disabled = false;
+  });
+
+  // PocketBase realtime: connect, take the clientId from the handshake, then
+  // register the subscription against it.
+  function listen() {
+    if (es || typeof EventSource === 'undefined') return;
+    try {
+      es = new EventSource(CONFIG.url + '/api/realtime');
+      es.addEventListener('PB_CONNECT', async e => {
+        try {
+          const id = JSON.parse(e.data || '{}').clientId;
+          if (!id) return;
+          await fetch(CONFIG.url + '/api/realtime', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId: id, subscriptions: ['dm_findings'] })
+          });
+        } catch (err) { console.warn('realtime subscribe failed', err); }
+      });
+      es.addEventListener('dm_findings', ev => {
+        try {
+          const msg = JSON.parse(ev.data || '{}');
+          if (msg.action === 'create') refresh();
+        } catch (err) {}
+      });
+      es.onerror = () => { /* the browser retries on its own; the open check covers the gap */ };
+    } catch (e) { console.warn('realtime unavailable', e); }
+  }
+
+  window.dmAlertCheck = function () {
+    refresh();
+    if (!wired) { wired = true; listen(); }
+  };
+})();
+
+</script>
+<script>
 // Deep links: #reviewer, #dm and #qc each open their workspace directly, so the
 // page can be bookmarked. Closing one puts the URL back to the front workspace.
 (function () {
@@ -4477,7 +4595,8 @@ if (metricsBtn) {
   }
   const WORKSPACES = {
     reviewer: { el: 'reviewer-workspace', onOpen: () => { if (typeof loadLoanForm === 'function') loadLoanForm();
-                                                          if (typeof loadGenesysLists === 'function') loadGenesysLists(); } },
+                                                          if (typeof loadGenesysLists === 'function') loadGenesysLists();
+                                                          if (typeof dmAlertCheck === 'function') dmAlertCheck(); } },
     dm:       { el: 'dm-workspace',       onOpen: () => { if (typeof loadDMRecords === 'function') loadDMRecords(); } },
     qc:       { el: 'qc-docs',            onOpen: renderQcDocs }
   };
