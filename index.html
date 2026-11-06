@@ -4688,33 +4688,50 @@ if (metricsBtn) {
   }
 
   // ---- one finding, as a table row block -------------------------------
-  // Word has no float and no border-radius, so the header is a two-cell row
-  // and every tint is a bgcolor attribute, which Word does honour.
+  // Word rules here, not a browser. Two tables that sit side by side inside
+  // one cell get reconciled into a single grid on paste, which is where the
+  // stray white rules came from, so every piece gets a row of its own in a
+  // one-column table and nothing is ever adjacent to anything else. Every
+  // run of text is a zero-margin paragraph, because Word's Normal style
+  // otherwise adds 8pt of space after it inside the cell.
+  const FF = 'font-family:Calibri,sans-serif;';
+  const EXACT = 'margin:0;line-height:100%;mso-line-height-rule:exactly;';
+  const cell = (pad, inner, bg) => '<tr><td' + (bg ? ' bgcolor="' + bg + '"' : '') +
+    ' style="' + (bg ? 'background:' + bg + ';' : '') + 'padding:' + pad + '">' + inner + '</td></tr>';
+
   function block(accent, headLeft, headRight, facts, checks, body, extra, tint) {
+    const header = '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse">' +
+      '<tr><td valign="bottom" style="padding:0"><p style="margin:0;' + FF + 'font-size:12pt;font-weight:bold;color:#1e2a3a">' + headLeft + '</p></td>' +
+      (headRight ? '<td valign="bottom" align="right" style="padding:0 0 0 14pt"><p style="margin:0;' + FF +
+        'font-size:10pt;color:#5a6b80;white-space:nowrap">' + esc(headRight) + '</p></td>' : '') +
+      '</tr></table>';
     const factRow = facts.filter(f => f[1]).map(f =>
-      '<tr><td style="padding:1px 16px 1px 0;font-family:Calibri,sans-serif;font-size:10.5pt;color:#5a6b80;white-space:nowrap">' + esc(f[0]) +
-      '</td><td style="padding:1px 0;font-family:Calibri,sans-serif;font-size:10.5pt;color:#1e2a3a">' + f[2] + '</td></tr>').join('');
-    return '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0;margin:0 0 10px">' +
+      '<tr><td valign="top" style="padding:1pt 12pt 1pt 0"><p style="margin:0;' + FF +
+        'font-size:10.5pt;color:#5a6b80;white-space:nowrap">' + esc(f[0]) + '</p></td>' +
+      '<td valign="top" style="padding:1pt 0"><p style="margin:0;' + FF +
+        'font-size:10.5pt;color:#1e2a3a">' + f[2] + '</p></td></tr>').join('');
+    let rows = cell('0 0 6pt', header);
+    if (factRow) rows += cell('0 0 7pt',
+      '<table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse">' + factRow + '</table>');
+    if (checks.length) rows += cell('6pt 9pt',
+      '<p style="margin:0;' + FF + 'font-size:10pt;color:#3f4b5b;line-height:1.4">' +
+      checks.map(c => '&bull;&nbsp; ' + esc(c)).join('<br>') + '</p>', tint || '#eef1f4');
+    if (body) rows += cell('10pt 0 3pt',
+      '<p style="margin:0;' + FF + 'font-size:11pt;color:#1e2a3a;line-height:1.4">' + esc(body) + '</p>');
+    if (extra) rows += cell('9pt 0 0', extra);
+    return '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0">' +
       '<tr><td bgcolor="#f7f9fa" style="border-left:4px solid ' + accent + ';background:#f7f9fa;padding:9pt 11pt">' +
-        '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;margin:0 0 6pt"><tr>' +
-          '<td style="font-family:Calibri,sans-serif;font-size:12pt;font-weight:bold;color:#1e2a3a">' + headLeft + '</td>' +
-          (headRight ? '<td align="right" style="font-family:Calibri,sans-serif;font-size:10pt;color:#5a6b80;white-space:nowrap;padding-left:14pt">' + esc(headRight) + '</td>' : '') +
-        '</tr></table>' +
-        (factRow ? '<table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;margin:0 0 7pt">' + factRow + '</table>' : '') +
-        (checks.length ? '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;margin:0 0 7pt">' +
-          '<tr><td bgcolor="' + (tint || '#eef1f4') + '" style="background:' + (tint || '#eef1f4') + ';padding:6pt 9pt;font-family:Calibri,sans-serif;font-size:10pt;color:#3f4b5b;line-height:1.45">' +
-          checks.map(c => '&bull;&nbsp; ' + esc(c)).join('<br>') + '</td></tr></table>' : '') +
-        (body ? '<p style="margin:0;font-family:Calibri,sans-serif;font-size:11pt;color:#1e2a3a;line-height:1.45">' + esc(body) + '</p>' : '') +
-        (extra || '') +
+      '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse">' + rows + '</table>' +
       '</td></tr></table>';
   }
   function band(bg, fg, title, n) {
-    return '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0;margin:22px 0 12px">' +
-      '<tr><td bgcolor="' + bg + '" style="background:' + bg + ';padding:10pt 13pt;font-family:Calibri,sans-serif;font-size:14pt;font-weight:bold;color:' + fg + '">' + esc(title) + '</td>' +
-      '<td bgcolor="' + bg + '" align="right" style="background:' + bg + ';padding:10pt 13pt;font-family:Calibri,sans-serif;font-size:13pt;font-weight:bold;color:' + fg + '">' + n + '</td></tr></table>';
+    const t = 'bgcolor="' + bg + '" valign="middle" style="background:' + bg + ';padding:10pt 13pt';
+    return '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0">' +
+      '<tr><td width="85%" ' + t + ';width:85%"><p style="' + EXACT + FF + 'font-size:14pt;font-weight:bold;color:' + fg + '">' + esc(title) + '</p></td>' +
+      '<td width="15%" align="right" ' + t + ';width:15%"><p style="' + EXACT + FF + 'font-size:13pt;font-weight:bold;color:' + fg + '">' + n + '</p></td></tr></table>';
   }
   function none(what) {
-    return '<p style="margin:0 0 10px;font-family:Calibri,sans-serif;font-size:11pt;font-style:italic;color:#777">No ' + what + ' in this window.</p>';
+    return '<p style="margin:0;' + FF + 'font-size:11pt;font-style:italic;color:#777">No ' + what + ' in this window.</p>';
   }
 
   async function build() {
@@ -4744,23 +4761,23 @@ if (metricsBtn) {
         // Word drops background on an inline <a> and ignores border-radius, so
         // the fill lives on a bgcolor cell and the corners stay square there.
         const pill = (href, text, bg, fg, br) =>
-          '<td style="padding:0 8pt 0 0"><table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse">' +
-          '<tr><td bgcolor="' + bg + '" align="center" style="background:' + bg + ';border:1px solid ' + br + ';border-radius:4px;padding:7pt 14pt">' +
-          '<a href="' + esc(href) + '" style="color:' + fg + ';text-decoration:none;font-family:Calibri,sans-serif;' +
-          'font-size:10.5pt;font-weight:bold;letter-spacing:.3px">' + esc(text) + '</a></td></tr></table></td>';
-        return '<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:9pt 0 0"><tr>' +
+          '<td bgcolor="' + bg + '" align="center" valign="middle" style="background:' + bg + ';border:1px solid ' + br +
+          ';border-radius:4px;padding:7pt 14pt"><p style="' + EXACT + FF + 'font-size:10.5pt;font-weight:bold;letter-spacing:.3px">' +
+          '<a href="' + esc(href) + '" style="color:' + fg + ';text-decoration:none">' + esc(text) + '</a></p></td>';
+        return '<table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse"><tr>' +
           pill(url, ((r.supervisor || 'SUPERVISOR').toUpperCase()) + ' SIGN OFF', BLUE, '#ffffff', BLUE) +
+          '<td width="10" style="width:10px;font-size:1pt;line-height:1pt">&nbsp;</td>' +
           pill(url + '&as=other', 'OTHER SLS TO SIGN OFF', '#ffffff', BLUE, '#9bbccd') +
         '</tr></table>';
       };
       const b_ = v => '<strong>' + esc(v) + '</strong>';
       const due = v => '<strong style="color:#c0392b">' + esc(v) + '</strong>';
-      const laRows = laF.map(r => block(BLUE,
+      const laRows = laF.map(r => cell('0 0 7pt', block(BLUE,
         'Loan ' + esc(r.title || 'Not recorded') + (r.loanAction ? ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.loanAction) + '</span>' : ''),
         (r.flag ? 'IMMEDIATE ATTENTION · ' : '') + (r.critical || 'Not classified'),
         [['Recommending Official', r.agent, b_(r.agent)], ['Supervisor', r.supervisor, b_(r.supervisor)],
          ['Response due', day(r.findingDueOn), due(day(r.findingDueOn))]],
-        checksOf(r), r.findingText || '', signLinks(r), '#e7eff4')).join('');
+        checksOf(r), r.findingText || '', signLinks(r), '#e7eff4'))).join('');
 
       // A Genesys call links straight to the interaction, so the raw id adds
       // nothing; a CSH case number has to stay visible to be copied.
@@ -4772,39 +4789,43 @@ if (metricsBtn) {
         }
         return esc(r.type || 'Contact') + ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.contactID || 'No ID') + '</span>';
       };
-      const csRows = cs.map(r => block(GOLD, csHead(r), day(r.updated),
+      const csRows = cs.map(r => cell('0 0 7pt', block(GOLD, csHead(r), day(r.updated),
         [['Agent', r.agent, b_(r.agent)], ['Supervisor', r.supervisor, b_(r.supervisor)],
          ['Team', r.team, b_(r.team)], ['Loan number', r.loanNumber, b_(r.loanNumber)]],
-        checksOf(r, 'checkFailed'), r.findingText || r.findingComment || '', '', '#f6eed2')).join('');
+        checksOf(r, 'checkFailed'), r.findingText || r.findingComment || '', '', '#f6eed2'))).join('');
 
-      const dqRows = dq.map(r => block(SAGE,
+      const dqRows = dq.map(r => cell('0 0 7pt', block(SAGE,
         'Loan ' + esc(r.loanNumber || 'Not recorded') + (r.borrowerName ? ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.borrowerName) + '</span>' : ''),
         r.daysPastDue == null ? '' : r.daysPastDue + ' days past due',
         [['Group', r.group, b_(r.group)], ['Reviewed', day(r.fileReview), b_(day(r.fileReview))]],
-        checksOf(r), r.qualityNotes || '', '', '#e9ecde')).join('');
+        checksOf(r), r.qualityNotes || '', '', '#e9ecde'))).join('');
 
       const total = laF.length + cs.length + dq.length;
       const tile = (n, lab, bg, fg) => '<td width="33%" align="center" bgcolor="' + bg + '" style="width:33%;background:' + bg + ';padding:12pt 8pt">' +
-        '<p style="margin:0;font-family:Calibri,sans-serif;font-size:22pt;font-weight:bold;color:' + fg + '">' + n + '</p>' +
-        '<p style="margin:2pt 0 0;font-family:Calibri,sans-serif;font-size:9.5pt;color:' + fg + '">' + lab + '</p></td>';
+        '<p style="margin:0;' + FF + 'font-size:22pt;font-weight:bold;color:' + fg + '">' + n + '</p>' +
+        '<p style="margin:2pt 0 0;' + FF + 'font-size:9.5pt;color:' + fg + '">' + lab + '</p></td>';
 
       html = '<html><head><meta charset="utf-8"></head><body style="margin:0;padding:16px;background:#ffffff">' +
-        '<table cellspacing="0" cellpadding="0" width="820" align="center" style="width:820px;border-collapse:collapse;margin:0 auto"><tr><td>' +
-        '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0">' +
+        '<table cellspacing="0" cellpadding="0" width="820" align="center" border="0" style="width:820px;border-collapse:collapse;margin:0 auto">' +
+        cell('0',
+          '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0">' +
           '<tr><td colspan="3" bgcolor="' + BLUE + '" style="background:' + BLUE + ';padding:14pt 16pt">' +
-          '<p style="margin:0;font-family:Calibri,sans-serif;font-size:19pt;font-weight:bold;color:#ffffff">Fortnightly Findings Report</p>' +
-          '<p style="margin:4pt 0 0;font-family:Calibri,sans-serif;font-size:12pt;color:#cfe3ee">' + esc(long(a)) + ' – ' + esc(long(b)) + '</p>' +
+          '<p style="margin:0;' + FF + 'font-size:19pt;font-weight:bold;color:#ffffff">Fortnightly Findings Report</p>' +
+          '<p style="margin:4pt 0 0;' + FF + 'font-size:12pt;color:#cfe3ee">' + esc(long(a)) + ' &ndash; ' + esc(long(b)) + '</p>' +
           '</td></tr><tr>' +
           tile(laF.length, 'Loan Action', '#e8f1f6', BLUE) +
           tile(cs.length, 'Customer Service', '#fdf6d8', '#7a6300') +
           tile(dq.length, 'Delinquency', '#eef1e2', '#4e5a28') +
-        '</tr></table>' +
-        band(BLUE, '#ffffff', 'Loan Action Findings', laF.length) + (laRows || none('loan action findings')) +
-        band(GOLD, '#1e2a3a', 'Customer Service Findings', cs.length) + (csRows || none('customer service findings')) +
-        band(SAGE, '#ffffff', 'Delinquency Findings', dq.length) + (dqRows || none('delinquency findings')) +
-        '<p style="margin:20px 0 0;font-family:Calibri,sans-serif;font-size:9.5pt;font-style:italic;color:#777;line-height:1.5">' +
-          esc(total + ' finding' + (total === 1 ? '' : 's') + ' between ' + long(a) + ' and ' + long(b) + '.') + '</p>' +
-        '</td></tr></table></body></html>';
+          '</tr></table>') +
+        cell('16pt 0 8pt', band(BLUE, '#ffffff', 'Loan Action Findings', laF.length)) +
+        (laRows || cell('0 0 7pt', none('loan action findings'))) +
+        cell('16pt 0 8pt', band(GOLD, '#1e2a3a', 'Customer Service Findings', cs.length)) +
+        (csRows || cell('0 0 7pt', none('customer service findings'))) +
+        cell('16pt 0 8pt', band(SAGE, '#ffffff', 'Delinquency Findings', dq.length)) +
+        (dqRows || cell('0 0 7pt', none('delinquency findings'))) +
+        cell('14pt 0 0', '<p style="margin:0;' + FF + 'font-size:9.5pt;font-style:italic;color:#777">' +
+          esc(total + ' finding' + (total === 1 ? '' : 's') + ' between ' + long(a) + ' and ' + long(b) + '.') + '</p>') +
+        '</table></body></html>';
 
       const flat = (title, rows, fmt) => [title.toUpperCase(), ...(rows.length ? rows.map(fmt) : ['  none'])].join('\n');
       plain = ['FORTNIGHTLY FINDINGS REPORT', long(a) + ' – ' + long(b), '',
