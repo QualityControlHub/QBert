@@ -4785,28 +4785,22 @@ if (metricsBtn) {
         const url = base + '#signoff=' + encodeURIComponent(r.id);
         // Word drops background on an inline <a> and ignores border-radius, so
         // the fill lives on a bgcolor cell and the corners stay square there.
-        // Word draws its own shapes cleanly, so for Outlook the button is a
-        // VML roundrect — no cell, no paragraph shading, no seam, and real
-        // rounded corners. Every other client sees the plain cell below it;
-        // a parser that does not understand the conditional comments shows
-        // only that one, so nothing is lost either way.
-        const pill = (href, text, bg, fg, br) => {
-          const w = Math.round(text.length * 6.1 + 28);
-          const vml = '<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" ' +
-            'xmlns:w="urn:schemas-microsoft-com:office:word" href="' + esc(href) + '" ' +
-            'style="height:30pt;v-text-anchor:middle;width:' + w + 'pt" arcsize="14%" ' +
-            'strokecolor="' + br + '" fillcolor="' + bg + '"><w:anchorlock/>' +
-            '<center style="color:' + fg + ';' + FF + 'font-size:10.5pt;font-weight:bold">' + esc(text) +
-            '</center></v:roundrect><![endif]-->';
-          const plain = '<!--[if !mso]><!--><table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse">' +
-            '<tr><td bgcolor="' + bg + '" align="center" valign="middle" style="border:1px solid ' + br +
-            ';border-radius:4px;padding:7pt 14pt;' + FF + 'font-size:10.5pt;font-weight:bold;letter-spacing:.3px">' +
-            '<a href="' + esc(href) + '" style="color:' + fg + ';text-decoration:none">' + esc(text) +
-            '</a></td></tr></table><!--<![endif]-->';
-          return '<td valign="top" style="padding:0">' + vml + plain + '</td>';
-        };
+        // These have to be real text hyperlinks. A VML shape renders well but
+        // loses its href when Outlook sends the message — it survives in the
+        // draft and arrives dead — so the button is an ordinary cell with an
+        // <a> in it. Both are pale on purpose: Word sometimes draws a hairline
+        // where a cell's text line meets its padding, and on a light fill that
+        // line is invisible, where on a solid dark one it was obvious.
+        const pill = (href, text, bg, fg, br, wide) =>
+          '<td valign="top" style="padding:0">' +
+          '<table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse">' +
+          '<tr><td bgcolor="' + bg + '" align="center" valign="middle" style="border:' + (wide ? '2px' : '1px') +
+          ' solid ' + br + ';border-radius:4px;padding:7pt 14pt;' + FF +
+          'font-size:10.5pt;font-weight:bold;letter-spacing:.3px">' +
+          '<a href="' + esc(href) + '" style="color:' + fg + ';text-decoration:none">' + esc(text) +
+          '</a></td></tr></table></td>';
         return '<table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse"><tr>' +
-          pill(url, ((r.supervisor || 'SUPERVISOR').toUpperCase()) + ' SIGN OFF', BLUE, '#ffffff', BLUE) +
+          pill(url, ((r.supervisor || 'SUPERVISOR').toUpperCase()) + ' SIGN OFF', '#e3eef5', BLUE, BLUE, true) +
           '<td width="12" style="width:12px;font-size:1pt;line-height:1pt">&nbsp;</td>' +
           pill(url + '&as=other', 'OTHER SLS TO SIGN OFF', '#ffffff', BLUE, '#9bbccd') +
         '</tr></table>';
