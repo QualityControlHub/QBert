@@ -200,6 +200,36 @@ body[data-width="full"]{--page-w:100%}
 .rpt-block.soon{background:#fbfcf6;border-style:dashed}
 .rpt-tag{font-size:9px;letter-spacing:1.1px;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:5px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--peri);white-space:nowrap}
 .rpt-tag.wip{background:#fbf2e6;color:var(--amber);border-color:#eedcc0}
+.corr-shell{max-width:430px;margin:0 auto;padding:0 0 28px;background:var(--white);min-height:100vh;
+ box-shadow:0 0 40px #1e4d6b14}
+.corr-head{background:var(--header);color:#fff;padding:16px 18px}
+.corr-head h1{margin:0;font-family:var(--font-serif);font-size:19px;color:#fff;letter-spacing:.2px}
+.corr-head p{margin:4px 0 0;font-size:12px;color:#cfe3ee;line-height:1.45}
+.corr-body{padding:16px 18px}
+.corr-load{font-size:13px;color:var(--muted)}
+.corr-facts{margin:0 0 16px;padding:12px 13px;background:var(--blue-bg);border-radius:9px;font-size:12.5px;line-height:1.55}
+.corr-facts dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:0}
+.corr-facts dt{color:var(--muted);white-space:nowrap}
+.corr-facts dd{margin:0;font-weight:600;color:var(--ink)}
+.corr-facts .ft{margin:9px 0 0;padding-top:9px;border-top:1px solid #cfe3ee;font-weight:400;color:var(--ink)}
+.corr-facts ul{margin:7px 0 0;padding-left:16px;font-size:11.5px;color:#3f4b5b}
+.corr-f{margin:0 0 13px}
+.corr-f label{display:block;font-size:11.5px;font-weight:600;color:#4b4475;margin-bottom:4px}
+.corr-f textarea{width:100%;min-height:76px;padding:8px 10px;border:1px solid #cdc7e4;border-radius:7px;
+ font:inherit;font-size:13px;resize:vertical;box-sizing:border-box}
+.corr-f input,.corr-f select{width:100%;padding:8px 10px;border:1px solid #cdc7e4;border-radius:7px;
+ font:inherit;font-size:13px;box-sizing:border-box}
+.corr-f input[readonly]{background:#f5f3fb;color:#5d5680}
+.corr-chk{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;line-height:1.45;margin:0 0 9px;cursor:pointer}
+.corr-chk input{width:15px;height:15px;min-height:0;padding:0;margin:1px 0 0;flex:none;accent-color:var(--navy);cursor:pointer}
+.corr-err{margin:0 0 12px;padding:9px 11px;border-radius:7px;background:#fdf1f5;border:1px solid #eccfd8;
+ color:var(--danger);font-size:12.5px;line-height:1.45}
+.corr-ok{padding:18px;text-align:center}
+.corr-ok h2{margin:0 0 8px;font-family:var(--font-serif);font-size:18px;color:var(--green)}
+.corr-ok p{margin:0 0 6px;font-size:13px;color:var(--ink);line-height:1.5}
+.corr-sub-note{font-size:11.5px;color:var(--muted);line-height:1.5;margin:0 0 14px}
+.corr-act{display:flex;gap:8px;margin-top:4px}
+.corr-act .btn{flex:1;justify-content:center}
 .dm-alert{display:inline-flex;align-items:center;gap:8px;border:1px solid #c0392b;background:#c0392b;color:#fff;
  border-radius:99px;padding:7px 15px;font-size:12.5px;font-weight:700;letter-spacing:.2px;cursor:pointer;
  box-shadow:0 2px 10px #c0392b55;white-space:nowrap}
@@ -1419,6 +1449,15 @@ disconnectedPresentation();
 
 </script>
 
+<div id="correction-page" style="display:none">
+  <div class="corr-shell">
+    <div class="corr-head">
+      <h1>Finding Sign-Off</h1>
+      <p id="corr-sub">Loading&hellip;</p>
+    </div>
+    <div id="corr-body" class="corr-body"><p class="corr-load">Loading the finding&hellip;</p></div>
+  </div>
+</div>
 <div id="reviewer-workspace" style="display:none;max-width:1100px;margin:40px auto;padding:24px">
   <div style="position:relative;height:120px;margin:-24px -24px 20px;border-radius:8px 8px 0 0;overflow:hidden">
     <div style="position:absolute;inset:0;background:url('workspace-header.jpg') center/cover;opacity:0.35"></div>
@@ -4631,7 +4670,7 @@ if (metricsBtn) {
   }
 
   // ---- one finding, as a table row block -------------------------------
-  function block(accent, headLeft, headRight, facts, checks, body) {
+  function block(accent, headLeft, headRight, facts, checks, body, extra) {
     const factRow = facts.filter(f => f[1]).map(f =>
       '<tr><td style="padding:1px 14px 1px 0;font-family:Calibri,sans-serif;font-size:10.5pt;color:#5a6b80;white-space:nowrap">' + esc(f[0]) +
       '</td><td style="padding:1px 0;font-family:Calibri,sans-serif;font-size:10.5pt;color:#1e2a3a"><strong>' + esc(f[1]) + '</strong></td></tr>').join('');
@@ -4643,6 +4682,7 @@ if (metricsBtn) {
         (checks.length ? '<p style="margin:0 0 5pt;font-family:Calibri,sans-serif;font-size:10pt;color:#3f4b5b">' +
           checks.map(c => '&bull;&nbsp; ' + esc(c)).join('<br>') + '</p>' : '') +
         (body ? '<p style="margin:0;font-family:Calibri,sans-serif;font-size:11pt;color:#1e2a3a;line-height:1.45">' + esc(body) + '</p>' : '') +
+        (extra || '') +
       '</td></tr></table>';
   }
   function band(bg, fg, title, n) {
@@ -4674,13 +4714,27 @@ if (metricsBtn) {
       // A loan action only counts as a finding once one was actually issued.
       const laF = la.filter(r => String(r.findingIssuedOn || '').trim());
 
+      // Each finding carries its own pair of sign-off links back into
+      // #correction, so a supervisor answers from the email in one click.
+      const base = location.href.split('#')[0];
+      const signLinks = r => {
+        const url = base + '#correction=' + encodeURIComponent(r.id);
+        const pill = (href, text, bg, fg, br) =>
+          '<td style="padding:0 8pt 0 0"><a href="' + esc(href) + '" style="display:inline-block;background:' + bg +
+          ';color:' + fg + ';border:1px solid ' + br + ';border-radius:4px;padding:7pt 13pt;text-decoration:none;' +
+          'font-family:Calibri,sans-serif;font-size:10.5pt;font-weight:bold;letter-spacing:.3px">' + esc(text) + '</a></td>';
+        return '<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:9pt 0 0"><tr>' +
+          pill(url, ((r.supervisor || 'SUPERVISOR').toUpperCase()) + ' SIGN OFF', BLUE, '#ffffff', BLUE) +
+          pill(url + '&as=other', 'OTHER SLS TO SIGN OFF', '#ffffff', BLUE, '#9bbccd') +
+        '</tr></table>';
+      };
       const laRows = laF.map(r => block(BLUE,
         'Loan ' + esc(r.title || 'Not recorded') + (r.loanAction ? ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.loanAction) + '</span>' : ''),
         (r.flag ? 'IMMEDIATE ATTENTION · ' : '') + (r.critical || 'Not classified'),
         [['Reviewer', r.reviewer], ['Recommending Official', r.agent], ['Supervisor', r.supervisor],
          ['Issued', day(r.findingIssuedOn)], ['Response due', day(r.findingDueOn)],
          ['Status', r.state === 'Findings' ? 'Open' : (r.outcome || r.state || '')]],
-        checksOf(r), r.findingText || '')).join('');
+        checksOf(r), r.findingText || '', signLinks(r))).join('');
 
       const csRows = cs.map(r => block(GOLD,
         esc(r.type || 'Contact') + ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.contactID || 'No ID') + '</span>',
@@ -4765,6 +4819,162 @@ if (metricsBtn) {
 
 </script>
 <script>
+/* ===================================================================
+   #correction — a standalone sign-off form reached from the fortnightly
+   email. Deliberately narrow so it reads well in a small window, and
+   self-contained: it loads one record, takes the response, and writes
+   straight back to loan_action_reviews.
+
+   Two modes, set by the link:
+     #correction=<id>            the assigned Supervisor signs
+     #correction=<id>&as=other   somebody else signs and is named
+   The validation mirrors the Findings drawer so a sign-off made here
+   cannot be looser than one made inside the workspace.
+   =================================================================== */
+(function () {
+  const page = document.getElementById('correction-page');
+  if (!page) return;
+  const body = document.getElementById('corr-body');
+  const sub = document.getElementById('corr-sub');
+  const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const day = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return 'Not recorded';
+    return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'numeric', day: 'numeric', year: 'numeric' })
+      .format(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))); };
+  const stamp = () => new Date().toISOString().replace('T', ' ');
+  let rec = null, staff = [], mode = 'supervisor';
+
+  function fail(msg) { body.innerHTML = '<div class="corr-err">' + esc(msg) + '</div>'; }
+
+  function checksHtml(r, checks) {
+    const ids = String(r.findingCategory || '').split(/\s*,\s*/).map(x => x.trim()).filter(Boolean);
+    if (!ids.length) return '';
+    const txt = ids.map(id => {
+      const hit = checks.find(c => String(c.checkID || '').trim().toUpperCase() === id.toUpperCase());
+      return hit ? (hit.checkID || id) + ' — ' + (hit.check || '') : id;
+    });
+    return '<ul>' + txt.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>';
+  }
+
+  function render(checks) {
+    const r = rec;
+    sub.textContent = 'Loan ' + (r.title || 'Not recorded') + (r.loanAction ? ' · ' + r.loanAction : '');
+    if (String(r.state || '') === 'Completed') {
+      body.innerHTML = '<div class="corr-ok"><h2>Already signed off</h2>' +
+        '<p>This finding was completed on <strong>' + esc(day(r.completedOn)) + '</strong>' +
+        (r.supervisorSignedOffBy ? ' by <strong>' + esc(r.supervisorSignedOffBy) + '</strong>' : '') + '.</p>' +
+        '<p class="corr-sub-note">Nothing further is needed here.</p></div>';
+      return;
+    }
+    const other = mode === 'other';
+    const supName = r.supervisor || '';
+    const signer = other
+      ? '<div class="corr-f"><label for="corr-staff">Signing on behalf of ' + esc(supName || 'the Supervisor') + '</label>' +
+          '<select id="corr-staff"><option value="">Select your name…</option>' +
+          staff.map(x => '<option value="' + esc(x.id) + '">' + esc(x.agent) + (x.role ? ' · ' + esc(x.role) : '') + '</option>').join('') +
+          '</select></div>'
+      : '<div class="corr-f"><label for="corr-by">Signing off</label>' +
+          '<input id="corr-by" readonly value="' + esc(supName || 'Supervisor not recorded') + '"></div>';
+
+    body.innerHTML =
+      '<div class="corr-facts"><dl>' +
+        '<dt>Type</dt><dd>' + esc(r.critical || 'Not classified') + (r.flag ? ' · Immediate attention' : '') + '</dd>' +
+        '<dt>Issued</dt><dd>' + esc(day(r.findingIssuedOn)) + '</dd>' +
+        '<dt>Response due</dt><dd>' + esc(day(r.findingDueOn)) + '</dd>' +
+        '<dt>Reviewer</dt><dd>' + esc(r.reviewer || 'Not recorded') + '</dd>' +
+      '</dl>' + checksHtml(r, checks) +
+      (r.findingText ? '<p class="ft">' + esc(r.findingText) + '</p>' : '') + '</div>' +
+      '<div id="corr-error"></div>' +
+      '<div class="corr-f"><label for="corr-correction">Correction &middot; the fix</label>' +
+        '<textarea id="corr-correction" placeholder="What was fixed on this loan action.">' + esc(r.correction || '') + '</textarea></div>' +
+      '<div class="corr-f"><label for="corr-action">Corrective action &middot; prevent recurrence</label>' +
+        '<textarea id="corr-action" placeholder="The change in process, training or controls.">' + esc(r.correctiveAction || '') + '</textarea></div>' +
+      '<label class="corr-chk"><input type="checkbox" id="corr-ap-c"><span>Approve the correction</span></label>' +
+      '<label class="corr-chk"><input type="checkbox" id="corr-ap-a"><span>Approve the corrective action</span></label>' +
+      '<div class="corr-f" style="margin-top:12px"><label for="corr-notes">Sign-off notes</label>' +
+        '<textarea id="corr-notes" style="min-height:56px">' + esc(r.supervisorSignOffNotes || '') + '</textarea></div>' +
+      signer +
+      '<p class="corr-sub-note">Signing off completes the finding and records it as Non Concur resolved.</p>' +
+      '<div class="corr-act"><button class="btn primary" id="corr-save">Sign off and complete</button></div>';
+
+    document.getElementById('corr-save').onclick = submit;
+  }
+
+  async function submit() {
+    const btn = document.getElementById('corr-save');
+    const err = document.getElementById('corr-error');
+    const val = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    const on = id => { const el = document.getElementById(id); return !!(el && el.checked); };
+    const correction = val('corr-correction'), action = val('corr-action');
+    const apC = on('corr-ap-c'), apA = on('corr-ap-a');
+    let who = rec.supervisor || '', staffId = '';
+    if (mode === 'other') {
+      staffId = val('corr-staff');
+      const hit = staff.find(x => x.id === staffId);
+      who = hit ? hit.agent : '';
+    } else {
+      const me = staff.find(x => x.agent === rec.supervisor);
+      staffId = me ? me.id : '';
+    }
+    // Same rules as the Findings drawer: approve at least one, never
+    // approve something that was not written, never leave written work
+    // unapproved.
+    const problems = [];
+    if (mode === 'other' && !who) problems.push('Select the name of the person signing off.');
+    if (mode !== 'other' && !who) problems.push('This finding has no assigned Supervisor. Use the other sign-off link instead.');
+    if (!apC && !apA) problems.push('Approve the correction, the corrective action, or both.');
+    if (apC && !correction) problems.push('Enter the correction before approving it.');
+    if (apA && !action) problems.push('Enter the corrective action before approving it.');
+    if (correction && !apC) problems.push('Approve the documented correction before completing.');
+    if (action && !apA) problems.push('Approve the documented corrective action before completing.');
+    if (problems.length) { err.innerHTML = '<div class="corr-err">' + problems.map(esc).join('<br>') + '</div>'; return; }
+
+    err.innerHTML = ''; btn.disabled = true; btn.textContent = 'Saving…';
+    const at = stamp();
+    const patch = {
+      correction: correction, correctiveAction: action,
+      supervisorApprovedCorrection: apC, supervisorApprovedCorrectiveAction: apA,
+      supervisorSignOffNotes: val('corr-notes'),
+      supervisorSignedOffBy: who, supervisorSignedOffStaff: staffId,
+      supervisorSignedOffOn: at, completedOn: at,
+      state: 'Completed', outcome: 'Non Concur', flag: false
+    };
+    try {
+      const res = await fetch(CONFIG.url + '/api/collections/loan_action_reviews/records/' + encodeURIComponent(rec.id),
+        { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+      if (!res.ok) throw new Error((await res.text()).slice(0, 180));
+      body.innerHTML = '<div class="corr-ok"><h2>Signed off</h2>' +
+        '<p>Loan <strong>' + esc(rec.title || '') + '</strong> is complete and recorded against <strong>' + esc(who) + '</strong>.</p>' +
+        '<p class="corr-sub-note">You can close this window.</p>' +
+        '<div class="corr-act"><button class="btn" id="corr-close">Close</button></div></div>';
+      document.getElementById('corr-close').onclick = () => { window.close(); };
+    } catch (e) {
+      err.innerHTML = '<div class="corr-err">Could not save. ' + esc(e.message) + '</div>';
+      btn.disabled = false; btn.textContent = 'Sign off and complete';
+    }
+  }
+
+  window.openCorrection = async function (id, asMode) {
+    mode = asMode === 'other' ? 'other' : 'supervisor';
+    page.style.display = 'block';
+    body.innerHTML = '<p class="corr-load">Loading the finding…</p>';
+    sub.textContent = 'Loading…';
+    try {
+      const [recRes, stRes, ckRes] = await Promise.all([
+        fetch(CONFIG.url + '/api/collections/loan_action_reviews/records/' + encodeURIComponent(id)),
+        fetch(CONFIG.url + '/api/collections/staff/records?perPage=500'),
+        fetch(CONFIG.url + '/api/collections/checklists/records?perPage=500')
+      ]);
+      if (!recRes.ok) throw new Error('That finding could not be found. It may have been removed.');
+      rec = await recRes.json();
+      staff = stRes.ok ? ((await stRes.json()).items || []).filter(x => !x.inactive) : [];
+      staff.sort((a, b) => String(a.agent || '').localeCompare(String(b.agent || '')));
+      render(ckRes.ok ? ((await ckRes.json()).items || []) : []);
+    } catch (e) { sub.textContent = 'Sign-off'; fail(e.message); }
+  };
+})();
+
+</script>
+<script>
 // Deep links: #reviewer, #dm and #qc each open their workspace directly, so the
 // page can be bookmarked. Closing one puts the URL back to the front workspace.
 (function () {
@@ -4831,7 +5041,23 @@ if (metricsBtn) {
   // #loan=<id> is not a workspace: it stays on the front page and opens that
   // review, so a notice link lands the Supervisor on the finding itself.
   function loanFromHash(){const m=String(location.hash||'').match(/^#loan=([A-Za-z0-9_-]+)$/i);return m?m[1]:'';}
+  // #correction is its own page: it replaces the workspace entirely rather
+  // than sitting inside it, so a small window shows only the form.
+  function correctionFromHash(){
+    const m=String(location.hash||'').match(/^#correction=([A-Za-z0-9_-]+)(?:&as=([a-z]+))?$/i);
+    return m?{id:m[1],mode:(m[2]||'supervisor').toLowerCase()}:null;
+  }
   function handleRoute(){
+    const corr=correctionFromHash();
+    const page=document.getElementById('correction-page');
+    if(corr){
+      names.forEach(k=>{const el=document.getElementById(WORKSPACES[k].el);if(el)el.style.display='none';});
+      document.querySelectorAll('body > header, body > main, body > nav, body > footer').forEach(el=>el.style.display='none');
+      if(typeof window.openCorrection==='function')window.openCorrection(corr.id,corr.mode);
+      return;
+    }
+    if(page)page.style.display='none';
+    document.querySelectorAll('body > header, body > main, body > nav, body > footer').forEach(el=>el.style.display='');
     showWorkspace(nameFromHash());
     const id=loanFromHash();
     if(id&&typeof window.openLoanDeepLink==='function')window.openLoanDeepLink(id);
