@@ -1520,6 +1520,9 @@ disconnectedPresentation();
       <h3>Add Customer Service Review</h3>
       <p class="desc">Record a finding against a Genesys call or a Customer Service Hub case. Tick every check that failed &mdash; they are stored as check IDs in <code>findingCategory</code>, the same way loan action findings are. Supervisor and Team fill in from the agent&rsquo;s staff record, and the checklist follows the communication type.</p>
     <form id="genesys-form" style="display:grid;gap:14px;max-width:600px">
+      <div class="field"><label for="g-issued">Issued?</label>
+        <select id="g-issued"><option>Ready</option><option>Hold</option><option>Sent</option></select>
+      </div>
       <div class="field"><label for="g-reviewer">Reviewer</label>
         <select id="g-reviewer"><option value="">Select reviewer…</option><option>Robert Thompson</option><option>Tonya Hayes</option></select>
       </div>
@@ -1567,7 +1570,7 @@ disconnectedPresentation();
     <section class="rpt-block">
       <h3>Generate Weekly Reports</h3>
       <section class="rpt-block" style="border:0;box-shadow:none;padding:0;margin:0;background:none">
-    <p class="desc">Builds the Customer Service review report from the <code>customer_service</code> collection, grouped by team, then by contact, then by finding. Only reviews not yet marked <strong>Sent?</strong> are included. The markup is Outlook-safe, so it pastes into an email with its formatting intact.</p>
+    <p class="desc">Builds the Customer Service review report from the <code>customer_service</code> collection, grouped by team, then by contact, then by finding. Only reviews whose <strong>Issued?</strong> is not <code>Sent</code> are included. The markup is Outlook-safe, so it pastes into an email with its formatting intact.</p>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;max-width:720px;margin-bottom:12px">
       <div class="del-f"><label for="rpt-reviewer">Reviewer</label><select id="rpt-reviewer"><option value="">All reviewers</option><option>Robert Thompson</option><option>Tonya Hayes</option></select></div>
       <div class="del-f"><label for="rpt-type">Communication type</label><select id="rpt-type"><option value="">All</option><option>Genesys</option><option>CSH</option></select></div>
@@ -1763,6 +1766,7 @@ disconnectedPresentation();
         <button class="btn primary" id="fri-build">Generate</button>
         <button class="btn" id="fri-copy" disabled>Copy for Outlook</button>
         <button class="btn" id="fri-download" disabled>Download HTML</button>
+        <button class="btn" id="fri-sent" disabled>Mark Sent</button>
       </div>
       <iframe id="fri-preview" title="QC findings report preview" style="width:100%;height:640px;border:1px solid var(--line);border-radius:8px;background:white;margin-top:12px"></iframe>
     </section>
@@ -1889,7 +1893,7 @@ function gFillChecklist() {
   // findingCategory stores the check IDs, comma separated, exactly as a loan
   // action finding does; the full wording is looked up again when it is shown.
   sel.innerHTML = list.map(c =>
-    '<label><input type="checkbox" value="' + safe(c.checkID || c.id) + '">' +
+    '<label><input type="checkbox" value="' + safe(c.checkID || c.id) + '" data-check="' + safe(c.check || '') + '">' +
     '<span><span class="g-id">' + safe(c.checkID || '') + '</span> ' + safe(c.check || '') + '</span></label>').join('');
 }
 
@@ -1932,17 +1936,23 @@ document.getElementById('g-save').addEventListener('click', async () => {
   const checks = [...document.querySelectorAll('#g-checks input:checked')].map(i => i.value);
   const finding = val('g-finding').trim();
   if (!checks.length && !finding) { status.textContent = 'Tick at least one check, or write a finding.'; status.style.color = '#a32f58'; return; }
+  // findingCategory and findingText both come from the checklist — the IDs
+  // and the wording of the ticked checks. What the reviewer types is theirs
+  // alone and goes to findingComment.
+  const checkText = [...document.querySelectorAll('#g-checks input:checked')]
+    .map(i => (i.dataset.check || '').trim()).filter(Boolean).join(' | ');
   const body = {
     contactID: recId,
     type: val('g-type'),
     reviewer: reviewer,
-    sent: false,
+    issued: val('g-issued') || 'Ready',
     agent: agent,
     supervisor: val('g-supervisor'),
     team: val('g-team'),
     findingCategory: checks.join(', '),
+    findingText: checkText,
     loanNumber: val('g-loan').trim(),
-    findingText: finding
+    findingComment: finding
   };
   status.textContent = 'Saving…'; status.style.color = '#5a6b80';
   try {
@@ -1966,8 +1976,8 @@ document.getElementById('g-save').addEventListener('click', async () => {
 // paging everything into the browser.
 const DL_COLS = [
   ['loanNumber','Loan Number'],['borrowerName','Borrower'],['group','Group'],['daysPastDue','Days Past Due'],
-  ['nextDueDate','Next Due'],['dateLastPay','Last Pay'],['fileReview','File Review'],
-  ['findingCategory','Checks'],['qualityConcur','Outcome'],['findingText','Finding']
+  ['nextDueDate','Next Due'],['dateLastPay','Last Pay'],['fileReview','File Review'],['reviewer','Reviewer'],
+  ['findingCategory','Checks'],['qualityConcur','Outcome'],['findingText','Finding'],['issued','Issued?']
 ];
 const DL_SEARCH = ['loanNumber','borrowerName','group'];
 let dlEditRecords = [];
@@ -2037,6 +2047,8 @@ window.dlEditOpen = async function (id) {
       '<input id="dle-dateLastPay" type="date" value="' + day(r.dateLastPay) + '" style="' + inp + '"></div>' +
     '<div><label for="dle-fileReview" style="' + fld + '">File Review Date</label>' +
       '<input id="dle-fileReview" type="date" value="' + day(r.fileReview) + '" style="' + inp + ';width:150px;background:#fdeff2;border-color:#e6bcc6;color:#8a2d45;font-weight:600"></div>' +
+    '<div><label for="dle-reviewer" style="' + fld + '">Reviewer</label><select id="dle-reviewer" style="' + inp + '">' +
+      delStaffOptions(r.reviewer || '') + '</select></div>' +
     // One dropdown feeds both fields: the ID goes to findingCategory and the
     // wording to findingText, so there is nothing to keep in step by hand.
     '<div><label for="dle-findingText" style="' + fld + '">Check</label><select id="dle-findingText" style="' + inp + '">' +
@@ -2051,6 +2063,10 @@ window.dlEditOpen = async function (id) {
       '<option value="">Not recorded</option>' +
       '<option value="true"' + (r.qualityConcur === true ? ' selected' : '') + '>Concur</option>' +
       '<option value="false"' + (r.qualityConcur === false ? ' selected' : '') + '>Non Concur</option></select></div>' +
+    '<div><label for="dle-issued" style="' + fld + '">Issued?</label><select id="dle-issued" style="' + inp + '">' +
+      '<option value="">Not set</option>' +
+      DEL_ISSUED.map(o => '<option' + (o === r.issued ? ' selected' : '') + '>' + o + '</option>').join('') +
+      '</select></div>' +
     '<div><label for="dle-qualityNotes" style="' + fld + '">Finding</label>' +
       '<textarea id="dle-qualityNotes" rows="3" style="' + inp + ';resize:vertical">' + safe(r.qualityNotes || '') + '</textarea></div>';
   document.body.insertAdjacentHTML('beforeend',
@@ -2072,6 +2088,7 @@ window.dlEditSave = async function (id) {
   const loan = val('loanNumber');
   if (!loan) { st.textContent = 'Enter the loan number.'; st.style.color = '#a32f58'; return; }
   const body = { loanNumber: loan, borrowerName: val('borrowerName'), group: val('group'),
+    reviewer: val('reviewer'), issued: val('issued'),
     findingText: val('findingText'), qualityNotes: val('qualityNotes') };
   // The check ID travels on the selected option rather than its own box.
   const chk = document.getElementById('dle-findingText');
@@ -2143,8 +2160,9 @@ function checkText(tok) {
   if (hit) return displayCheck((hit.checkID || m[1]) + ' \u2014 ' + (hit.check || ''));
   return displayCheck(tok);
 }
+const CS_ISSUED = ['Ready', 'Hold', 'Sent'];
 const CS_FIELDS = [
-  ['sent','Sent?'],
+  ['issued','Issued?'],
   ['contactID','Genesys Call ID / CSH Case Number'],
   ['type','Communication type'],
   ['reviewer','Reviewer'],
@@ -2152,8 +2170,9 @@ const CS_FIELDS = [
   ['supervisor','Supervisor'],
   ['team','Team'],
   ['findingCategory','Checks'],
+  ['findingText','Check'],
   ['loanNumber','Loan Number'],
-  ['findingText','Finding']
+  ['findingComment','Finding']
 ];
 let csEditRecords = [];
 
@@ -2178,9 +2197,12 @@ function renderCsEdit() {
   if (!rows.length) { table.innerHTML = '<p class="dt-none">' + (csEditRecords.length ? 'No records match.' : 'Nothing loaded yet.') + '</p>'; return; }
   const shown = rows.slice(0, 50);
   const td = (v, cls) => '<td' + (cls ? ' class="' + cls + '"' : '') + ' title="' + safe(v) + '">' + safe(v) + '</td>';
-  const cell = (r, k) => k === 'sent'
-    ? (r.sent === true ? '<td style="color:#216b50;font-weight:700">Yes</td>' : '<td style="color:#8a5320;font-weight:700">No</td>')
-    : td(csValue(r, k), k === 'contactID' ? 'mono' : '');
+  const cell = (r, k) => {
+    if (k !== 'issued') return td(csValue(r, k), k === 'contactID' ? 'mono' : '');
+    const v = String(r.issued || '');
+    const col = /sent/i.test(v) ? '#216b50' : /hold/i.test(v) ? '#8a5320' : '#1e4d6b';
+    return '<td style="color:' + col + ';font-weight:700">' + safe(v || '—') + '</td>';
+  };
   table.innerHTML = '<table class="dt"><thead><tr>' +
     CS_FIELDS.map(([k, label]) => '<th>' + safe(label) + '</th>').join('') + '<th class="act"></th></tr></thead><tbody>' +
     shown.map(r => '<tr>' + CS_FIELDS.map(([k]) => cell(r, k)).join('') +
@@ -2194,9 +2216,11 @@ window.csEditOpen = function (id) {
   const fld = 'display:block;font-size:11px;font-weight:600;color:#4b4475;margin-bottom:3px';
   const inp = 'width:100%;padding:6px 8px;border:1px solid #cdc7e4;border-radius:6px;font:inherit;font-size:12.5px';
   const field = ([k, label]) => {
-    if (k === 'sent') {
-      return '<label class="dm-chk" style="padding:8px 10px;background:#f8f9f2;border:1px solid var(--line);border-radius:7px">' +
-        '<input type="checkbox" id="cse-sent"' + (r.sent === true ? ' checked' : '') + '> ' + safe(label) + '</label>';
+    if (k === 'issued') {
+      const v = r.issued || 'Ready';
+      return '<div><label for="cse-issued" style="' + fld + '">' + safe(label) + '</label>' +
+        '<select id="cse-issued" style="' + inp + '">' +
+        CS_ISSUED.map(o => '<option' + (o === v ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
     }
     if (k === 'reviewer') {
       return '<div><label for="cse-reviewer" style="' + fld + '">' + safe(label) + '</label>' +
@@ -2210,9 +2234,10 @@ window.csEditOpen = function (id) {
         '<select id="cse-' + k + '" style="' + inp + '">' +
         ['Genesys', 'CSH'].map(o => '<option' + (o === v ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
     }
-    if (k === 'findingText' || k === 'findingCategory') {
+    if (k === 'findingText' || k === 'findingCategory' || k === 'findingComment') {
       return '<div><label for="cse-' + k + '" style="' + fld + '">' + safe(label) + '</label>' +
-        '<textarea id="cse-' + k + '" rows="' + (k === 'findingText' ? 3 : 2) + '" style="' + inp + ';resize:vertical">' + safe(csValue(r, k)) + '</textarea></div>';
+        '<textarea id="cse-' + k + '" rows="' + (k === 'findingCategory' ? 2 : 3) + '" style="' + inp + ';resize:vertical">' +
+        safe(k === 'findingComment' ? (r.findingComment || '') : csValue(r, k)) + '</textarea></div>';
     }
     return '<div><label for="cse-' + k + '" style="' + fld + '">' + safe(label) + '</label>' +
       '<input id="cse-' + k + '" value="' + safe(r[k] == null ? '' : r[k]) + '" style="' + inp + '"></div>';
@@ -2236,7 +2261,7 @@ window.csEditSave = async function (id) {
   CS_FIELDS.forEach(([k]) => {
     const el = document.getElementById('cse-' + k);
     if (!el) return;
-    body[k] = (k === 'sent') ? el.checked : el.value.trim();
+    body[k] = el.value.trim();
   });
   if (!body.contactID) { st.textContent = 'Enter the Call ID / Case Number.'; st.style.color = '#a32f58'; return; }
   st.textContent = 'Saving…'; st.style.color = '#5a6b80';
@@ -2386,9 +2411,10 @@ document.getElementById('ws-gen-report').addEventListener('click', async () => {
   const btn = document.getElementById('ws-gen-report');
   btn.disabled = true; st.textContent = 'Building…'; st.style.color = '#5a6b80';
   try {
-    // Only reviews that have not been sent yet; a record predating the field
-    // has no value, so test against true rather than equalling false.
-    const conds = ['sent != true'];
+    // Only reviews that have not gone out yet. issued replaced the old sent
+    // bool; a record predating the field has no value, so test against Sent
+    // rather than equalling Ready.
+    const conds = ['issued != "Sent"'];
     const reviewer = document.getElementById('rpt-reviewer').value;
     const type = document.getElementById('rpt-type').value;
     if (reviewer) conds.push('reviewer = "' + reviewer + '"');
@@ -2441,9 +2467,9 @@ document.getElementById('rpt-copy').addEventListener('click', async () => {
   } catch (e) { st.textContent = 'Could not copy (' + e.message + '). Use Download HTML instead.'; st.style.color = '#8a5320'; }
 });
 
-// Flips sent on exactly the records that went into the report on screen, so a
+// Sets issued on exactly the records that went into the report on screen, so a
 // later report cannot repeat them. Send the email first; this is not undoable
-// from here (untick Sent? in Edit Reviews to reverse one).
+// from here (set Issued? back in Edit Reviews to reverse one).
 document.getElementById('rpt-mark-sent').addEventListener('click', async () => {
   const st = document.getElementById('rpt-status');
   const btn = document.getElementById('rpt-mark-sent');
@@ -2457,7 +2483,7 @@ document.getElementById('rpt-mark-sent').addEventListener('click', async () => {
     st.style.color = '#5a6b80';
     try {
       const res = await fetch(CONFIG.url + '/api/collections/customer_service/records/' + encodeURIComponent(id),
-        { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sent: true }) });
+        { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ issued: 'Sent' }) });
       if (res.ok) ok++; else { fail++; if (!firstErr) firstErr = (await res.text()).slice(0, 140); }
     } catch (e) { fail++; if (!firstErr) firstErr = e.message; }
   }
@@ -2479,11 +2505,12 @@ document.getElementById('rpt-download').addEventListener('click', () => {
 });
 
 // ---- Delinquency workspace: replace, reviews, DCIA ---------------------
-const DEL_FIELDS = ['loanNumber','borrowerName','group','daysPastDue','nextDueDate','dateLastPay','fileReview','findingCategory','findingText','qualityNotes','qualityConcur'];
+const DEL_FIELDS = ['loanNumber','borrowerName','group','daysPastDue','nextDueDate','dateLastPay','fileReview','reviewer','findingCategory','findingText','qualityNotes','qualityConcur','issued'];
 const DEL_NUM = ['daysPastDue'];
 const DEL_DATE = ['nextDueDate','dateLastPay','fileReview'];
 const DEL_BOOL = ['qualityConcur'];
-let delChecks = [], delRows = {}, delGroups = [];
+let delChecks = [], delRows = {}, delGroups = [], delStaff = [];
+const DEL_ISSUED = ['Ready', 'Hold', 'Sent'];
 
 const delNorm = h => String(h || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 const DEL_LOOKUP = {};
@@ -2526,13 +2553,29 @@ function delShowDate(v) {
 
 
 async function delLoadLists() {
-  if (delChecks.length) return;
+  if (delChecks.length && delStaff.length) return;
   try {
-    const ck = await fetch(CONFIG.url + '/api/collections/checklists/records?perPage=500').then(r => r.json());
+    const [ck, sf] = await Promise.all([
+      fetch(CONFIG.url + '/api/collections/checklists/records?perPage=500').then(r => r.json()),
+      fetch(CONFIG.url + '/api/collections/staff/records?perPage=500').then(r => r.json())
+    ]);
     delChecks = (ck.items || []).filter(c => /^delinquen/i.test(String(c.category || '').trim()))
       .sort((a, b) => String(a.checkID || '').localeCompare(String(b.checkID || ''), undefined, { numeric: true }));
+    delStaff = [...new Set((sf.items || []).map(x => String(x.name || x.staffName || x.agent || '').trim()).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b));
   } catch (e) { console.warn('Delinquency lists failed', e); }
 }
+// The reviewer and the issued state only matter on a non concur, so the
+// Issued? box is hidden until Non Concur is picked.
+function delStaffOptions(sel) {
+  return '<option value="">Select reviewer\u2026</option>' +
+    delStaff.map(n => '<option' + (n === sel ? ' selected' : '') + '>' + safe(n) + '</option>').join('');
+}
+window.delToggleIssued = function (el) {
+  const card = el.closest('.del-card');
+  const box = card.querySelector('[data-issued-wrap]');
+  if (box) box.style.display = el.value === 'false' ? '' : 'none';
+};
 
 // A record's failed checks. findingCategory holds comma separated check IDs,
 // the same shape loan action and customer service findings use.
@@ -2567,6 +2610,12 @@ function delCard(r) {
     '</div>' +
     '<div class="del-grid">' +
       '<div class="del-f"><label for="' + i('fr') + '">File Review date</label><input type="date" class="del-fr" id="' + i('fr') + '" value="' + safe(String(r.fileReview || '').slice(0, 10) || delToday()) + '"></div>' +
+      '<div class="del-f"><label for="' + i('rev') + '">Reviewer</label>' +
+        '<select id="' + i('rev') + '" data-reviewer>' + delStaffOptions(r.reviewer || '') + '</select></div>' +
+      '<div class="del-f" data-issued-wrap' + (r.qualityConcur === false ? '' : ' style="display:none"') + '>' +
+        '<label for="' + i('iss') + '">Issued?</label><select id="' + i('iss') + '" data-issued>' +
+        DEL_ISSUED.map(o => '<option' + (o === (r.issued || 'Ready') ? ' selected' : '') + '>' + o + '</option>').join('') +
+        '</select></div>' +
     '</div>' +
     '<div class="del-grid">' +
       '<div class="del-f del-full"><label>Checks <span class="subtle" style="font-weight:400;font-size:11px">tick every check that failed \u2014 leave empty to concur</span></label>' +
@@ -2576,8 +2625,8 @@ function delCard(r) {
       '<div class="del-f del-full"><label for="' + i('finding') + '">Finding / Notes</label><textarea id="' + i('finding') + '">' + safe(r.findingText || r.qualityNotes || '') + '</textarea></div>' +
     '</div>' +
     '<div class="del-act"><div class="del-concur">' +
-      '<label><input type="radio" name="' + i('concur') + '" value="true"' + (r.qualityConcur === true ? ' checked' : '') + '> Concur</label>' +
-      '<label><input type="radio" name="' + i('concur') + '" value="false"' + (r.qualityConcur === false ? ' checked' : '') + '> Non Concur</label>' +
+      '<label><input type="radio" onchange="delToggleIssued(this)" name="' + i('concur') + '" value="true"' + (r.qualityConcur === false ? '' : ' checked') + '> Concur</label>' +
+      '<label><input type="radio" onchange="delToggleIssued(this)" name="' + i('concur') + '" value="false"' + (r.qualityConcur === false ? ' checked' : '') + '> Non Concur</label>' +
     '</div><button class="btn primary" onclick="delSave(this)">Save Review</button>' +
     '<span class="st" id="' + i('st') + '"></span></div>' +
   '</div>';
@@ -2605,13 +2654,18 @@ window.delSave = async function (btn) {
   if (concur.value === 'false' && !checks.length && !finding) {
     st.textContent = 'Non Concur needs a check ticked or a finding written.'; st.style.color = '#a32f58'; return;
   }
+  const isNon = concur.value === 'false';
+  const revEl = q('[data-reviewer]'), issEl = q('[data-issued]');
   const body = {
     group: q('[data-group]').value.trim(),
     fileReview: day + ' 00:00:00.000Z',
+    reviewer: revEl ? revEl.value : '',
     findingCategory: checks.join(', '),
     findingText: finding,
-    qualityConcur: concur ? concur.value === 'true' : null
+    qualityConcur: !isNon
   };
+  // Only a finding carries an issued state; a concur clears it.
+  body.issued = isNon ? ((issEl && issEl.value) || 'Ready') : '';
   btn.disabled = true; st.textContent = 'Saving…'; st.style.color = '#5a6b80';
   try {
     const res = await fetch(CONFIG.url + '/api/collections/delinquency/records/' + encodeURIComponent(id),
@@ -4659,6 +4713,9 @@ if (metricsBtn) {
   const pastDue = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return false;
     return (m[1] + '-' + m[2] + '-' + m[3]) < todayISO(); };
   const dueText = v => !String(v || '').trim() ? 'Not set' : pastDue(v) ? 'PAST DUE' : day(v);
+  // What the last Generate put in the email, so Mark Sent closes exactly
+  // those records and not whatever happens to be Ready at the time.
+  let lastSent = { cs: [], dq: [] };
 
   function say(msg, bad) { const el = $f('fri-status'); el.textContent = msg; el.style.color = bad ? '#a32f58' : '#216b50'; }
   function paint(h) { const f = $f('fri-preview'); const d = f.contentDocument || f.contentWindow.document; d.open(); d.write(h); d.close(); }
@@ -4775,7 +4832,7 @@ if (metricsBtn) {
   async function build() {
     const a = todayISO();
     say('Gathering findings…');
-    ['fri-copy', 'fri-download'].forEach(id => $f(id).disabled = true);
+    ['fri-copy', 'fri-download', 'fri-sent'].forEach(id => $f(id).disabled = true);
     try {
       const [la, cs, dq, ck] = await Promise.all([
         getAll('loan_action_reviews', F_LA, '-findingIssuedOn'),
@@ -4835,7 +4892,7 @@ if (metricsBtn) {
       const csRows = cs.map(r => cell('0 0 10px', block(GOLD, csHead(r), day(r.updated),
         [['Agent', r.agent, b_(r.agent)], ['Supervisor', r.supervisor, b_(r.supervisor)],
          ['Team', r.team, b_(r.team)], ['Loan number', r.loanNumber, b_(r.loanNumber)]],
-        checksOf(r, 'checkFailed'), r.findingText || r.findingComment || '', '', '#f6eed2'))).join('');
+        checksOf(r, 'checkFailed'), r.findingComment || '', '', '#f6eed2'))).join('');
 
       const dqRows = dq.map(r => cell('0 0 10px', block(SAGE,
         'Loan ' + esc(r.loanNumber || 'Not recorded') + (r.borrowerName ? ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.borrowerName) + '</span>' : ''),
@@ -4880,11 +4937,14 @@ if (metricsBtn) {
       const flat = (title, rows, fmt) => [title.toUpperCase(), ...(rows.length ? rows.map(fmt) : ['  none'])].join('\n');
       plain = ['QC FINDINGS REPORT', 'Issued ' + long(a), '',
         flat('Loan Action Findings (' + laF.length + ')', laF, r => '  ' + (r.title || '?') + ' · ' + (r.loanAction || '') + ' · ' + (r.findingText || '')), '',
-        flat('Customer Service Findings (' + cs.length + ')', cs, r => '  ' + (r.contactID || '?') + ' · ' + (r.agent || '') + ' · ' + (r.findingText || r.findingComment || '')), '',
+        flat('Customer Service Findings (' + cs.length + ')', cs, r => '  ' + (r.contactID || '?') + ' · ' + (r.agent || '') + ' · ' + (r.findingComment || '')), '',
         flat('Delinquency Findings (' + dq.length + ')', dq, r => '  ' + (r.loanNumber || '?') + ' · ' + (r.group || '') + ' · ' + (r.qualityNotes || ''))].join('\n');
       fname = 'QC_Findings_' + a + '.html';
+      // Held for Mark Sent: only the two collections that carry issued.
+      lastSent = { cs: cs.map(r => r.id), dq: dq.map(r => r.id) };
       paint(html);
       ['fri-copy', 'fri-download'].forEach(id => $f(id).disabled = false);
+      $f('fri-sent').disabled = !(lastSent.cs.length + lastSent.dq.length);
       say(total + ' finding' + (total === 1 ? '' : 's') + ': ' + laF.length + ' loan action, ' + cs.length + ' customer service, ' + dq.length + ' delinquency.');
     } catch (e) {
       say('Could not build the report. ' + e.message, true);
@@ -4897,7 +4957,7 @@ if (metricsBtn) {
   // enough to send, so it is a list, not an email.
   async function stack() {
     say('Stacking…');
-    ['fri-copy', 'fri-download'].forEach(id => $f(id).disabled = true);
+    ['fri-copy', 'fri-download', 'fri-sent'].forEach(id => $f(id).disabled = true);
     try {
       const [la, cs, dq] = await Promise.all([
         getAll('loan_action_reviews', F_LA, '-findingIssuedOn'),
@@ -4937,7 +4997,7 @@ if (metricsBtn) {
       const laR = la.map(r => ({ __loan: r.title, __rev: r.reviewer, __s: 'Ready', __txt: r.findingText,
         __when: pastDue(r.findingDueOn) ? '<strong style="color:#c0392b">PAST DUE</strong>' : esc(day(r.findingDueOn) || 'Not set') }));
       const csR = cs.map(r => ({ __loan: r.loanNumber || r.contactID, __rev: r.reviewer, __s: r.issued,
-        __txt: r.findingText || r.findingComment, __when: chip(r.issued) }));
+        __txt: r.findingComment, __when: chip(r.issued) }));
       const dqR = dq.map(r => ({ __loan: r.loanNumber, __rev: r.reviewer, __s: r.issued,
         __txt: r.qualityNotes, __when: chip(r.issued) }));
       const all = laR.length + csR.length + dqR.length;
@@ -4960,6 +5020,33 @@ if (metricsBtn) {
     }
   }
 
+  // Flips the records that just went out from Ready to Sent, so the next
+  // Generate does not pick them up again. Loan actions are untouched — they
+  // are driven by state, not by issued.
+  async function markSent() {
+    const n = lastSent.cs.length + lastSent.dq.length;
+    if (!n) { say('Generate the report first.', true); return; }
+    if (!confirm('Mark ' + n + ' record' + (n === 1 ? '' : 's') + ' as Sent?\n\n' +
+      lastSent.cs.length + ' customer service, ' + lastSent.dq.length + ' delinquency.\n' +
+      'Loan action findings are not changed.')) return;
+    $f('fri-sent').disabled = true;
+    say('Marking sent…');
+    const jobs = [];
+    const patch = (coll, id) => fetch(CONFIG.url + '/api/collections/' + coll + '/records/' + encodeURIComponent(id),
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ issued: 'Sent' }) })
+      .then(r => ({ ok: r.ok, id: id }));
+    lastSent.cs.forEach(id => jobs.push(patch('customer_service', id)));
+    lastSent.dq.forEach(id => jobs.push(patch('delinquency', id)));
+    try {
+      const res = await Promise.all(jobs);
+      const bad = res.filter(x => !x.ok).length;
+      if (bad) { say((res.length - bad) + ' marked Sent, ' + bad + ' failed.', true); $f('fri-sent').disabled = false; return; }
+      lastSent = { cs: [], dq: [] };
+      say(res.length + ' record' + (res.length === 1 ? '' : 's') + ' marked Sent.');
+    } catch (e) { say('Could not mark sent. ' + e.message, true); $f('fri-sent').disabled = false; }
+  }
+
+  $f('fri-sent').addEventListener('click', markSent);
   $f('fri-stack').addEventListener('click', stack);
   $f('fri-build').addEventListener('click', build);
   $f('fri-copy').addEventListener('click', () => {
