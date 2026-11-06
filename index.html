@@ -1436,7 +1436,7 @@ disconnectedPresentation();
     <button class="btn" data-ws="csh">Genesys Dashboard</button>
     <button class="btn" data-ws="dataedit">Data Edit</button>
     <button class="btn" data-ws="newsletter">Newsletter</button>
-    <button class="btn" data-ws="reports">Narrative Reports</button>
+    <button class="btn" data-ws="reports">Email Reports</button>
     
   </nav>
   <div id="ws-loans">
@@ -1691,22 +1691,22 @@ disconnectedPresentation();
     <div id="nl-status" style="margin-top:8px;font-size:12px"></div>
   </div>
   <div id="ws-reports" hidden>
-    <h2>Narrative Reports</h2>
+    <h2>Email Reports</h2>
     <p class="del-hint">Each generator below builds a self-contained HTML report ready to paste into an email.</p>
 
-
-    <section class="rpt-block soon">
-      <h3>Genesys Dashboard Weekly Report <span class="rpt-tag wip">Not built yet</span></h3>
-      <p class="desc">Will build from <code>genesys_metrics</code> &mdash; the same data behind the Customer Service tab &mdash; as an Outlook-safe weekly summary.</p>
-      <ul class="rpt-plan">
-        <li>Agent scores for the week against month to date, with evaluation counts</li>
-        <li>Talk, silence and hold averages per agent and rolled up per supervisor</li>
-        <li>Coverage: which agents were reviewed and which were missed</li>
-      </ul>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px">
-        <button class="btn primary" id="ws-gen-genesys-report" disabled>Generate Report</button>
-        <span style="font-size:12px;color:var(--muted)">Say the word and I will wire this one up.</span>
+    <section class="rpt-block">
+      <h3>Friday Findings Report <span class="rpt-tag">Two weeks, all three programs</span></h3>
+      <p class="desc">Gathers every finding raised in the window from <code>loan_action_reviews</code>, <code>customer_service</code> and <code>delinquency</code> into one Outlook-ready email, sectioned by program.
+        Each collection is dated on its own field &mdash; loan actions by <code>findingIssuedOn</code>, customer service reviews by <code>updated</code>, and delinquency files by <code>fileReview</code>.</p>
+      <div class="qa-actions" style="margin-top:0">
+        <div class="field" style="max-width:170px"><label for="fri-start">From</label><input type="date" id="fri-start"></div>
+        <div class="field" style="max-width:170px"><label for="fri-end">To</label><input type="date" id="fri-end"></div>
+        <button class="btn primary" id="fri-build">Generate Report</button>
+        <button class="btn" id="fri-copy" disabled>Copy for Outlook</button>
+        <button class="btn" id="fri-download" disabled>Download HTML</button>
+        <span id="fri-status" style="font-size:12px;color:var(--muted)"></span>
       </div>
+      <iframe id="fri-preview" title="Friday findings report preview" style="width:100%;height:640px;border:1px solid var(--line);border-radius:8px;background:white;margin-top:12px"></iframe>
     </section>
   </div>
 </div>
@@ -4573,6 +4573,194 @@ if (metricsBtn) {
     refresh();
     if (!wired) { wired = true; listen(); }
   };
+})();
+
+</script>
+<script>
+/* ===================================================================
+   Friday Findings Report: two weeks of findings from all three
+   programs in one Outlook-safe email. Tables and inline styles only,
+   because Outlook renders mail through Word.
+   Section colours follow the workspace palette: the heavy blue of the
+   header, the gold accent, and a saturated version of the page sage.
+   =================================================================== */
+(function () {
+  const $f = id => document.getElementById(id);
+  if (!$f('fri-build')) return;
+  const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const BLUE = '#1e4d6b', GOLD = '#F1CC13', SAGE = '#6f7d3c';
+  let html = '', plain = '', fname = 'Friday_Findings_Report.html';
+
+  function say(msg, bad) { const el = $f('fri-status'); el.textContent = msg; el.style.color = bad ? '#a32f58' : '#216b50'; }
+  function paint(h) { const f = $f('fri-preview'); const d = f.contentDocument || f.contentWindow.document; d.open(); d.write(h); d.close(); }
+  const day = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return ''; 
+    return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'numeric', day: 'numeric', year: 'numeric' })
+      .format(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))); };
+  const long = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return '';
+    return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long', day: 'numeric', year: 'numeric' })
+      .format(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))); };
+
+  let CHECKS = {};
+  function checkLine(tok) {
+    const m = String(tok).trim().match(/^([A-Za-z]*\d+)/);
+    const hit = m ? CHECKS[m[1].toUpperCase()] : null;
+    return hit ? (hit.checkID || m[1]) + ' — ' + (hit.check || '') : String(tok).trim();
+  }
+  // findingCategory holds comma separated check IDs across all three
+  // collections; a legacy single label is never split, because the check
+  // wording itself can contain commas.
+  function checksOf(r, legacyField) {
+    const cat = String(r.findingCategory || '').trim();
+    if (cat) return cat.split(/\s*,\s*/).map(x => x.trim()).filter(Boolean).map(checkLine);
+    const legacy = legacyField ? String(r[legacyField] || '').trim() : '';
+    return legacy ? [checkLine(legacy)] : [];
+  }
+
+  async function getAll(coll, filter, sort) {
+    let out = [], page = 1, pages = 1;
+    do {
+      const url = CONFIG.url + '/api/collections/' + coll + '/records?perPage=200&page=' + page +
+        (sort ? '&sort=' + encodeURIComponent(sort) : '') +
+        (filter ? '&filter=' + encodeURIComponent(filter) : '');
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(coll + ' returned HTTP ' + r.status);
+      const j = await r.json();
+      out = out.concat(j.items || []); pages = j.totalPages || 1; page++;
+    } while (page <= pages);
+    return out;
+  }
+
+  // ---- one finding, as a table row block -------------------------------
+  function block(accent, headLeft, headRight, facts, checks, body) {
+    const factRow = facts.filter(f => f[1]).map(f =>
+      '<tr><td style="padding:1px 14px 1px 0;font-family:Calibri,sans-serif;font-size:10.5pt;color:#5a6b80;white-space:nowrap">' + esc(f[0]) +
+      '</td><td style="padding:1px 0;font-family:Calibri,sans-serif;font-size:10.5pt;color:#1e2a3a"><strong>' + esc(f[1]) + '</strong></td></tr>').join('');
+    return '<table cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse;margin:0 0 10px">' +
+      '<tr><td style="border-left:4px solid ' + accent + ';background:#f7f9fa;padding:9pt 11pt">' +
+        '<p style="margin:0 0 5pt;font-family:Calibri,sans-serif;font-size:12pt;font-weight:bold;color:#1e2a3a">' + headLeft +
+          (headRight ? '<span style="float:right;font-size:10pt;font-weight:normal;color:#5a6b80">' + esc(headRight) + '</span>' : '') + '</p>' +
+        (factRow ? '<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:0 0 6pt">' + factRow + '</table>' : '') +
+        (checks.length ? '<p style="margin:0 0 5pt;font-family:Calibri,sans-serif;font-size:10pt;color:#3f4b5b">' +
+          checks.map(c => '&bull;&nbsp; ' + esc(c)).join('<br>') + '</p>' : '') +
+        (body ? '<p style="margin:0;font-family:Calibri,sans-serif;font-size:11pt;color:#1e2a3a;line-height:1.45">' + esc(body) + '</p>' : '') +
+      '</td></tr></table>';
+  }
+  function band(bg, fg, title, n) {
+    return '<table cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse;margin:22px 0 12px">' +
+      '<tr><td style="background:' + bg + ';padding:10pt 13pt">' +
+      '<p style="margin:0;font-family:Calibri,sans-serif;font-size:14pt;font-weight:bold;color:' + fg + '">' + esc(title) +
+      '<span style="float:right;font-size:12pt">' + n + '</span></p></td></tr></table>';
+  }
+  function none(what) {
+    return '<p style="margin:0 0 10px;font-family:Calibri,sans-serif;font-size:11pt;font-style:italic;color:#777">No ' + what + ' in this window.</p>';
+  }
+
+  async function build() {
+    const a = $f('fri-start').value, b = $f('fri-end').value;
+    if (!a || !b) { say('Pick both dates.', true); return; }
+    if (a > b) { say('The From date is after the To date.', true); return; }
+    const lo = a + ' 00:00:00.000Z', hi = b + ' 23:59:59.999Z';
+    say('Gathering findings…');
+    ['fri-copy', 'fri-download'].forEach(id => $f(id).disabled = true);
+    try {
+      const [la, cs, dq, ck] = await Promise.all([
+        getAll('loan_action_reviews', 'findingIssuedOn >= "' + lo + '" && findingIssuedOn <= "' + hi + '"', '-findingIssuedOn'),
+        getAll('customer_service', 'updated >= "' + lo + '" && updated <= "' + hi + '"', '-updated'),
+        getAll('delinquency', 'fileReview >= "' + lo + '" && fileReview <= "' + hi + '" && qualityConcur = false', '-fileReview'),
+        getAll('checklists', '', '')
+      ]);
+      CHECKS = {};
+      ck.forEach(c => { if (c.checkID) CHECKS[String(c.checkID).trim().toUpperCase()] = c; });
+      // A loan action only counts as a finding once one was actually issued.
+      const laF = la.filter(r => String(r.findingIssuedOn || '').trim());
+
+      const laRows = laF.map(r => block(BLUE,
+        'Loan ' + esc(r.title || 'Not recorded') + (r.loanAction ? ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.loanAction) + '</span>' : ''),
+        (r.flag ? 'IMMEDIATE ATTENTION · ' : '') + (r.critical || 'Not classified'),
+        [['Reviewer', r.reviewer], ['Recommending Official', r.agent], ['Supervisor', r.supervisor],
+         ['Issued', day(r.findingIssuedOn)], ['Response due', day(r.findingDueOn)],
+         ['Status', r.state === 'Findings' ? 'Open' : (r.outcome || r.state || '')]],
+        checksOf(r), r.findingText || '')).join('');
+
+      const csRows = cs.map(r => block(GOLD,
+        esc(r.type || 'Contact') + ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.contactID || 'No ID') + '</span>',
+        day(r.updated),
+        [['Agent', r.agent], ['Supervisor', r.supervisor], ['Team', r.team],
+         ['Loan number', r.loanNumber], ['Reviewer', r.reviewer]],
+        checksOf(r, 'checkFailed'), r.findingText || r.findingComment || '')).join('');
+
+      const dqRows = dq.map(r => block(SAGE,
+        'Loan ' + esc(r.loanNumber || 'Not recorded') + (r.borrowerName ? ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.borrowerName) + '</span>' : ''),
+        r.daysPastDue == null ? '' : r.daysPastDue + ' days past due',
+        [['Group', r.group], ['Reviewed', day(r.fileReview)]],
+        checksOf(r), r.qualityNotes || '')).join('');
+
+      const total = laF.length + cs.length + dq.length;
+      const tile = (n, lab, bg, fg) => '<td width="33%" align="center" style="width:33%;background:' + bg + ';padding:12pt 8pt">' +
+        '<p style="margin:0;font-family:Calibri,sans-serif;font-size:22pt;font-weight:bold;color:' + fg + '">' + n + '</p>' +
+        '<p style="margin:2pt 0 0;font-family:Calibri,sans-serif;font-size:9.5pt;color:' + fg + '">' + lab + '</p></td>';
+
+      html = '<html><head><meta charset="utf-8"></head><body style="margin:0;padding:16px;background:#ffffff">' +
+        '<table cellspacing="0" cellpadding="0" width="820" align="center" style="width:820px;border-collapse:collapse;margin:0 auto"><tr><td>' +
+        '<table cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse">' +
+          '<tr><td style="background:' + BLUE + ';padding:14pt 16pt">' +
+          '<p style="margin:0;font-family:Calibri,sans-serif;font-size:19pt;font-weight:bold;color:#ffffff">Friday Findings Report</p>' +
+          '<p style="margin:4pt 0 0;font-family:Calibri,sans-serif;font-size:12pt;color:#cfe3ee">' + esc(long(a)) + ' – ' + esc(long(b)) + '</p>' +
+          '</td></tr></table>' +
+        '<table cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse;margin:10px 0 0"><tr>' +
+          tile(laF.length, 'Loan Action', '#e8f1f6', BLUE) +
+          tile(cs.length, 'Customer Service', '#fdf6d8', '#7a6300') +
+          tile(dq.length, 'Delinquency', '#eef1e2', '#4e5a28') +
+        '</tr></table>' +
+        band(BLUE, '#ffffff', 'Loan Action Findings', laF.length) + (laRows || none('loan action findings')) +
+        band(GOLD, '#1e2a3a', 'Customer Service Findings', cs.length) + (csRows || none('customer service findings')) +
+        band(SAGE, '#ffffff', 'Delinquency Findings', dq.length) + (dqRows || none('delinquency findings')) +
+        '<p style="margin:20px 0 0;font-family:Calibri,sans-serif;font-size:9.5pt;font-style:italic;color:#777;line-height:1.5">' +
+          esc(total + ' finding' + (total === 1 ? '' : 's') + ' between ' + long(a) + ' and ' + long(b) + '. ') +
+          'Loan actions are dated by findingIssuedOn, customer service reviews by updated, and delinquency files by fileReview. ' +
+          'Delinquency files counted here are non concur only.</p>' +
+        '</td></tr></table></body></html>';
+
+      const flat = (title, rows, fmt) => [title.toUpperCase(), ...(rows.length ? rows.map(fmt) : ['  none'])].join('\n');
+      plain = ['FRIDAY FINDINGS REPORT', long(a) + ' – ' + long(b), '',
+        flat('Loan Action Findings (' + laF.length + ')', laF, r => '  ' + (r.title || '?') + ' · ' + (r.loanAction || '') + ' · ' + (r.findingText || '')), '',
+        flat('Customer Service Findings (' + cs.length + ')', cs, r => '  ' + (r.contactID || '?') + ' · ' + (r.agent || '') + ' · ' + (r.findingText || r.findingComment || '')), '',
+        flat('Delinquency Findings (' + dq.length + ')', dq, r => '  ' + (r.loanNumber || '?') + ' · ' + (r.group || '') + ' · ' + (r.qualityNotes || ''))].join('\n');
+      fname = 'Friday_Findings_' + a + '_to_' + b + '.html';
+      paint(html);
+      ['fri-copy', 'fri-download'].forEach(id => $f(id).disabled = false);
+      say(total + ' finding' + (total === 1 ? '' : 's') + ': ' + laF.length + ' loan action, ' + cs.length + ' customer service, ' + dq.length + ' delinquency.');
+    } catch (e) {
+      say('Could not build the report. ' + e.message, true);
+      paint('<p style="font-family:sans-serif;padding:20px;color:#a32f58">' + esc(e.message) + '</p>');
+    }
+  }
+
+  $f('fri-build').addEventListener('click', build);
+  $f('fri-copy').addEventListener('click', () => {
+    try {
+      navigator.clipboard.write([new ClipboardItem({
+        'text/html': new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([plain], { type: 'text/plain' })
+      })]).then(() => say('Copied. Paste into a new Outlook message with Ctrl+V.'))
+        .catch(() => say('This browser would not take formatted text. Use Download HTML instead.', true));
+    } catch (e) { say('This browser has no clipboard support. Use Download HTML instead.', true); }
+  });
+  $f('fri-download').addEventListener('click', () => {
+    const a2 = document.createElement('a');
+    a2.href = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+    a2.download = fname; a2.click();
+    setTimeout(() => URL.revokeObjectURL(a2.href), 4000);
+    say('Downloaded.');
+  });
+
+  // Default window: the last two weeks ending today.
+  (function seed() {
+    const now = new Date(), start = new Date(now);
+    start.setDate(now.getDate() - 13);
+    const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    $f('fri-start').value = iso(start); $f('fri-end').value = iso(now);
+  })();
 })();
 
 </script>
