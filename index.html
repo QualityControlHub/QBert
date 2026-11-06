@@ -200,35 +200,41 @@ body[data-width="full"]{--page-w:100%}
 .rpt-block.soon{background:#fbfcf6;border-style:dashed}
 .rpt-tag{font-size:9px;letter-spacing:1.1px;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:5px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--peri);white-space:nowrap}
 .rpt-tag.wip{background:#fbf2e6;color:var(--amber);border-color:#eedcc0}
-.corr-shell{max-width:430px;margin:0 auto;padding:0 0 28px;background:var(--white);min-height:100vh;
- box-shadow:0 0 40px #1e4d6b14}
-.corr-head{background:var(--header);color:#fff;padding:16px 18px}
-.corr-head h1{margin:0;font-family:var(--font-serif);font-size:19px;color:#fff;letter-spacing:.2px}
-.corr-head p{margin:4px 0 0;font-size:12px;color:#cfe3ee;line-height:1.45}
-.corr-body{padding:16px 18px}
-.corr-load{font-size:13px;color:var(--muted)}
-.corr-facts{margin:0 0 16px;padding:12px 13px;background:var(--blue-bg);border-radius:9px;font-size:12.5px;line-height:1.55}
-.corr-facts dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:0}
-.corr-facts dt{color:var(--muted);white-space:nowrap}
-.corr-facts dd{margin:0;font-weight:600;color:var(--ink)}
-.corr-facts .ft{margin:9px 0 0;padding-top:9px;border-top:1px solid #cfe3ee;font-weight:400;color:var(--ink)}
-.corr-facts ul{margin:7px 0 0;padding-left:16px;font-size:11.5px;color:#3f4b5b}
-.corr-f{margin:0 0 13px}
+.corr-mode{background:var(--bg)}
+/* Nothing but the form: a class on body beats enumerating the page's
+   top-level elements, which is how the nav bar slipped through before. */
+.corr-mode > *:not(#correction-page){display:none !important}
+.launch-mode{background:var(--bg)}
+.launch-mode > *:not(#signoff-launch){display:none !important}
+.launch-mode #signoff-launch{display:flex !important;align-items:center;justify-content:center;min-height:100vh;padding:16px;box-sizing:border-box}
+.corr-shell.launch{text-align:center;padding:26px 22px}
+.corr-shell.launch .lead{margin:0;font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:var(--muted);font-weight:700}
+.corr-shell.launch .loan{margin:7px 0 18px;font-family:var(--font-serif);font-size:23px;font-weight:700;color:var(--header)}
+.corr-shell.launch .btn{width:100%;justify-content:center}
+.corr-shell.launch .note{margin:12px 0 0;font-size:11.5px;color:var(--muted);line-height:1.5}
+.corr-mode #correction-page{display:flex !important;align-items:center;justify-content:center;min-height:100vh;padding:16px;box-sizing:border-box}
+.corr-shell{width:430px;max-width:100%;background:var(--white);border:1px solid var(--line);border-radius:14px;
+ box-shadow:0 10px 36px #1e4d6b26;padding:16px;box-sizing:border-box}
+.corr-load{font-size:13px;color:var(--muted);margin:0}
+.corr-facts{margin:0 0 11px;padding:10px 12px;background:var(--blue-bg);border-radius:9px;font-size:12.5px;line-height:1.5}
+.corr-facts .loan{display:block;font-size:16px;font-weight:700;color:var(--header);letter-spacing:.3px;margin-bottom:5px}
+.corr-facts p{margin:0;color:var(--ink)}
+.corr-f{margin:0 0 9px}
 .corr-f label{display:block;font-size:11.5px;font-weight:600;color:#4b4475;margin-bottom:4px}
-.corr-f textarea{width:100%;min-height:76px;padding:8px 10px;border:1px solid #cdc7e4;border-radius:7px;
- font:inherit;font-size:13px;resize:vertical;box-sizing:border-box}
-.corr-f input,.corr-f select{width:100%;padding:8px 10px;border:1px solid #cdc7e4;border-radius:7px;
+.corr-f textarea{width:100%;height:44px;min-height:44px;padding:7px 10px;border:1px solid #cdc7e4;border-radius:7px;
+ font:inherit;font-size:13px;line-height:1.4;resize:vertical;box-sizing:border-box}
+.corr-f input,.corr-f select{width:100%;padding:7px 10px;border:1px solid #cdc7e4;border-radius:7px;
  font:inherit;font-size:13px;box-sizing:border-box}
 .corr-f input[readonly]{background:#f5f3fb;color:#5d5680}
-.corr-chk{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;line-height:1.45;margin:0 0 9px;cursor:pointer}
-.corr-chk input{width:15px;height:15px;min-height:0;padding:0;margin:1px 0 0;flex:none;accent-color:var(--navy);cursor:pointer}
-.corr-err{margin:0 0 12px;padding:9px 11px;border-radius:7px;background:#fdf1f5;border:1px solid #eccfd8;
+.corr-chk{display:flex;gap:9px;align-items:center;font-size:12.5px;line-height:1.4;margin:0 0 6px;cursor:pointer}
+.corr-chk input{width:15px;height:15px;min-height:0;padding:0;margin:0;flex:none;accent-color:var(--navy);cursor:pointer}
+.corr-err{margin:0 0 11px;padding:8px 11px;border-radius:7px;background:#fdf1f5;border:1px solid #eccfd8;
  color:var(--danger);font-size:12.5px;line-height:1.45}
-.corr-ok{padding:18px;text-align:center}
+.corr-ok{text-align:center;padding:6px 0}
 .corr-ok h2{margin:0 0 8px;font-family:var(--font-serif);font-size:18px;color:var(--green)}
 .corr-ok p{margin:0 0 6px;font-size:13px;color:var(--ink);line-height:1.5}
-.corr-sub-note{font-size:11.5px;color:var(--muted);line-height:1.5;margin:0 0 14px}
-.corr-act{display:flex;gap:8px;margin-top:4px}
+.corr-sub-note{font-size:11.5px;color:var(--muted);line-height:1.5;margin:0 0 12px}
+.corr-act{display:flex;gap:8px;margin-top:11px}
 .corr-act .btn{flex:1;justify-content:center}
 .dm-alert{display:inline-flex;align-items:center;gap:8px;border:1px solid #c0392b;background:#c0392b;color:#fff;
  border-radius:99px;padding:7px 15px;font-size:12.5px;font-weight:700;letter-spacing:.2px;cursor:pointer;
@@ -1450,12 +1456,14 @@ disconnectedPresentation();
 </script>
 
 <div id="correction-page" style="display:none">
-  <div class="corr-shell">
-    <div class="corr-head">
-      <h1>Finding Sign-Off</h1>
-      <p id="corr-sub">Loading&hellip;</p>
-    </div>
-    <div id="corr-body" class="corr-body"><p class="corr-load">Loading the finding&hellip;</p></div>
+  <div class="corr-shell"><div id="corr-body"><p class="corr-load">Loading&hellip;</p></div></div>
+</div>
+<div id="signoff-launch" style="display:none">
+  <div class="corr-shell launch">
+    <p class="lead">Finding sign-off</p>
+    <p class="loan" id="lx-loan">&nbsp;</p>
+    <button class="btn primary" id="lx-go">Open the sign-off form</button>
+    <p class="note" id="lx-note">Opens in a small window of its own.</p>
   </div>
 </div>
 <div id="reviewer-workspace" style="display:none;max-width:1100px;margin:40px auto;padding:24px">
@@ -4718,7 +4726,7 @@ if (metricsBtn) {
       // #correction, so a supervisor answers from the email in one click.
       const base = location.href.split('#')[0];
       const signLinks = r => {
-        const url = base + '#correction=' + encodeURIComponent(r.id);
+        const url = base + '#signoff=' + encodeURIComponent(r.id);
         const pill = (href, text, bg, fg, br) =>
           '<td style="padding:0 8pt 0 0"><a href="' + esc(href) + '" style="display:inline-block;background:' + bg +
           ';color:' + fg + ';border:1px solid ' + br + ';border-radius:4px;padding:7pt 13pt;text-decoration:none;' +
@@ -4835,7 +4843,6 @@ if (metricsBtn) {
   const page = document.getElementById('correction-page');
   if (!page) return;
   const body = document.getElementById('corr-body');
-  const sub = document.getElementById('corr-sub');
   const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const day = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return 'Not recorded';
     return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'numeric', day: 'numeric', year: 'numeric' })
@@ -4845,57 +4852,39 @@ if (metricsBtn) {
 
   function fail(msg) { body.innerHTML = '<div class="corr-err">' + esc(msg) + '</div>'; }
 
-  function checksHtml(r, checks) {
-    const ids = String(r.findingCategory || '').split(/\s*,\s*/).map(x => x.trim()).filter(Boolean);
-    if (!ids.length) return '';
-    const txt = ids.map(id => {
-      const hit = checks.find(c => String(c.checkID || '').trim().toUpperCase() === id.toUpperCase());
-      return hit ? (hit.checkID || id) + ' — ' + (hit.check || '') : id;
-    });
-    return '<ul>' + txt.map(t => '<li>' + esc(t) + '</li>').join('') + '</ul>';
-  }
-
-  function render(checks) {
+  function render() {
     const r = rec;
-    sub.textContent = 'Loan ' + (r.title || 'Not recorded') + (r.loanAction ? ' · ' + r.loanAction : '');
     if (String(r.state || '') === 'Completed') {
       body.innerHTML = '<div class="corr-ok"><h2>Already signed off</h2>' +
-        '<p>This finding was completed on <strong>' + esc(day(r.completedOn)) + '</strong>' +
-        (r.supervisorSignedOffBy ? ' by <strong>' + esc(r.supervisorSignedOffBy) + '</strong>' : '') + '.</p>' +
-        '<p class="corr-sub-note">Nothing further is needed here.</p></div>';
+        '<p>Loan <strong>' + esc(r.title || '') + '</strong> was completed on <strong>' + esc(day(r.completedOn)) + '</strong>' +
+        (r.supervisorSignedOffBy ? ' by <strong>' + esc(r.supervisorSignedOffBy) + '</strong>' : '') + '.</p></div>';
       return;
     }
     const other = mode === 'other';
     const supName = r.supervisor || '';
     const signer = other
       ? '<div class="corr-f"><label for="corr-staff">Signing on behalf of ' + esc(supName || 'the Supervisor') + '</label>' +
-          '<select id="corr-staff"><option value="">Select your name…</option>' +
-          staff.map(x => '<option value="' + esc(x.id) + '">' + esc(x.agent) + (x.role ? ' · ' + esc(x.role) : '') + '</option>').join('') +
+          '<select id="corr-staff"><option value="">Select your name\u2026</option>' +
+          staff.map(x => '<option value="' + esc(x.id) + '">' + esc(x.agent) + (x.role ? ' \u00b7 ' + esc(x.role) : '') + '</option>').join('') +
           '</select></div>'
       : '<div class="corr-f"><label for="corr-by">Signing off</label>' +
           '<input id="corr-by" readonly value="' + esc(supName || 'Supervisor not recorded') + '"></div>';
-
+    // The email already carries the type, dates, reviewer and checks, so the
+    // form shows only what identifies the finding.
     body.innerHTML =
-      '<div class="corr-facts"><dl>' +
-        '<dt>Type</dt><dd>' + esc(r.critical || 'Not classified') + (r.flag ? ' · Immediate attention' : '') + '</dd>' +
-        '<dt>Issued</dt><dd>' + esc(day(r.findingIssuedOn)) + '</dd>' +
-        '<dt>Response due</dt><dd>' + esc(day(r.findingDueOn)) + '</dd>' +
-        '<dt>Reviewer</dt><dd>' + esc(r.reviewer || 'Not recorded') + '</dd>' +
-      '</dl>' + checksHtml(r, checks) +
-      (r.findingText ? '<p class="ft">' + esc(r.findingText) + '</p>' : '') + '</div>' +
+      '<div class="corr-facts"><span class="loan">' + esc(r.title || 'No loan number') + '</span>' +
+        (r.findingText ? '<p>' + esc(r.findingText) + '</p>' : '') + '</div>' +
       '<div id="corr-error"></div>' +
-      '<div class="corr-f"><label for="corr-correction">Correction &middot; the fix</label>' +
-        '<textarea id="corr-correction" placeholder="What was fixed on this loan action.">' + esc(r.correction || '') + '</textarea></div>' +
-      '<div class="corr-f"><label for="corr-action">Corrective action &middot; prevent recurrence</label>' +
-        '<textarea id="corr-action" placeholder="The change in process, training or controls.">' + esc(r.correctiveAction || '') + '</textarea></div>' +
+      '<div class="corr-f"><label for="corr-correction">Correction \u00b7 the fix</label>' +
+        '<textarea id="corr-correction">' + esc(r.correction || '') + '</textarea></div>' +
+      '<div class="corr-f"><label for="corr-action">Corrective action \u00b7 prevent recurrence</label>' +
+        '<textarea id="corr-action">' + esc(r.correctiveAction || '') + '</textarea></div>' +
       '<label class="corr-chk"><input type="checkbox" id="corr-ap-c"><span>Approve the correction</span></label>' +
       '<label class="corr-chk"><input type="checkbox" id="corr-ap-a"><span>Approve the corrective action</span></label>' +
-      '<div class="corr-f" style="margin-top:12px"><label for="corr-notes">Sign-off notes</label>' +
-        '<textarea id="corr-notes" style="min-height:56px">' + esc(r.supervisorSignOffNotes || '') + '</textarea></div>' +
+      '<div class="corr-f" style="margin-top:10px"><label for="corr-notes">Sign-off notes</label>' +
+        '<textarea id="corr-notes"></textarea></div>' +
       signer +
-      '<p class="corr-sub-note">Signing off completes the finding and records it as Non Concur resolved.</p>' +
       '<div class="corr-act"><button class="btn primary" id="corr-save">Sign off and complete</button></div>';
-
     document.getElementById('corr-save').onclick = submit;
   }
 
@@ -4955,21 +4944,18 @@ if (metricsBtn) {
 
   window.openCorrection = async function (id, asMode) {
     mode = asMode === 'other' ? 'other' : 'supervisor';
-    page.style.display = 'block';
-    body.innerHTML = '<p class="corr-load">Loading the finding…</p>';
-    sub.textContent = 'Loading…';
+    body.innerHTML = '<p class="corr-load">Loading…</p>';
     try {
-      const [recRes, stRes, ckRes] = await Promise.all([
+      const [recRes, stRes] = await Promise.all([
         fetch(CONFIG.url + '/api/collections/loan_action_reviews/records/' + encodeURIComponent(id)),
-        fetch(CONFIG.url + '/api/collections/staff/records?perPage=500'),
-        fetch(CONFIG.url + '/api/collections/checklists/records?perPage=500')
+        fetch(CONFIG.url + '/api/collections/staff/records?perPage=500')
       ]);
       if (!recRes.ok) throw new Error('That finding could not be found. It may have been removed.');
       rec = await recRes.json();
       staff = stRes.ok ? ((await stRes.json()).items || []).filter(x => !x.inactive) : [];
       staff.sort((a, b) => String(a.agent || '').localeCompare(String(b.agent || '')));
-      render(ckRes.ok ? ((await ckRes.json()).items || []) : []);
-    } catch (e) { sub.textContent = 'Sign-off'; fail(e.message); }
+      render();
+    } catch (e) { fail(e.message); }
   };
 })();
 
@@ -5047,17 +5033,45 @@ if (metricsBtn) {
     const m=String(location.hash||'').match(/^#correction=([A-Za-z0-9_-]+)(?:&as=([a-z]+))?$/i);
     return m?{id:m[1],mode:(m[2]||'supervisor').toLowerCase()}:null;
   }
+  // #signoff is a one-button launcher. A link clicked in Outlook cannot ask
+  // for a window size, but a click inside a page can, so this page exists
+  // only to make that click and open the form small and chromeless.
+  function launchFromHash(){
+    const m=String(location.hash||'').match(/^#signoff=([A-Za-z0-9_-]+)(?:&as=([a-z]+))?$/i);
+    return m?{id:m[1],mode:(m[2]||'supervisor').toLowerCase()}:null;
+  }
   function handleRoute(){
     const corr=correctionFromHash();
     const page=document.getElementById('correction-page');
+    const lx=launchFromHash();
+    if(lx){
+      document.body.classList.remove('corr-mode');
+      document.body.classList.add('launch-mode');
+      const base=location.href.split('#')[0];
+      const target=base+'#correction='+encodeURIComponent(lx.id)+(lx.mode==='other'?'&as=other':'');
+      document.getElementById('lx-loan').textContent='Loading\u2026';
+      fetch(CONFIG.url+'/api/collections/loan_action_reviews/records/'+encodeURIComponent(lx.id))
+        .then(r=>r.ok?r.json():null)
+        .then(rec=>{document.getElementById('lx-loan').textContent=rec&&rec.title?('Loan '+rec.title):'Loan not found';})
+        .catch(()=>{document.getElementById('lx-loan').textContent='Loan';});
+      document.getElementById('lx-go').onclick=()=>{
+        const w=window.open(target,'qbertSignOff',
+          'width=466,height=620,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes');
+        const note=document.getElementById('lx-note');
+        if(w){note.textContent='Opened in its own window. You can close this tab.';window.close();}
+        else{note.textContent='Your browser blocked the pop-up. Allow pop-ups for this site, or use the link again.';}
+      };
+      return;
+    }
+    document.body.classList.remove('launch-mode');
     if(corr){
-      names.forEach(k=>{const el=document.getElementById(WORKSPACES[k].el);if(el)el.style.display='none';});
-      document.querySelectorAll('body > header, body > main, body > nav, body > footer').forEach(el=>el.style.display='none');
+      document.body.classList.add('corr-mode');
       if(typeof window.openCorrection==='function')window.openCorrection(corr.id,corr.mode);
       return;
     }
+    document.body.classList.remove('corr-mode');
+    document.body.classList.remove('launch-mode');
     if(page)page.style.display='none';
-    document.querySelectorAll('body > header, body > main, body > nav, body > footer').forEach(el=>el.style.display='');
     showWorkspace(nameFromHash());
     const id=loanFromHash();
     if(id&&typeof window.openLoanDeepLink==='function')window.openLoanDeepLink(id);
