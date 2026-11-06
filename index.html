@@ -200,6 +200,9 @@ body[data-width="full"]{--page-w:100%}
 .rpt-block.soon{background:#fbfcf6;border-style:dashed}
 .rpt-tag{font-size:9px;letter-spacing:1.1px;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:5px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--peri);white-space:nowrap}
 .rpt-tag.wip{background:#fbf2e6;color:var(--amber);border-color:#eedcc0}
+html[data-boot] body > *{display:none !important}
+html[data-boot] body{background:var(--bg)}
+html[data-boot="corr"] body > #correction-page,html[data-boot="launch"] body > #signoff-launch{display:flex !important;align-items:center;justify-content:center;min-height:100vh;padding:16px;box-sizing:border-box}
 .corr-mode{background:var(--bg)}
 /* Nothing but the form: a class on body beats enumerating the page's
    top-level elements, which is how the nav bar slipped through before. */
@@ -318,6 +321,13 @@ body[data-width="full"]{--page-w:100%}
 </style>
 </head>
 <body>
+<script>
+// Set the mode before anything renders, otherwise the home page paints for a
+// frame before the router runs.
+(function(){var h=String(location.hash||'');
+ if(/^#signoff=/.test(h))document.documentElement.setAttribute('data-boot','launch');
+ else if(/^#correction=/.test(h))document.documentElement.setAttribute('data-boot','corr');})();
+</script>
 <a class="skip" href="#main">Skip to review workspace</a>
 <header class="app-header">
  <div class="brand"><span class="brand-mark" aria-hidden="true">Q</span><div><div class="brand-title">Q-Bert<span style="color:var(--gold)">.</span></div><div class="brand-sub">DLSLC Quality Control Workspace</div></div></div>
@@ -1463,7 +1473,7 @@ disconnectedPresentation();
     <p class="lead">Finding sign-off</p>
     <p class="loan" id="lx-loan">&nbsp;</p>
     <button class="btn primary" id="lx-go">Open the sign-off form</button>
-    <p class="note" id="lx-note">Opens in a small window of its own.</p>
+    <p class="note" id="lx-note"></p>
   </div>
 </div>
 <div id="reviewer-workspace" style="display:none;max-width:1100px;margin:40px auto;padding:24px">
@@ -4678,26 +4688,30 @@ if (metricsBtn) {
   }
 
   // ---- one finding, as a table row block -------------------------------
-  function block(accent, headLeft, headRight, facts, checks, body, extra) {
+  // Word has no float and no border-radius, so the header is a two-cell row
+  // and every tint is a bgcolor attribute, which Word does honour.
+  function block(accent, headLeft, headRight, facts, checks, body, extra, tint) {
     const factRow = facts.filter(f => f[1]).map(f =>
-      '<tr><td style="padding:1px 14px 1px 0;font-family:Calibri,sans-serif;font-size:10.5pt;color:#5a6b80;white-space:nowrap">' + esc(f[0]) +
-      '</td><td style="padding:1px 0;font-family:Calibri,sans-serif;font-size:10.5pt;color:#1e2a3a"><strong>' + esc(f[1]) + '</strong></td></tr>').join('');
-    return '<table cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse;margin:0 0 10px">' +
-      '<tr><td style="border-left:4px solid ' + accent + ';background:#f7f9fa;padding:9pt 11pt">' +
-        '<p style="margin:0 0 5pt;font-family:Calibri,sans-serif;font-size:12pt;font-weight:bold;color:#1e2a3a">' + headLeft +
-          (headRight ? '<span style="float:right;font-size:10pt;font-weight:normal;color:#5a6b80">' + esc(headRight) + '</span>' : '') + '</p>' +
-        (factRow ? '<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:0 0 6pt">' + factRow + '</table>' : '') +
-        (checks.length ? '<p style="margin:0 0 5pt;font-family:Calibri,sans-serif;font-size:10pt;color:#3f4b5b">' +
-          checks.map(c => '&bull;&nbsp; ' + esc(c)).join('<br>') + '</p>' : '') +
+      '<tr><td style="padding:1px 16px 1px 0;font-family:Calibri,sans-serif;font-size:10.5pt;color:#5a6b80;white-space:nowrap">' + esc(f[0]) +
+      '</td><td style="padding:1px 0;font-family:Calibri,sans-serif;font-size:10.5pt;color:#1e2a3a">' + f[2] + '</td></tr>').join('');
+    return '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0;margin:0 0 10px">' +
+      '<tr><td bgcolor="#f7f9fa" style="border-left:4px solid ' + accent + ';background:#f7f9fa;padding:9pt 11pt">' +
+        '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;margin:0 0 6pt"><tr>' +
+          '<td style="font-family:Calibri,sans-serif;font-size:12pt;font-weight:bold;color:#1e2a3a">' + headLeft + '</td>' +
+          (headRight ? '<td align="right" style="font-family:Calibri,sans-serif;font-size:10pt;color:#5a6b80;white-space:nowrap;padding-left:14pt">' + esc(headRight) + '</td>' : '') +
+        '</tr></table>' +
+        (factRow ? '<table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;margin:0 0 7pt">' + factRow + '</table>' : '') +
+        (checks.length ? '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;margin:0 0 7pt">' +
+          '<tr><td bgcolor="' + (tint || '#eef1f4') + '" style="background:' + (tint || '#eef1f4') + ';padding:6pt 9pt;font-family:Calibri,sans-serif;font-size:10pt;color:#3f4b5b;line-height:1.45">' +
+          checks.map(c => '&bull;&nbsp; ' + esc(c)).join('<br>') + '</td></tr></table>' : '') +
         (body ? '<p style="margin:0;font-family:Calibri,sans-serif;font-size:11pt;color:#1e2a3a;line-height:1.45">' + esc(body) + '</p>' : '') +
         (extra || '') +
       '</td></tr></table>';
   }
   function band(bg, fg, title, n) {
-    return '<table cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse;margin:22px 0 12px">' +
-      '<tr><td style="background:' + bg + ';padding:10pt 13pt">' +
-      '<p style="margin:0;font-family:Calibri,sans-serif;font-size:14pt;font-weight:bold;color:' + fg + '">' + esc(title) +
-      '<span style="float:right;font-size:12pt">' + n + '</span></p></td></tr></table>';
+    return '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0;margin:22px 0 12px">' +
+      '<tr><td bgcolor="' + bg + '" style="background:' + bg + ';padding:10pt 13pt;font-family:Calibri,sans-serif;font-size:14pt;font-weight:bold;color:' + fg + '">' + esc(title) + '</td>' +
+      '<td bgcolor="' + bg + '" align="right" style="background:' + bg + ';padding:10pt 13pt;font-family:Calibri,sans-serif;font-size:13pt;font-weight:bold;color:' + fg + '">' + n + '</td></tr></table>';
   }
   function none(what) {
     return '<p style="margin:0 0 10px;font-family:Calibri,sans-serif;font-size:11pt;font-style:italic;color:#777">No ' + what + ' in this window.</p>';
@@ -4727,49 +4741,60 @@ if (metricsBtn) {
       const base = location.href.split('#')[0];
       const signLinks = r => {
         const url = base + '#signoff=' + encodeURIComponent(r.id);
+        // Word drops background on an inline <a> and ignores border-radius, so
+        // the fill lives on a bgcolor cell and the corners stay square there.
         const pill = (href, text, bg, fg, br) =>
-          '<td style="padding:0 8pt 0 0"><a href="' + esc(href) + '" style="display:inline-block;background:' + bg +
-          ';color:' + fg + ';border:1px solid ' + br + ';border-radius:4px;padding:7pt 13pt;text-decoration:none;' +
-          'font-family:Calibri,sans-serif;font-size:10.5pt;font-weight:bold;letter-spacing:.3px">' + esc(text) + '</a></td>';
+          '<td style="padding:0 8pt 0 0"><table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse">' +
+          '<tr><td bgcolor="' + bg + '" align="center" style="background:' + bg + ';border:1px solid ' + br + ';border-radius:4px;padding:7pt 14pt">' +
+          '<a href="' + esc(href) + '" style="color:' + fg + ';text-decoration:none;font-family:Calibri,sans-serif;' +
+          'font-size:10.5pt;font-weight:bold;letter-spacing:.3px">' + esc(text) + '</a></td></tr></table></td>';
         return '<table cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:9pt 0 0"><tr>' +
           pill(url, ((r.supervisor || 'SUPERVISOR').toUpperCase()) + ' SIGN OFF', BLUE, '#ffffff', BLUE) +
           pill(url + '&as=other', 'OTHER SLS TO SIGN OFF', '#ffffff', BLUE, '#9bbccd') +
         '</tr></table>';
       };
+      const b_ = v => '<strong>' + esc(v) + '</strong>';
+      const due = v => '<strong style="color:#c0392b">' + esc(v) + '</strong>';
       const laRows = laF.map(r => block(BLUE,
         'Loan ' + esc(r.title || 'Not recorded') + (r.loanAction ? ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.loanAction) + '</span>' : ''),
         (r.flag ? 'IMMEDIATE ATTENTION · ' : '') + (r.critical || 'Not classified'),
-        [['Reviewer', r.reviewer], ['Recommending Official', r.agent], ['Supervisor', r.supervisor],
-         ['Issued', day(r.findingIssuedOn)], ['Response due', day(r.findingDueOn)],
-         ['Status', r.state === 'Findings' ? 'Open' : (r.outcome || r.state || '')]],
-        checksOf(r), r.findingText || '', signLinks(r))).join('');
+        [['Recommending Official', r.agent, b_(r.agent)], ['Supervisor', r.supervisor, b_(r.supervisor)],
+         ['Response due', day(r.findingDueOn), due(day(r.findingDueOn))]],
+        checksOf(r), r.findingText || '', signLinks(r), '#e7eff4')).join('');
 
-      const csRows = cs.map(r => block(GOLD,
-        esc(r.type || 'Contact') + ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.contactID || 'No ID') + '</span>',
-        day(r.updated),
-        [['Agent', r.agent], ['Supervisor', r.supervisor], ['Team', r.team],
-         ['Loan number', r.loanNumber], ['Reviewer', r.reviewer]],
-        checksOf(r, 'checkFailed'), r.findingText || r.findingComment || '')).join('');
+      // A Genesys call links straight to the interaction, so the raw id adds
+      // nothing; a CSH case number has to stay visible to be copied.
+      const csHead = r => {
+        const isGen = /genesys/i.test(String(r.type || ''));
+        if (isGen) {
+          const link = typeof genesysUrl === 'function' ? genesysUrl(r.contactID) : '';
+          return link ? '<a href="' + esc(link) + '" style="color:#1e4d6b;text-decoration:underline">Genesys Call</a>' : 'Genesys Call';
+        }
+        return esc(r.type || 'Contact') + ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.contactID || 'No ID') + '</span>';
+      };
+      const csRows = cs.map(r => block(GOLD, csHead(r), day(r.updated),
+        [['Agent', r.agent, b_(r.agent)], ['Supervisor', r.supervisor, b_(r.supervisor)],
+         ['Team', r.team, b_(r.team)], ['Loan number', r.loanNumber, b_(r.loanNumber)]],
+        checksOf(r, 'checkFailed'), r.findingText || r.findingComment || '', '', '#f6eed2')).join('');
 
       const dqRows = dq.map(r => block(SAGE,
         'Loan ' + esc(r.loanNumber || 'Not recorded') + (r.borrowerName ? ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.borrowerName) + '</span>' : ''),
         r.daysPastDue == null ? '' : r.daysPastDue + ' days past due',
-        [['Group', r.group], ['Reviewed', day(r.fileReview)]],
-        checksOf(r), r.qualityNotes || '')).join('');
+        [['Group', r.group, b_(r.group)], ['Reviewed', day(r.fileReview), b_(day(r.fileReview))]],
+        checksOf(r), r.qualityNotes || '', '', '#e9ecde')).join('');
 
       const total = laF.length + cs.length + dq.length;
-      const tile = (n, lab, bg, fg) => '<td width="33%" align="center" style="width:33%;background:' + bg + ';padding:12pt 8pt">' +
+      const tile = (n, lab, bg, fg) => '<td width="33%" align="center" bgcolor="' + bg + '" style="width:33%;background:' + bg + ';padding:12pt 8pt">' +
         '<p style="margin:0;font-family:Calibri,sans-serif;font-size:22pt;font-weight:bold;color:' + fg + '">' + n + '</p>' +
         '<p style="margin:2pt 0 0;font-family:Calibri,sans-serif;font-size:9.5pt;color:' + fg + '">' + lab + '</p></td>';
 
       html = '<html><head><meta charset="utf-8"></head><body style="margin:0;padding:16px;background:#ffffff">' +
         '<table cellspacing="0" cellpadding="0" width="820" align="center" style="width:820px;border-collapse:collapse;margin:0 auto"><tr><td>' +
-        '<table cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse">' +
-          '<tr><td style="background:' + BLUE + ';padding:14pt 16pt">' +
+        '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0">' +
+          '<tr><td colspan="3" bgcolor="' + BLUE + '" style="background:' + BLUE + ';padding:14pt 16pt">' +
           '<p style="margin:0;font-family:Calibri,sans-serif;font-size:19pt;font-weight:bold;color:#ffffff">Fortnightly Findings Report</p>' +
           '<p style="margin:4pt 0 0;font-family:Calibri,sans-serif;font-size:12pt;color:#cfe3ee">' + esc(long(a)) + ' – ' + esc(long(b)) + '</p>' +
-          '</td></tr></table>' +
-        '<table cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse;margin:10px 0 0"><tr>' +
+          '</td></tr><tr>' +
           tile(laF.length, 'Loan Action', '#e8f1f6', BLUE) +
           tile(cs.length, 'Customer Service', '#fdf6d8', '#7a6300') +
           tile(dq.length, 'Delinquency', '#eef1e2', '#4e5a28') +
@@ -4778,9 +4803,7 @@ if (metricsBtn) {
         band(GOLD, '#1e2a3a', 'Customer Service Findings', cs.length) + (csRows || none('customer service findings')) +
         band(SAGE, '#ffffff', 'Delinquency Findings', dq.length) + (dqRows || none('delinquency findings')) +
         '<p style="margin:20px 0 0;font-family:Calibri,sans-serif;font-size:9.5pt;font-style:italic;color:#777;line-height:1.5">' +
-          esc(total + ' finding' + (total === 1 ? '' : 's') + ' between ' + long(a) + ' and ' + long(b) + '. ') +
-          'Loan actions are dated by findingIssuedOn, customer service reviews by updated, and delinquency files by fileReview. ' +
-          'Delinquency files counted here are non concur only.</p>' +
+          esc(total + ' finding' + (total === 1 ? '' : 's') + ' between ' + long(a) + ' and ' + long(b) + '.') + '</p>' +
         '</td></tr></table></body></html>';
 
       const flat = (title, rows, fmt) => [title.toUpperCase(), ...(rows.length ? rows.map(fmt) : ['  none'])].join('\n');
@@ -5055,8 +5078,16 @@ if (metricsBtn) {
         .then(rec=>{document.getElementById('lx-loan').textContent=rec&&rec.title?('Loan '+rec.title):'Loan not found';})
         .catch(()=>{document.getElementById('lx-loan').textContent='Loan';});
       document.getElementById('lx-go').onclick=()=>{
+        // Centre on the screen the user is actually on, not the primary one.
+        const W=466,H=620;
+        const sx=(window.screenLeft!==undefined?window.screenLeft:(screen.left||0));
+        const sy=(window.screenTop!==undefined?window.screenTop:(screen.top||0));
+        const sw=window.outerWidth||screen.availWidth||screen.width;
+        const sh=window.outerHeight||screen.availHeight||screen.height;
+        const left=Math.max(0,Math.round(sx+(sw-W)/2));
+        const top=Math.max(0,Math.round(sy+(sh-H)/2.4));
         const w=window.open(target,'qbertSignOff',
-          'width=466,height=620,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes');
+          'width='+W+',height='+H+',left='+left+',top='+top+',menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes');
         const note=document.getElementById('lx-note');
         if(w){note.textContent='Opened in its own window. You can close this tab.';window.close();}
         else{note.textContent='Your browser blocked the pop-up. Allow pop-ups for this site, or use the link again.';}
