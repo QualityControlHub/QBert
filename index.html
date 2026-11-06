@@ -1493,7 +1493,7 @@ disconnectedPresentation();
     <button class="btn" data-ws="csh">Genesys Dashboard</button>
     <button class="btn" data-ws="dataedit">Data Edit</button>
     <button class="btn" data-ws="newsletter">Newsletter</button>
-    <button class="btn" data-ws="reports">Email Reports</button>
+    <button class="btn" data-ws="reports">Findings Report</button>
     
   </nav>
   <div id="ws-loans">
@@ -1748,22 +1748,23 @@ disconnectedPresentation();
     <div id="nl-status" style="margin-top:8px;font-size:12px"></div>
   </div>
   <div id="ws-reports" hidden>
-    <h2>Email Reports</h2>
-    <p class="del-hint">Each generator below builds a self-contained HTML report ready to paste into an email.</p>
+    <h2>Findings Report</h2>
+    <p class="del-hint">Stack first to see what is waiting, then generate the email when there is enough worth sending.</p>
 
     <section class="rpt-block">
-      <h3>Fortnightly QC Findings Report <span class="rpt-tag">Two weeks, all three programs</span></h3>
-      <p class="desc">Gathers every finding raised in the window from <code>loan_action_reviews</code>, <code>customer_service</code> and <code>delinquency</code> into one Outlook-ready email, sectioned by program.
-        Each collection is dated on its own field &mdash; loan actions by <code>findingIssuedOn</code>, customer service reviews by <code>updated</code>, and delinquency files by <code>fileReview</code>.</p>
-      <div class="qa-actions" style="margin-top:0">
-        <div class="field" style="max-width:170px"><label for="fri-start">From</label><input type="date" id="fri-start"></div>
-        <div class="field" style="max-width:170px"><label for="fri-end">To</label><input type="date" id="fri-end"></div>
-        <button class="btn primary" id="fri-build">Generate Report</button>
+      <h3>QC Findings Report <span class="rpt-tag">All three programs</span></h3>
+      <p class="desc">Dates no longer gate the report &mdash; a finding is picked up by its own status.
+        <strong>Generate</strong> takes loan actions in state <code>Findings</code>, customer service reviews marked
+        <code>issued = Ready</code>, and non-concurred delinquency files marked <code>issued = Ready</code>.
+        <strong>Stack</strong> shows the same plus anything on <code>Hold</code>, so you can see what could go out alongside what will.</p>
+      <div class="qa-actions" style="margin-top:0;justify-content:flex-end">
+        <span id="fri-status" style="font-size:12px;color:var(--muted);margin-right:auto"></span>
+        <button class="btn" id="fri-stack">Stack</button>
+        <button class="btn primary" id="fri-build">Generate</button>
         <button class="btn" id="fri-copy" disabled>Copy for Outlook</button>
         <button class="btn" id="fri-download" disabled>Download HTML</button>
-        <span id="fri-status" style="font-size:12px;color:var(--muted)"></span>
       </div>
-      <iframe id="fri-preview" title="Fortnightly QC findings report preview" style="width:100%;height:640px;border:1px solid var(--line);border-radius:8px;background:white;margin-top:12px"></iframe>
+      <iframe id="fri-preview" title="QC findings report preview" style="width:100%;height:640px;border:1px solid var(--line);border-radius:8px;background:white;margin-top:12px"></iframe>
     </section>
   </div>
 </div>
@@ -4635,9 +4636,10 @@ if (metricsBtn) {
 </script>
 <script>
 /* ===================================================================
-   Fortnightly QC Findings Report: two weeks of findings from all three
-   programs in one Outlook-safe email. Tables and inline styles only,
-   because Outlook renders mail through Word.
+   QC Findings Report: every finding currently flagged ready, from all
+   three programs, in one Outlook-safe email. Tables and inline styles
+   only, because Outlook renders mail through Word. Nothing is selected
+   by date — each collection carries its own ready/hold status.
    Section colours follow the workspace palette: the heavy blue of the
    header, the gold accent, and a saturated version of the page sage.
    =================================================================== */
@@ -4646,7 +4648,17 @@ if (metricsBtn) {
   if (!$f('fri-build')) return;
   const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const BLUE = '#1e4d6b', GOLD = '#F1CC13', SAGE = '#6f7d3c';
-  let html = '', plain = '', fname = 'Fortnightly_QC_Findings_Report.html';
+  let html = '', plain = '', fname = 'QC_Findings_Report.html';
+  // Picks a finding up by status, not by date.
+  const F_LA = 'state = "Findings"';
+  const F_CS = 'issued = "Ready"', F_CS_ALL = '(issued = "Ready" || issued = "Hold")';
+  const F_DQ = 'qualityConcur = false && issued = "Ready"';
+  const F_DQ_ALL = 'qualityConcur = false && (issued = "Ready" || issued = "Hold")';
+  const todayISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+  // A due date that has gone by is worth more as a warning than as a date.
+  const pastDue = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return false;
+    return (m[1] + '-' + m[2] + '-' + m[3]) < todayISO(); };
+  const dueText = v => !String(v || '').trim() ? 'Not set' : pastDue(v) ? 'PAST DUE' : day(v);
 
   function say(msg, bad) { const el = $f('fri-status'); el.textContent = msg; el.style.color = bad ? '#a32f58' : '#216b50'; }
   function paint(h) { const f = $f('fri-preview'); const d = f.contentDocument || f.contentWindow.document; d.open(); d.write(h); d.close(); }
@@ -4761,23 +4773,19 @@ if (metricsBtn) {
   }
 
   async function build() {
-    const a = $f('fri-start').value, b = $f('fri-end').value;
-    if (!a || !b) { say('Pick both dates.', true); return; }
-    if (a > b) { say('The From date is after the To date.', true); return; }
-    const lo = a + ' 00:00:00.000Z', hi = b + ' 23:59:59.999Z';
+    const a = todayISO();
     say('Gathering findings…');
     ['fri-copy', 'fri-download'].forEach(id => $f(id).disabled = true);
     try {
       const [la, cs, dq, ck] = await Promise.all([
-        getAll('loan_action_reviews', 'findingIssuedOn >= "' + lo + '" && findingIssuedOn <= "' + hi + '"', '-findingIssuedOn'),
-        getAll('customer_service', 'updated >= "' + lo + '" && updated <= "' + hi + '"', '-updated'),
-        getAll('delinquency', 'fileReview >= "' + lo + '" && fileReview <= "' + hi + '" && qualityConcur = false', '-fileReview'),
+        getAll('loan_action_reviews', F_LA, '-findingIssuedOn'),
+        getAll('customer_service', F_CS, '-updated'),
+        getAll('delinquency', F_DQ, '-fileReview'),
         getAll('checklists', '', '')
       ]);
       CHECKS = {};
       ck.forEach(c => { if (c.checkID) CHECKS[String(c.checkID).trim().toUpperCase()] = c; });
-      // A loan action only counts as a finding once one was actually issued.
-      const laF = la.filter(r => String(r.findingIssuedOn || '').trim());
+      const laF = la;
 
       // Each finding carries its own pair of sign-off links back into
       // #correction, so a supervisor answers from the email in one click.
@@ -4811,7 +4819,7 @@ if (metricsBtn) {
         'Loan ' + esc(r.title || 'Not recorded') + (r.loanAction ? ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.loanAction) + '</span>' : ''),
         (r.flag ? 'IMMEDIATE ATTENTION · ' : '') + (r.critical || 'Not classified'),
         [['Recommending Official', r.agent, b_(r.agent)], ['Supervisor', r.supervisor, b_(r.supervisor)],
-         ['Response due', day(r.findingDueOn), due(day(r.findingDueOn))]],
+         ['Response due', true, due(dueText(r.findingDueOn))]],
         checksOf(r), r.findingText || '', signLinks(r), '#e7eff4'))).join('');
 
       // A Genesys call links straight to the interaction, so the raw id adds
@@ -4852,8 +4860,8 @@ if (metricsBtn) {
           '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0">' +
           '<tr><td colspan="3" bgcolor="' + BLUE + '" style="background-color:' + BLUE +
           ';padding:20px 22px;border:0;mso-line-height-rule:exactly">' +
-          '<p style="margin:0;' + TXT(26, 34) + 'font-weight:bold;color:#ffffff">Fortnightly QC Findings Report</p>' +
-          '<p style="margin:5px 0 0;' + TXT(16, 22) + 'color:#cfe3ee">' + esc(long(a)) + ' &ndash; ' + esc(long(b)) + '</p>' +
+          '<p style="margin:0;' + TXT(26, 34) + 'font-weight:bold;color:#ffffff">QC Findings Report</p>' +
+          '<p style="margin:5px 0 0;' + TXT(16, 22) + 'color:#cfe3ee">Issued ' + esc(long(a)) + '</p>' +
           '</td></tr><tr>' +
           tile(laF.length, 'Loan Action', '#e8f1f6', BLUE) +
           tile(cs.length, 'Customer Service', '#fdf6d8', '#7a6300') +
@@ -4866,15 +4874,15 @@ if (metricsBtn) {
         gap(14) + band(SAGE, '#ffffff', 'Delinquency Findings', dq.length) + gap(8) +
         (dqRows || cell('0 0 10px', none('delinquency findings'))) +
         cell('18px 0 0', '<p style="margin:0;' + TXT(14, 20) + 'font-style:italic;color:#777">' +
-          esc(total + ' finding' + (total === 1 ? '' : 's') + ' between ' + long(a) + ' and ' + long(b) + '.') + '</p>') +
+          esc(total + ' finding' + (total === 1 ? '' : 's') + ' issued ' + long(a) + '.') + '</p>') +
         '</table></body></html>';
 
       const flat = (title, rows, fmt) => [title.toUpperCase(), ...(rows.length ? rows.map(fmt) : ['  none'])].join('\n');
-      plain = ['FORTNIGHTLY QC FINDINGS REPORT', long(a) + ' – ' + long(b), '',
+      plain = ['QC FINDINGS REPORT', 'Issued ' + long(a), '',
         flat('Loan Action Findings (' + laF.length + ')', laF, r => '  ' + (r.title || '?') + ' · ' + (r.loanAction || '') + ' · ' + (r.findingText || '')), '',
         flat('Customer Service Findings (' + cs.length + ')', cs, r => '  ' + (r.contactID || '?') + ' · ' + (r.agent || '') + ' · ' + (r.findingText || r.findingComment || '')), '',
         flat('Delinquency Findings (' + dq.length + ')', dq, r => '  ' + (r.loanNumber || '?') + ' · ' + (r.group || '') + ' · ' + (r.qualityNotes || ''))].join('\n');
-      fname = 'Fortnightly_QC_Findings_' + a + '_to_' + b + '.html';
+      fname = 'QC_Findings_' + a + '.html';
       paint(html);
       ['fri-copy', 'fri-download'].forEach(id => $f(id).disabled = false);
       say(total + ' finding' + (total === 1 ? '' : 's') + ': ' + laF.length + ' loan action, ' + cs.length + ' customer service, ' + dq.length + ' delinquency.');
@@ -4884,6 +4892,75 @@ if (metricsBtn) {
     }
   }
 
+  // ---- Stack: what would go out, and what could -------------------------
+  // Deliberately plain. It is read on screen to judge whether there is
+  // enough to send, so it is a list, not an email.
+  async function stack() {
+    say('Stacking…');
+    ['fri-copy', 'fri-download'].forEach(id => $f(id).disabled = true);
+    try {
+      const [la, cs, dq] = await Promise.all([
+        getAll('loan_action_reviews', F_LA, '-findingIssuedOn'),
+        getAll('customer_service', F_CS_ALL, '-updated'),
+        getAll('delinquency', F_DQ_ALL, '-fileReview')
+      ]);
+      const S = 'font-family:Calibri,Segoe UI,sans-serif';
+      const chip = v => {
+        const k = String(v || 'Ready');
+        const c = /hold/i.test(k) ? ['#fdf0d2', '#7a5a00'] : ['#e4efe4', '#2f6b3f'];
+        return '<span style="background:' + c[0] + ';color:' + c[1] +
+          ';padding:2px 8px;border-radius:9px;font-size:11px;font-weight:700;white-space:nowrap">' + esc(k) + '</span>';
+      };
+      const section = (bg, fg, label, rows, cols) => {
+        const ready = rows.filter(r => !/hold/i.test(String(r.__s || 'Ready'))).length;
+        const hold = rows.length - ready;
+        return '<div style="margin:22px 0 0">' +
+          '<div style="background:' + bg + ';color:' + fg + ';padding:10px 14px;font-size:16px;font-weight:700;' +
+            'display:flex;justify-content:space-between;align-items:center">' +
+            '<span>' + esc(label) + '</span><span style="font-size:13px;font-weight:600">' +
+            ready + ' ready' + (hold ? ' &middot; ' + hold + ' on hold' : '') + '</span></div>' +
+          (rows.length ? '<table style="width:100%;border-collapse:collapse;' + S + ';font-size:13px">' +
+            '<tr style="background:#f2f5f7;color:#5a6b80;text-align:left">' +
+              '<th style="padding:6px 10px;font-weight:600;width:120px">Loan</th>' +
+              '<th style="padding:6px 10px;font-weight:600;width:140px">Reviewer</th>' +
+              '<th style="padding:6px 10px;font-weight:600;width:110px">' + esc(cols) + '</th>' +
+              '<th style="padding:6px 10px;font-weight:600">Finding</th></tr>' +
+            rows.map(r => '<tr style="border-bottom:1px solid #e6ebee;vertical-align:top">' +
+              '<td style="padding:7px 10px;font-weight:700;color:#1e2a3a">' + esc(r.__loan || 'Not recorded') + '</td>' +
+              '<td style="padding:7px 10px;color:#3f4b5b">' + esc(r.__rev || '—') + '</td>' +
+              '<td style="padding:7px 10px">' + r.__when + '</td>' +
+              '<td style="padding:7px 10px;color:#3f4b5b">' + esc(r.__txt || '') + '</td></tr>').join('') +
+            '</table>'
+            : '<p style="' + S + ';font-size:13px;font-style:italic;color:#888;padding:10px 14px;margin:0">Nothing waiting.</p>') +
+          '</div>';
+      };
+      const laR = la.map(r => ({ __loan: r.title, __rev: r.reviewer, __s: 'Ready', __txt: r.findingText,
+        __when: pastDue(r.findingDueOn) ? '<strong style="color:#c0392b">PAST DUE</strong>' : esc(day(r.findingDueOn) || 'Not set') }));
+      const csR = cs.map(r => ({ __loan: r.loanNumber || r.contactID, __rev: r.reviewer, __s: r.issued,
+        __txt: r.findingText || r.findingComment, __when: chip(r.issued) }));
+      const dqR = dq.map(r => ({ __loan: r.loanNumber, __rev: r.reviewer, __s: r.issued,
+        __txt: r.qualityNotes, __when: chip(r.issued) }));
+      const all = laR.length + csR.length + dqR.length;
+      const rdy = laR.length + csR.filter(r => !/hold/i.test(String(r.__s || ''))).length +
+                  dqR.filter(r => !/hold/i.test(String(r.__s || ''))).length;
+      paint('<html><head><meta charset="utf-8"></head>' +
+        '<body style="margin:0;padding:18px;background:#fff;font-family:Calibri,Segoe UI,sans-serif">' +
+        '<div style="font-size:21px;font-weight:700;color:#1e2a3a">Stack</div>' +
+        '<div style="font-size:13px;color:#5a6b80;margin-top:3px">' + rdy + ' ready to report, ' +
+          (all - rdy) + ' on hold, ' + all + ' in total.</div>' +
+        section(BLUE, '#fff', 'Loan Action', laR, 'Response due') +
+        section(GOLD, '#1e2a3a', 'Customer Service', csR, 'Status') +
+        section(SAGE, '#fff', 'Delinquency', dqR, 'Status') +
+        '</body></html>');
+      say(rdy + ' ready, ' + (all - rdy) + ' on hold — ' + laR.length + ' loan action, ' +
+        csR.length + ' customer service, ' + dqR.length + ' delinquency.');
+    } catch (e) {
+      say('Could not build the stack. ' + e.message, true);
+      paint('<p style="font-family:sans-serif;padding:20px;color:#a32f58">' + esc(e.message) + '</p>');
+    }
+  }
+
+  $f('fri-stack').addEventListener('click', stack);
   $f('fri-build').addEventListener('click', build);
   $f('fri-copy').addEventListener('click', () => {
     try {
@@ -4902,19 +4979,12 @@ if (metricsBtn) {
     say('Downloaded.');
   });
 
-  // Default window: the last two weeks ending today.
-  (function seed() {
-    const now = new Date(), start = new Date(now);
-    start.setDate(now.getDate() - 13);
-    const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-    $f('fri-start').value = iso(start); $f('fri-end').value = iso(now);
-  })();
 })();
 
 </script>
 <script>
 /* ===================================================================
-   #correction — a standalone sign-off form reached from the fortnightly
+   #correction — a standalone sign-off form reached from the findings
    email. Deliberately narrow so it reads well in a small window, and
    self-contained: it loads one record, takes the response, and writes
    straight back to loan_action_reviews.
