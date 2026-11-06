@@ -1695,7 +1695,7 @@ disconnectedPresentation();
     <p class="del-hint">Each generator below builds a self-contained HTML report ready to paste into an email.</p>
 
     <section class="rpt-block">
-      <h3>Friday Findings Report <span class="rpt-tag">Two weeks, all three programs</span></h3>
+      <h3>Fortnightly Findings Report <span class="rpt-tag">Two weeks, all three programs</span></h3>
       <p class="desc">Gathers every finding raised in the window from <code>loan_action_reviews</code>, <code>customer_service</code> and <code>delinquency</code> into one Outlook-ready email, sectioned by program.
         Each collection is dated on its own field &mdash; loan actions by <code>findingIssuedOn</code>, customer service reviews by <code>updated</code>, and delinquency files by <code>fileReview</code>.</p>
       <div class="qa-actions" style="margin-top:0">
@@ -1706,7 +1706,7 @@ disconnectedPresentation();
         <button class="btn" id="fri-download" disabled>Download HTML</button>
         <span id="fri-status" style="font-size:12px;color:var(--muted)"></span>
       </div>
-      <iframe id="fri-preview" title="Friday findings report preview" style="width:100%;height:640px;border:1px solid var(--line);border-radius:8px;background:white;margin-top:12px"></iframe>
+      <iframe id="fri-preview" title="Fortnightly findings report preview" style="width:100%;height:640px;border:1px solid var(--line);border-radius:8px;background:white;margin-top:12px"></iframe>
     </section>
   </div>
 </div>
@@ -4578,7 +4578,7 @@ if (metricsBtn) {
 </script>
 <script>
 /* ===================================================================
-   Friday Findings Report: two weeks of findings from all three
+   Fortnightly Findings Report: two weeks of findings from all three
    programs in one Outlook-safe email. Tables and inline styles only,
    because Outlook renders mail through Word.
    Section colours follow the workspace palette: the heavy blue of the
@@ -4589,7 +4589,7 @@ if (metricsBtn) {
   if (!$f('fri-build')) return;
   const esc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const BLUE = '#1e4d6b', GOLD = '#F1CC13', SAGE = '#6f7d3c';
-  let html = '', plain = '', fname = 'Friday_Findings_Report.html';
+  let html = '', plain = '', fname = 'Fortnightly_Findings_Report.html';
 
   function say(msg, bad) { const el = $f('fri-status'); el.textContent = msg; el.style.color = bad ? '#a32f58' : '#216b50'; }
   function paint(h) { const f = $f('fri-preview'); const d = f.contentDocument || f.contentWindow.document; d.open(); d.write(h); d.close(); }
@@ -4704,7 +4704,7 @@ if (metricsBtn) {
         '<table cellspacing="0" cellpadding="0" width="820" align="center" style="width:820px;border-collapse:collapse;margin:0 auto"><tr><td>' +
         '<table cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse">' +
           '<tr><td style="background:' + BLUE + ';padding:14pt 16pt">' +
-          '<p style="margin:0;font-family:Calibri,sans-serif;font-size:19pt;font-weight:bold;color:#ffffff">Friday Findings Report</p>' +
+          '<p style="margin:0;font-family:Calibri,sans-serif;font-size:19pt;font-weight:bold;color:#ffffff">Fortnightly Findings Report</p>' +
           '<p style="margin:4pt 0 0;font-family:Calibri,sans-serif;font-size:12pt;color:#cfe3ee">' + esc(long(a)) + ' – ' + esc(long(b)) + '</p>' +
           '</td></tr></table>' +
         '<table cellspacing="0" cellpadding="0" width="100%" style="width:100%;border-collapse:collapse;margin:10px 0 0"><tr>' +
@@ -4722,11 +4722,11 @@ if (metricsBtn) {
         '</td></tr></table></body></html>';
 
       const flat = (title, rows, fmt) => [title.toUpperCase(), ...(rows.length ? rows.map(fmt) : ['  none'])].join('\n');
-      plain = ['FRIDAY FINDINGS REPORT', long(a) + ' – ' + long(b), '',
+      plain = ['FORTNIGHTLY FINDINGS REPORT', long(a) + ' – ' + long(b), '',
         flat('Loan Action Findings (' + laF.length + ')', laF, r => '  ' + (r.title || '?') + ' · ' + (r.loanAction || '') + ' · ' + (r.findingText || '')), '',
         flat('Customer Service Findings (' + cs.length + ')', cs, r => '  ' + (r.contactID || '?') + ' · ' + (r.agent || '') + ' · ' + (r.findingText || r.findingComment || '')), '',
         flat('Delinquency Findings (' + dq.length + ')', dq, r => '  ' + (r.loanNumber || '?') + ' · ' + (r.group || '') + ' · ' + (r.qualityNotes || ''))].join('\n');
-      fname = 'Friday_Findings_' + a + '_to_' + b + '.html';
+      fname = 'Fortnightly_Findings_' + a + '_to_' + b + '.html';
       paint(html);
       ['fri-copy', 'fri-download'].forEach(id => $f(id).disabled = false);
       say(total + ' finding' + (total === 1 ? '' : 's') + ': ' + laF.length + ' loan action, ' + cs.length + ' customer service, ' + dq.length + ' delinquency.');
