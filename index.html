@@ -4738,11 +4738,13 @@ if (metricsBtn) {
   function band(bg, fg, title, n) {
     const vml = '<!--[if mso]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" ' +
       'xmlns:w="urn:schemas-microsoft-com:office:word" fill="true" stroke="false" ' +
-      'style="width:615pt;height:34pt;v-text-anchor:middle"><v:fill color="' + bg + '"/>' +
-      '<v:textbox inset="13pt,0,13pt,0"><center>' +
+      'style="width:615pt;height:34pt"><v:fill color="' + bg + '"/>' +
+      // v-text-anchor only centres plain text, not a table, so the top inset
+      // does the centring instead: (34pt shape - 17pt line) / 2.
+      '<v:textbox inset="13pt,8.5pt,13pt,0"><center>' +
       '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%"><tr>' +
-      '<td style="' + FF + 'font-size:14pt;font-weight:bold;color:' + fg + '">' + esc(title) + '</td>' +
-      '<td align="right" style="' + FF + 'font-size:13pt;font-weight:bold;color:' + fg + '">(' + n + ')</td>' +
+      '<td valign="middle" style="' + FF + 'font-size:14pt;font-weight:bold;color:' + fg + '">' + esc(title) + '</td>' +
+      '<td valign="middle" align="right" style="' + FF + 'font-size:13pt;font-weight:bold;color:' + fg + '">(' + n + ')</td>' +
       '</tr></table></center></v:textbox></v:rect><![endif]-->';
     const t = 'bgcolor="' + bg + '" height="45" style="height:45px;padding:0 13pt;line-height:45px;' +
       FF + 'font-weight:bold;color:' + fg + ';';
