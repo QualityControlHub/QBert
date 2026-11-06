@@ -4729,12 +4729,29 @@ if (metricsBtn) {
       '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse">' + rows + '</table>' +
       '</td></tr></table>';
   }
-  // The section bar is a row of the outer table rather than a table of its
-  // own: one less level for Word to reconcile, and the fill is one cell shade.
+  // The section bar, same trick as the sign-off buttons: Word draws it as its
+  // own shape, so there is no cell and no padding region for it to shade
+  // separately, which is what left the white rule across the bar. Every other
+  // client gets the table below it. The fallback carries no vertical padding
+  // either — the height comes from line-height — so even a client that skips
+  // the conditional has nothing to seam.
   function band(bg, fg, title, n) {
-    const t = 'bgcolor="' + bg + '" valign="middle" style="padding:10pt 13pt;' + FF + 'font-weight:bold;color:' + fg + ';';
-    return '<tr><td width="85%" ' + t + 'width:85%;font-size:14pt">' + esc(title) + '</td>' +
-      '<td width="15%" align="right" ' + t + 'width:15%;font-size:13pt">' + n + '</td></tr>';
+    const vml = '<!--[if mso]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" ' +
+      'xmlns:w="urn:schemas-microsoft-com:office:word" fill="true" stroke="false" ' +
+      'style="width:615pt;height:34pt;v-text-anchor:middle"><v:fill color="' + bg + '"/>' +
+      '<v:textbox inset="13pt,0,13pt,0"><center>' +
+      '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%"><tr>' +
+      '<td style="' + FF + 'font-size:14pt;font-weight:bold;color:' + fg + '">' + esc(title) + '</td>' +
+      '<td align="right" style="' + FF + 'font-size:13pt;font-weight:bold;color:' + fg + '">(' + n + ')</td>' +
+      '</tr></table></center></v:textbox></v:rect><![endif]-->';
+    const t = 'bgcolor="' + bg + '" height="45" style="height:45px;padding:0 13pt;line-height:45px;' +
+      FF + 'font-weight:bold;color:' + fg + ';';
+    const plain = '<!--[if !mso]><!--><table cellspacing="0" cellpadding="0" width="100%" border="0" ' +
+      'style="width:100%;border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0"><tr>' +
+      '<td width="85%" ' + t + 'width:85%;font-size:14pt">' + esc(title) + '</td>' +
+      '<td width="15%" align="right" ' + t + 'width:15%;font-size:13pt">(' + n + ')</td>' +
+      '</tr></table><!--<![endif]-->';
+    return '<tr><td colspan="2" style="padding:0">' + vml + plain + '</td></tr>';
   }
   function none(what) {
     return '<p style="margin:0;' + FF + 'font-size:11pt;font-style:italic;color:#777">No ' + what + ' in this window.</p>';
