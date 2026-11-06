@@ -2599,6 +2599,12 @@ function delCard(r) {
         safe(c.checkID || '') + '</span> ' + safe(c.check || '') + '</span></label>').join('')
     : '<span class="g-none">No DELINQUENCY checks found in the checklists collection.</span>';
   const i = id => 'd-' + id + '-' + r.id;
+  // These cards only ever draw files that have never been reviewed, so a
+  // qualityConcur sitting on the record came in with the import, not from a
+  // reviewer. Honour it only once there is a fileReview date behind it;
+  // otherwise the card opens on Concur.
+  const reviewed = !!String(r.fileReview || '').trim();
+  const isNon = reviewed && r.qualityConcur === false;
   return '<div class="del-card" data-rec="' + safe(r.id) + '">' +
     '<div class="del-head"><h4>' + safe(r.loanNumber || 'No loan number') + '</h4>' +
       '<span class="who">' + safe(r.borrowerName || 'Name not recorded') + '</span>' +
@@ -2612,7 +2618,7 @@ function delCard(r) {
       '<div class="del-f"><label for="' + i('fr') + '">File Review date</label><input type="date" class="del-fr" id="' + i('fr') + '" value="' + safe(String(r.fileReview || '').slice(0, 10) || delToday()) + '"></div>' +
       '<div class="del-f"><label for="' + i('rev') + '">Reviewer</label>' +
         '<select id="' + i('rev') + '" data-reviewer>' + delStaffOptions(r.reviewer || '') + '</select></div>' +
-      '<div class="del-f" data-issued-wrap' + (r.qualityConcur === false ? '' : ' style="display:none"') + '>' +
+      '<div class="del-f" data-issued-wrap' + (isNon ? '' : ' style="display:none"') + '>' +
         '<label for="' + i('iss') + '">Issued?</label><select id="' + i('iss') + '" data-issued>' +
         DEL_ISSUED.map(o => '<option' + (o === (r.issued || 'Ready') ? ' selected' : '') + '>' + o + '</option>').join('') +
         '</select></div>' +
@@ -2625,8 +2631,8 @@ function delCard(r) {
       '<div class="del-f del-full"><label for="' + i('finding') + '">Finding / Notes</label><textarea id="' + i('finding') + '">' + safe(r.findingText || r.qualityNotes || '') + '</textarea></div>' +
     '</div>' +
     '<div class="del-act"><div class="del-concur">' +
-      '<label><input type="radio" onchange="delToggleIssued(this)" name="' + i('concur') + '" value="true"' + (r.qualityConcur === false ? '' : ' checked') + '> Concur</label>' +
-      '<label><input type="radio" onchange="delToggleIssued(this)" name="' + i('concur') + '" value="false"' + (r.qualityConcur === false ? ' checked' : '') + '> Non Concur</label>' +
+      '<label><input type="radio" onchange="delToggleIssued(this)" name="' + i('concur') + '" value="true"' + (isNon ? '' : ' checked') + '> Concur</label>' +
+      '<label><input type="radio" onchange="delToggleIssued(this)" name="' + i('concur') + '" value="false"' + (isNon ? ' checked' : '') + '> Non Concur</label>' +
     '</div><button class="btn primary" onclick="delSave(this)">Save Review</button>' +
     '<span class="st" id="' + i('st') + '"></span></div>' +
   '</div>';
