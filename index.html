@@ -4696,67 +4696,68 @@ if (metricsBtn) {
   // otherwise adds 8pt of space after it inside the cell.
   const FF = 'font-family:Calibri,sans-serif;';
   const EXACT = 'margin:0;line-height:100%;mso-line-height-rule:exactly;';
-  // Word takes a cell's fill from the bgcolor attribute and a paragraph's fill
-  // from CSS background. Setting both made it shade the text line one way and
-  // the bottom padding the other, and the hairline between the two is the
-  // white rule that kept showing up. So: bgcolor only, never CSS background.
+  // Everything below is sized in whole pixels with an explicit
+  // mso-line-height-rule:exactly. Word paints a text line and the fill behind
+  // it as two regions, and at a fractional line height (which every pt value
+  // produced) it leaves a 1px white gap at the boundary — the rule that kept
+  // appearing under the button text and the checklist text. Integer pixels
+  // with an exact line-height rule give it nothing to round.
+  const TXT = (size, lh) => FF + 'font-size:' + size + 'px;mso-line-height-rule:exactly;line-height:' + lh + 'px;';
   const cell = (pad, inner, bg, span) => '<tr><td colspan="' + (span || 2) + '"' + (bg ? ' bgcolor="' + bg + '"' : '') +
-    ' style="padding:' + pad + '">' + inner + '</td></tr>';
-  const gap = h => '<tr><td colspan="2" height="' + h + '" style="height:' + h + 'px;font-size:1pt;line-height:1pt">&nbsp;</td></tr>';
+    ' style="' + (bg ? 'background-color:' + bg + ';' : '') + 'padding:' + pad + ';mso-line-height-rule:exactly">' + inner + '</td></tr>';
+  const gap = h => '<tr><td colspan="2" height="' + h + '" style="height:' + h +
+    'px;font-size:1px;mso-line-height-rule:exactly;line-height:1px">&nbsp;</td></tr>';
 
   function block(accent, headLeft, headRight, facts, checks, body, extra, tint) {
-    const header = '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse">' +
-      '<tr><td valign="bottom" style="padding:0"><p style="margin:0;' + FF + 'font-size:12pt;font-weight:bold;color:#1e2a3a">' + headLeft + '</p></td>' +
-      (headRight ? '<td valign="bottom" align="right" style="padding:0 0 0 14pt"><p style="margin:0;' + FF +
-        'font-size:10pt;color:#5a6b80;white-space:nowrap">' + esc(headRight) + '</p></td>' : '') +
+    const header = '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;border:0">' +
+      '<tr><td valign="bottom" style="padding:0;border:0"><p style="margin:0;' + TXT(16, 22) + 'font-weight:bold;color:#1e2a3a">' + headLeft + '</p></td>' +
+      (headRight ? '<td valign="bottom" align="right" style="padding:0 0 0 18px;border:0"><p style="margin:0;' + TXT(14, 20) +
+        'color:#5a6b80;white-space:nowrap">' + esc(headRight) + '</p></td>' : '') +
       '</tr></table>';
     const factRow = facts.filter(f => f[1]).map(f =>
-      '<tr><td valign="top" style="padding:1pt 12pt 1pt 0"><p style="margin:0;' + FF +
-        'font-size:10.5pt;color:#5a6b80;white-space:nowrap">' + esc(f[0]) + '</p></td>' +
-      '<td valign="top" style="padding:1pt 0"><p style="margin:0;' + FF +
-        'font-size:10.5pt;color:#1e2a3a">' + f[2] + '</p></td></tr>').join('');
-    let rows = cell('0 0 6pt', header, '', 1);
-    if (factRow) rows += cell('0 0 7pt',
-      '<table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse">' + factRow + '</table>', '', 1);
-    if (checks.length) rows += cell('6pt 9pt',
-      '<p style="margin:0;' + FF + 'font-size:10pt;color:#3f4b5b;line-height:1.4">' +
+      '<tr><td valign="top" style="padding:2px 16px 2px 0;border:0"><p style="margin:0;' + TXT(14, 20) +
+        'color:#5a6b80;white-space:nowrap">' + esc(f[0]) + '</p></td>' +
+      '<td valign="top" style="padding:2px 0;border:0"><p style="margin:0;' + TXT(14, 20) +
+        'color:#1e2a3a">' + f[2] + '</p></td></tr>').join('');
+    let rows = cell('0 0 8px', header, '', 1);
+    if (factRow) rows += cell('0 0 10px',
+      '<table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;border:0">' + factRow + '</table>', '', 1);
+    if (checks.length) rows += cell('8px 12px',
+      '<p style="margin:0;' + TXT(14, 20) + 'color:#3f4b5b">' +
       checks.map(c => '&bull;&nbsp; ' + esc(c)).join('<br>') + '</p>', tint || '#eef1f4', 1);
-    if (body) rows += cell('10pt 0 3pt',
-      '<p style="margin:0;' + FF + 'font-size:11pt;color:#1e2a3a;line-height:1.4">' + esc(body) + '</p>', '', 1);
-    if (extra) rows += cell('9pt 0 0', extra, '', 1);
+    if (body) rows += cell('14px 0 4px',
+      '<p style="margin:0;' + TXT(16, 22) + 'color:#1e2a3a">' + esc(body) + '</p>', '', 1);
+    if (extra) rows += cell('12px 0 0', extra, '', 1);
     return '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0">' +
-      '<tr><td bgcolor="#f7f9fa" style="border-left:4px solid ' + accent + ';padding:9pt 11pt">' +
-      '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse">' + rows + '</table>' +
+      '<tr><td bgcolor="#f7f9fa" style="background-color:#f7f9fa;border-left:4px solid ' + accent + ';padding:12px 16px;mso-line-height-rule:exactly">' +
+      '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;border:0">' + rows + '</table>' +
       '</td></tr></table>';
   }
-  // The section bar, same trick as the sign-off buttons: Word draws it as its
-  // own shape, so there is no cell and no padding region for it to shade
-  // separately, which is what left the white rule across the bar. Every other
-  // client gets the table below it. The fallback carries no vertical padding
-  // either — the height comes from line-height — so even a client that skips
-  // the conditional has nothing to seam.
+  // The section bar is drawn by Word as its own shape, which sidesteps the
+  // text-line seam entirely. It carries no link, so there is nothing for
+  // Outlook to drop on send. Every other client gets the table below it.
   function band(bg, fg, title, n) {
     const vml = '<!--[if mso]><v:rect xmlns:v="urn:schemas-microsoft-com:vml" ' +
-      'xmlns:w="urn:schemas-microsoft-com:office:word" fill="true" stroke="false" ' +
+      'xmlns:w="urn:schemas-microsoft-com:office:word" fill="true" stroke="false" stroked="false" ' +
       'style="width:615pt;height:34pt"><v:fill color="' + bg + '"/>' +
       // v-text-anchor only centres plain text, not a table, so the top inset
       // does the centring instead: (34pt shape - 17pt line) / 2.
       '<v:textbox inset="13pt,8.5pt,13pt,0"><center>' +
-      '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%"><tr>' +
-      '<td valign="middle" style="' + FF + 'font-size:14pt;font-weight:bold;color:' + fg + '">' + esc(title) + '</td>' +
-      '<td valign="middle" align="right" style="' + FF + 'font-size:13pt;font-weight:bold;color:' + fg + '">(' + n + ')</td>' +
+      '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border:0"><tr>' +
+      '<td valign="middle" style="border:0;' + TXT(20, 24) + 'font-weight:bold;color:' + fg + '">' + esc(title) + '</td>' +
+      '<td valign="middle" align="right" style="border:0;' + TXT(18, 24) + 'font-weight:bold;color:' + fg + '">(' + n + ')</td>' +
       '</tr></table></center></v:textbox></v:rect><![endif]-->';
-    const t = 'bgcolor="' + bg + '" height="45" style="height:45px;padding:0 13pt;line-height:45px;' +
-      FF + 'font-weight:bold;color:' + fg + ';';
+    const t = 'bgcolor="' + bg + '" height="46" style="background-color:' + bg + ';height:46px;padding:0 18px;' +
+      'mso-line-height-rule:exactly;line-height:46px;' + FF + 'font-weight:bold;border:0;color:' + fg + ';';
     const plain = '<!--[if !mso]><!--><table cellspacing="0" cellpadding="0" width="100%" border="0" ' +
       'style="width:100%;border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0"><tr>' +
-      '<td width="85%" ' + t + 'width:85%;font-size:14pt">' + esc(title) + '</td>' +
-      '<td width="15%" align="right" ' + t + 'width:15%;font-size:13pt">(' + n + ')</td>' +
+      '<td width="85%" ' + t + 'width:85%;font-size:20px">' + esc(title) + '</td>' +
+      '<td width="15%" align="right" ' + t + 'width:15%;font-size:18px">(' + n + ')</td>' +
       '</tr></table><!--<![endif]-->';
-    return '<tr><td colspan="2" style="padding:0">' + vml + plain + '</td></tr>';
+    return '<tr><td colspan="2" style="padding:0;border:0">' + vml + plain + '</td></tr>';
   }
   function none(what) {
-    return '<p style="margin:0;' + FF + 'font-size:11pt;font-style:italic;color:#777">No ' + what + ' in this window.</p>';
+    return '<p style="margin:0;' + TXT(15, 22) + 'font-style:italic;color:#777">No ' + what + ' in this window.</p>';
   }
 
   async function build() {
@@ -4785,29 +4786,28 @@ if (metricsBtn) {
         const url = base + '#signoff=' + encodeURIComponent(r.id);
         // Word drops background on an inline <a> and ignores border-radius, so
         // the fill lives on a bgcolor cell and the corners stay square there.
-        // These have to be real text hyperlinks. A VML shape renders well but
-        // loses its href when Outlook sends the message — it survives in the
-        // draft and arrives dead — so the button is an ordinary cell with an
-        // <a> in it. Both are pale on purpose: Word sometimes draws a hairline
-        // where a cell's text line meets its padding, and on a light fill that
-        // line is invisible, where on a solid dark one it was obvious.
+        // Real text hyperlinks: a VML shape keeps its look but loses its href
+        // when Outlook sends the message. The cell and the link both carry an
+        // exact 20px line height so Word has no fractional text line to leave
+        // a white gap under, and both fills are pale so any gap it still
+        // leaves is invisible rather than a rule across a dark button.
         const pill = (href, text, bg, fg, br, wide) =>
-          '<td valign="top" style="padding:0">' +
-          '<table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse">' +
-          '<tr><td bgcolor="' + bg + '" align="center" valign="middle" style="border:' + (wide ? '2px' : '1px') +
-          ' solid ' + br + ';border-radius:4px;padding:7pt 14pt;' + FF +
-          'font-size:10.5pt;font-weight:bold;letter-spacing:.3px">' +
-          '<a href="' + esc(href) + '" style="color:' + fg + ';text-decoration:none">' + esc(text) +
-          '</a></td></tr></table></td>';
+          '<td valign="top" style="padding:0;border:0">' +
+          '<table cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate;border-spacing:0;border:0">' +
+          '<tr><td bgcolor="' + bg + '" align="center" valign="middle" style="background-color:' + bg +
+          ';border:' + (wide ? '2px' : '1px') + ' solid ' + br + ';border-radius:4px;padding:10px 18px;' +
+          'mso-padding-alt:10px 18px 10px 18px;' + TXT(14, 20) + 'font-weight:bold;letter-spacing:.3px">' +
+          '<a href="' + esc(href) + '" style="color:' + fg + ';text-decoration:none;' + TXT(14, 20) +
+          'font-weight:bold">' + esc(text) + '</a></td></tr></table></td>';
         return '<table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse"><tr>' +
           pill(url, ((r.supervisor || 'SUPERVISOR').toUpperCase()) + ' SIGN OFF', '#e3eef5', BLUE, BLUE, true) +
-          '<td width="12" style="width:12px;font-size:1pt;line-height:1pt">&nbsp;</td>' +
+          '<td width="12" style="width:12px;border:0;font-size:1px;mso-line-height-rule:exactly;line-height:1px">&nbsp;</td>' +
           pill(url + '&as=other', 'OTHER SLS TO SIGN OFF', '#ffffff', BLUE, '#9bbccd') +
         '</tr></table>';
       };
       const b_ = v => '<strong>' + esc(v) + '</strong>';
       const due = v => '<strong style="color:#c0392b">' + esc(v) + '</strong>';
-      const laRows = laF.map(r => cell('0 0 7pt', block(BLUE,
+      const laRows = laF.map(r => cell('0 0 10px', block(BLUE,
         'Loan ' + esc(r.title || 'Not recorded') + (r.loanAction ? ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.loanAction) + '</span>' : ''),
         (r.flag ? 'IMMEDIATE ATTENTION · ' : '') + (r.critical || 'Not classified'),
         [['Recommending Official', r.agent, b_(r.agent)], ['Supervisor', r.supervisor, b_(r.supervisor)],
@@ -4824,41 +4824,48 @@ if (metricsBtn) {
         }
         return esc(r.type || 'Contact') + ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.contactID || 'No ID') + '</span>';
       };
-      const csRows = cs.map(r => cell('0 0 7pt', block(GOLD, csHead(r), day(r.updated),
+      const csRows = cs.map(r => cell('0 0 10px', block(GOLD, csHead(r), day(r.updated),
         [['Agent', r.agent, b_(r.agent)], ['Supervisor', r.supervisor, b_(r.supervisor)],
          ['Team', r.team, b_(r.team)], ['Loan number', r.loanNumber, b_(r.loanNumber)]],
         checksOf(r, 'checkFailed'), r.findingText || r.findingComment || '', '', '#f6eed2'))).join('');
 
-      const dqRows = dq.map(r => cell('0 0 7pt', block(SAGE,
+      const dqRows = dq.map(r => cell('0 0 10px', block(SAGE,
         'Loan ' + esc(r.loanNumber || 'Not recorded') + (r.borrowerName ? ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.borrowerName) + '</span>' : ''),
         r.daysPastDue == null ? '' : r.daysPastDue + ' days past due',
         [['Group', r.group, b_(r.group)], ['Reviewed', day(r.fileReview), b_(day(r.fileReview))]],
         checksOf(r), r.qualityNotes || '', '', '#e9ecde'))).join('');
 
       const total = laF.length + cs.length + dq.length;
-      const tile = (n, lab, bg, fg) => '<td width="33%" align="center" bgcolor="' + bg + '" style="width:33%;padding:12pt 8pt">' +
-        '<p style="margin:0;' + FF + 'font-size:22pt;font-weight:bold;color:' + fg + '">' + n + '</p>' +
-        '<p style="margin:2pt 0 0;' + FF + 'font-size:9.5pt;color:' + fg + '">' + lab + '</p></td>';
+      const tile = (n, lab, bg, fg) => '<td width="33%" align="center" bgcolor="' + bg + '" style="width:33%;border:0;' +
+        'background-color:' + bg + ';padding:16px 12px;mso-line-height-rule:exactly">' +
+        '<p style="margin:0;' + TXT(30, 36) + 'font-weight:bold;color:' + fg + '">' + n + '</p>' +
+        '<p style="margin:3px 0 0;' + TXT(14, 18) + 'color:' + fg + '">' + lab + '</p></td>';
 
-      html = '<html><head><meta charset="utf-8"></head><body style="margin:0;padding:16px;background:#ffffff">' +
+      html = '<html><head><meta charset="utf-8">' +
+        '<style>table,td{border-collapse:collapse;border:0;mso-table-lspace:0;mso-table-rspace:0;' +
+        'mso-line-height-rule:exactly}a{text-decoration:none}</style>' +
+        '<!--[if mso]><style>table,td{border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0;' +
+        'mso-line-height-rule:exactly}a{text-decoration:none}</style><![endif]-->' +
+        '</head><body style="margin:0;padding:16px;background:#ffffff">' +
         '<table cellspacing="0" cellpadding="0" width="820" align="center" border="0" style="width:820px;border-collapse:collapse;margin:0 auto">' +
         cell('0',
           '<table cellspacing="0" cellpadding="0" width="100%" border="0" style="width:100%;border-collapse:collapse;mso-table-lspace:0;mso-table-rspace:0">' +
-          '<tr><td colspan="3" bgcolor="' + BLUE + '" style="padding:14pt 16pt">' +
-          '<p style="margin:0;' + FF + 'font-size:19pt;font-weight:bold;color:#ffffff">Fortnightly QC Findings Report</p>' +
-          '<p style="margin:4pt 0 0;' + FF + 'font-size:12pt;color:#cfe3ee">' + esc(long(a)) + ' &ndash; ' + esc(long(b)) + '</p>' +
+          '<tr><td colspan="3" bgcolor="' + BLUE + '" style="background-color:' + BLUE +
+          ';padding:20px 22px;border:0;mso-line-height-rule:exactly">' +
+          '<p style="margin:0;' + TXT(26, 34) + 'font-weight:bold;color:#ffffff">Fortnightly QC Findings Report</p>' +
+          '<p style="margin:5px 0 0;' + TXT(16, 22) + 'color:#cfe3ee">' + esc(long(a)) + ' &ndash; ' + esc(long(b)) + '</p>' +
           '</td></tr><tr>' +
           tile(laF.length, 'Loan Action', '#e8f1f6', BLUE) +
           tile(cs.length, 'Customer Service', '#fdf6d8', '#7a6300') +
           tile(dq.length, 'Delinquency', '#eef1e2', '#4e5a28') +
           '</tr></table>') +
         gap(14) + band(BLUE, '#ffffff', 'Loan Action Findings', laF.length) + gap(8) +
-        (laRows || cell('0 0 7pt', none('loan action findings'))) +
+        (laRows || cell('0 0 10px', none('loan action findings'))) +
         gap(14) + band(GOLD, '#1e2a3a', 'Customer Service Findings', cs.length) + gap(8) +
-        (csRows || cell('0 0 7pt', none('customer service findings'))) +
+        (csRows || cell('0 0 10px', none('customer service findings'))) +
         gap(14) + band(SAGE, '#ffffff', 'Delinquency Findings', dq.length) + gap(8) +
-        (dqRows || cell('0 0 7pt', none('delinquency findings'))) +
-        cell('14pt 0 0', '<p style="margin:0;' + FF + 'font-size:9.5pt;font-style:italic;color:#777">' +
+        (dqRows || cell('0 0 10px', none('delinquency findings'))) +
+        cell('18px 0 0', '<p style="margin:0;' + TXT(14, 20) + 'font-style:italic;color:#777">' +
           esc(total + ' finding' + (total === 1 ? '' : 's') + ' between ' + long(a) + ' and ' + long(b) + '.') + '</p>') +
         '</table></body></html>';
 
