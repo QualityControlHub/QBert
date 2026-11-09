@@ -4977,7 +4977,7 @@ if (metricsBtn) {
         return '<span style="background:' + c[0] + ';color:' + c[1] +
           ';padding:2px 8px;border-radius:9px;font-size:11px;font-weight:700;white-space:nowrap">' + esc(k) + '</span>';
       };
-      const section = (bg, fg, label, rows, cols) => {
+      const section = (bg, fg, label, rows, cols, withType) => {
         const ready = rows.filter(r => !/hold/i.test(String(r.__s || 'Ready'))).length;
         const hold = rows.length - ready;
         return '<div style="margin:22px 0 0">' +
@@ -4987,11 +4987,13 @@ if (metricsBtn) {
             ready + ' ready' + (hold ? ' &middot; ' + hold + ' on hold' : '') + '</span></div>' +
           (rows.length ? '<table style="width:100%;border-collapse:collapse;' + S + ';font-size:13px">' +
             '<tr style="background:#f2f5f7;color:#5a6b80;text-align:left">' +
+              (withType ? '<th style="padding:6px 10px;font-weight:600;width:90px">Type</th>' : '') +
               '<th style="padding:6px 10px;font-weight:600;width:120px">Loan</th>' +
               '<th style="padding:6px 10px;font-weight:600;width:140px">Reviewer</th>' +
               '<th style="padding:6px 10px;font-weight:600;width:110px">' + esc(cols) + '</th>' +
               '<th style="padding:6px 10px;font-weight:600">Finding</th></tr>' +
             rows.map(r => '<tr style="border-bottom:1px solid #e6ebee;vertical-align:top">' +
+              (withType ? '<td style="padding:7px 10px;color:#3f4b5b">' + esc(r.__type || '—') + '</td>' : '') +
               '<td style="padding:7px 10px;font-weight:700;color:#1e2a3a">' + esc(r.__loan || 'Not recorded') + '</td>' +
               '<td style="padding:7px 10px;color:#3f4b5b">' + esc(r.__rev || '—') + '</td>' +
               '<td style="padding:7px 10px">' + r.__when + '</td>' +
@@ -5002,8 +5004,8 @@ if (metricsBtn) {
       };
       const laR = la.map(r => ({ __loan: r.title, __rev: r.reviewer, __s: 'Ready', __txt: r.findingText,
         __when: pastDue(r.findingDueOn) ? '<strong style="color:#c0392b">PAST DUE</strong>' : esc(day(r.findingDueOn) || 'Not set') }));
-      const csR = cs.map(r => ({ __loan: r.loanNumber || r.contactID, __rev: r.reviewer, __s: r.issued,
-        __txt: r.findingComment, __when: chip(r.issued) }));
+      const csR = cs.map(r => ({ __type: r.type, __loan: r.loanNumber || r.contactID, __rev: r.reviewer,
+        __s: r.issued, __txt: r.findingComment, __when: chip(r.issued) }));
       const dqR = dq.map(r => ({ __loan: r.loanNumber, __rev: r.reviewer, __s: r.issued,
         __txt: r.qualityNotes, __when: chip(r.issued) }));
       const all = laR.length + csR.length + dqR.length;
@@ -5015,7 +5017,7 @@ if (metricsBtn) {
         '<div style="font-size:13px;color:#5a6b80;margin-top:3px">' + rdy + ' ready to report, ' +
           (all - rdy) + ' on hold, ' + all + ' in total.</div>' +
         section(BLUE, '#fff', 'Loan Action', laR, 'Response due') +
-        section(GOLD, '#1e2a3a', 'Customer Service', csR, 'Status') +
+        section(GOLD, '#1e2a3a', 'Customer Service', csR, 'Status', true) +
         section(SAGE, '#fff', 'Delinquency', dqR, 'Status') +
         '</body></html>');
       say(rdy + ' ready, ' + (all - rdy) + ' on hold — ' + laR.length + ' loan action, ' +
