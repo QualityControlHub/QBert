@@ -5266,6 +5266,32 @@ if (metricsBtn) {
       label: new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(a) };
   }
   const dayOf = v => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[0] : ''; };
+  // A loan action review belongs to the month it is REVIEWED in, not the month
+  // the action happened: September's actions are reviewed in October. The rest
+  // of Q-Bert already keys on reviewMonth, so the metrics have to as well, or
+  // the month's figures describe a different batch of loans than the Completed
+  // bin and the dashboard report do.
+  const MONS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const tagFor = off => { const n = new Date(); const d = new Date(Date.UTC(n.getFullYear(), n.getMonth() + off, 1));
+    return MONS[d.getUTCMonth()] + '-' + d.getUTCFullYear(); };
+  const tagLabel = t => { const m = String(t || '').match(/^([A-Za-z]{3})-(\d{4})$/); if (!m) return t || 'Not recorded';
+    const i = MONS.findIndex(x => x.toLowerCase() === m[1].toLowerCase()); if (i < 0) return t;
+    return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long', year: 'numeric' })
+      .format(new Date(Date.UTC(+m[2], i, 1))); };
+  // Same fallback the workspace uses: actionDate + 1 month when reviewMonth is
+  // missing, so records from before the backfill still land in a month.
+  const reviewTag = r => {
+    const v = String(r.reviewMonth || '').trim(); if (v) return v;
+    const m = String(r.actionDate || '').match(/^(\d{4})-(\d{2})/); if (!m) return '';
+    const d = new Date(Date.UTC(+m[1], +m[2], 1));
+    return MONS[d.getUTCMonth()] + '-' + d.getUTCFullYear();
+  };
+  const actionTag = r => {
+    const v = String(r.actionMonth || '').trim(); if (v) return v;
+    const m = String(r.actionDate || '').match(/^(\d{4})-(\d{2})/); if (!m) return '';
+    const d = new Date(Date.UTC(+m[1], +m[2] - 1, 1));
+    return MONS[d.getUTCMonth()] + '-' + d.getUTCFullYear();
+  };
   const inWin = (v, w) => { const d = dayOf(v); return !!d && d >= w.start && d < w.end; };
   const tally = (rows, fn) => {
     const m = {};
@@ -5324,6 +5350,7 @@ if (metricsBtn) {
       .concat(listOut('By team', tally(rows, r => r.team), pad))
       .concat(listOut('Most frequent checks failed', checkIds(findings), pad, 15));
   }
+  const laByMonth = (rows, pad) => listOut('By review month', tally(rows, reviewTag), pad);
 
   function csStats(rows, pad) {
     return [pad + 'Reviews with findings: ' + rows.length]
@@ -5372,9 +5399,10 @@ if (metricsBtn) {
       CHECKS = {};
       ck.forEach(c => { if (c.checkID) CHECKS[String(c.checkID).trim().toUpperCase()] = c; });
       const prev = monthWindow(-1), cur = monthWindow(0);
-      const laPrev = la.filter(r => inWin(r.actionDate, prev) || inWin(r.findingIssuedOn, prev));
-      const laPrevIssued = la.filter(r => inWin(r.findingIssuedOn, prev));
-      const laCur = la.filter(r => inWin(r.actionDate, cur) || inWin(r.findingIssuedOn, cur));
+      const prevTag = tagFor(-1), curTag = tagFor(0);
+      const laPrev = la.filter(r => reviewTag(r) === prevTag);
+      const laCur = la.filter(r => reviewTag(r) === curTag);
+      const laActionMonths = [...new Set(laPrev.map(actionTag).filter(Boolean))].sort().join(', ') || 'not recorded';
       const csPrev = cs.filter(r => inWin(r.created, prev));
       const dqPrev = dq.filter(r => inWin(r.fileReview, prev));
 
@@ -5382,17 +5410,30 @@ if (metricsBtn) {
         'QC METRICS',
         'Generated: ' + long(todayISO()),
         'Reviewer filter: ' + (rev || 'All reviewers'),
-        'Previous month: ' + prev.label + ' (' + prev.start + ' through ' + prev.end + ', exclusive)',
-        'Current month to date: ' + cur.label,
+        'Previous month: ' + tagLabel(prevTag),
+        'Current month: ' + tagLabel(curTag),
         '',
-        '=== LOAN ACTION REVIEWS — PREVIOUS MONTH (' + prev.label + ') ===',
-        '  Findings issued in the month: ' + laPrevIssued.length,
+        'HOW THE MONTHS ARE SCOPED',
+        '  Loan action reviews are counted by the month they were REVIEWED in',
+        '  (the reviewMonth field), which is the month after the loan action itself.',
+        '  So the ' + tagLabel(prevTag) + ' figures below are the reviews conducted in',
+        '  ' + tagLabel(prevTag) + ', not the actions taken in ' + tagLabel(prevTag) + '.',
+        '  Customer service is counted by the date the review was recorded, and',
+        '  delinquency by the file review date. Neither of those is month-lagged.',
+        '',
+        '=== LOAN ACTION REVIEWS — PREVIOUS MONTH (' + tagLabel(prevTag) + ') ===',
+        '  These are the reviews CONDUCTED in ' + tagLabel(prevTag) + ' (reviewMonth = ' + prevTag + ').',
+        '  They cover loan actions taken in: ' + laActionMonths + '.',
         ...laStats(laPrev, '  '),
         '',
-        '=== LOAN ACTION REVIEWS — ALL TIME ===',
+        '=== LOAN ACTION REVIEWS — ALL TIME (every month in the collection) ===',
+        '  Background only. Do not describe these records as ' + tagLabel(prevTag) + ' work.',
         ...laStats(la, '  '),
+        ...laByMonth(la, '  '),
         '',
-        '=== LOAN ACTION REVIEWS — CURRENT MONTH TO DATE (' + cur.label + ') ===',
+        '=== LOAN ACTION REVIEWS — CURRENT MONTH IN PROGRESS (' + tagLabel(curTag) + ') ===',
+        '  Not part of the previous month. This batch is still being worked and is',
+        '  listed only so it is not mistaken for ' + tagLabel(prevTag) + ' work.',
         ...laStats(laCur, '  '),
         '',
         '=== CUSTOMER SERVICE — PREVIOUS MONTH (' + prev.label + ') ===',
@@ -5410,29 +5451,53 @@ if (metricsBtn) {
 
       promptText = [
         'You are drafting a short narrative for senior management of the SBA Disaster Loan',
-        'Servicing and Liquidation Center. It opens the Quality Control Findings Report, which is circulated to',
-        'supervisors and management.',
+        'Servicing and Liquidation Center. It opens the Quality Control Findings Report, which',
+        'is circulated to supervisors and management.',
         '',
         'PRIMARY FOCUS',
-        'The previous month of loan action reviews (' + prev.label + '). Treat the customer service and',
-        'delinquency figures as supporting context only; they should take no more than one sentence',
-        'between them unless something in them is plainly notable.',
+        'The loan action reviews CONDUCTED in ' + tagLabel(prevTag) + '. Treat the customer service and',
+        'delinquency figures as supporting context only; they should take no more than one',
+        'sentence between them unless something in them is plainly notable.',
+        '',
+        'READ THE METRICS THIS WAY — THIS MATTERS',
+        '- A loan action review belongs to the month it was REVIEWED in, not the month the',
+        '  loan action happened. Reviews are conducted the month after the action.',
+        '- The section headed "LOAN ACTION REVIEWS — PREVIOUS MONTH (' + tagLabel(prevTag) + ')" is the',
+        '  only source for anything you say about ' + tagLabel(prevTag) + '. Every count in your narrative',
+        '  about that month must come from that section and nowhere else.',
+        '- The CURRENT MONTH section is a different batch of loans that is still being worked.',
+        '  Never fold its counts into the ' + tagLabel(prevTag) + ' figures, and do not describe its',
+        '  reviews as outstanding or remaining from ' + tagLabel(prevTag) + '.',
+        '- The ALL TIME section spans every month in the collection. Use it only if you need',
+        '  to say whether the month was typical. Do not state it as a total for the month, and',
+        '  do not compute a ratio between the month and all time.',
+        '- "Open findings awaiting response" in the previous-month section are that month\'s own',
+        '  findings. If that number is above zero, the month produced findings — say so, and do',
+        '  not write that no findings were issued.',
+        '- Reviews still in the In Review state within the previous-month section are that',
+        '  month\'s unfinished work. Reviews in the current-month section are not.',
         '',
         'WHAT TO WRITE',
         '- Three short paragraphs, 150 to 250 words in total.',
-        '- Paragraph 1: the volume of review work completed in ' + prev.label + ' and how it compares to',
-        '  the all-time picture.',
-        '- Paragraph 2: what the findings point to — the checks that come up most often, how many',
-        '  findings were critical, and anything concentrated in one loan action type, team or group.',
-        '- Paragraph 3: where things stand now — open findings, anything past its response due date,',
-        '  and what management should expect next month.',
+        '- Paragraph 1: how much review work was conducted in ' + tagLabel(prevTag) + ' and how it was',
+        '  distributed across loan action types and teams.',
+        '- Paragraph 2: what the findings point to — how many were issued, how many were',
+        '  critical, the checks that came up most often, and anything concentrated in one loan',
+        '  action type, team or group.',
+        '- Paragraph 3: where things stand now — findings still awaiting response, anything past',
+        '  its response due date, and what management should expect next month.',
         '',
         'RULES',
         '- Use only the figures below. Do not estimate, extrapolate or invent any number.',
-        '- If a figure needed for a point is not in the data, leave the point out rather than guessing.',
-        '- Name teams, groups and loan action types. Do not name individual agents or supervisors;',
-        '  this narrative goes to management, and individual performance is handled separately.',
-        '- Plain, factual, government-report tone. No bullet points, no headings, no bold.',
+        '- If a figure needed for a point is not in the data, leave the point out rather than',
+        '  guessing, and do not say that the data is missing.',
+        '- Do not contradict yourself between paragraphs. Before you finish, check that the',
+        '  number of findings you state in paragraph 2 matches what you say in paragraph 3.',
+        '- Name teams, groups and loan action types. Do not name individual agents or',
+        '  supervisors; this narrative goes to management, and individual performance is',
+        '  handled separately.',
+        '- Plain, factual, government-report tone. Continuous prose only: no bullet points, no',
+        '  headings, no bold.',
         '- Do not open with "This report" or "In this report". Start with the substance.',
         '- Describe what the numbers show. Do not recommend disciplinary action.',
         '- Return the narrative text only, with no preamble and no closing remark.',
