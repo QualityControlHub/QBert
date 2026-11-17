@@ -4905,10 +4905,13 @@ if (metricsBtn) {
       .format(new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))); };
 
   let CHECKS = {};
+  // The report shows the wording of the check, not its ID. The ID only falls
+  // through when the checklists collection has no entry for it, since there
+  // is nothing else to show in that case.
   function checkLine(tok) {
     const m = String(tok).trim().match(/^([A-Za-z]*\d+)/);
     const hit = m ? CHECKS[m[1].toUpperCase()] : null;
-    return hit ? (hit.checkID || m[1]) + ' — ' + (hit.check || '') : String(tok).trim();
+    return hit && hit.check ? String(hit.check).trim() : String(tok).trim();
   }
   // findingCategory holds comma separated check IDs across all three
   // collections; a legacy single label is never split, because the check
