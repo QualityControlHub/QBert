@@ -110,6 +110,8 @@ body[data-width="full"]{--page-w:100%}
 .dt tbody tr:hover td{background:#eef1e4}
 .dt tbody tr:last-child td{border-bottom:0}
 .dt td.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;color:var(--muted)}
+.dt th.wide{width:62%}
+.dt td.wide{max-width:none;white-space:normal;overflow:visible;text-overflow:clip;min-width:340px;line-height:1.45}
 .dt td.act,.dt th.act{text-align:right;white-space:nowrap;width:1%}
 .dt td.act button{font-size:10.5px;padding:3px 10px;min-height:26px}
 .dt-foot{padding:8px 12px;font-size:11px;color:var(--muted);background:#fbfcf6;border-top:1px solid var(--line)}
@@ -2997,21 +2999,34 @@ async function loadDataEdit() {
   } catch { status.textContent = 'Failed to load.'; }
 }
 
+// Per-collection column layouts. Checklists are read for their wording, so
+// the housekeeping fields are dropped and the Check column takes the width
+// they were using. Anything without an entry here shows every field, as before.
+const DE_LAYOUT = {
+  checklists: { order: ['inactive', 'category', 'checkID', 'check'], wide: 'check' }
+};
+
 function renderDataEdit() {
   const q = document.getElementById('de-search').value.toLowerCase();
   const filtered = deRecords.filter(r => JSON.stringify(r).toLowerCase().includes(q));
   const table = document.getElementById('de-table');
   table.classList.add('dt-wrap');
   if (!filtered.length) { table.innerHTML = '<p class="dt-none">No records match.</p>'; return; }
-  const keys = Object.keys(filtered[0]).filter(k => !['collectionId','collectionName','expand'].includes(k));
+  const all = Object.keys(filtered[0]).filter(k => !['collectionId','collectionName','expand'].includes(k));
+  const layout = DE_LAYOUT[document.getElementById('de-collection').value];
+  // Match on lower case so a differently spelled field still resolves.
+  const find = want => all.find(k => k.toLowerCase() === want.toLowerCase());
+  const keys = layout ? layout.order.map(find).filter(Boolean) : all;
+  const wideKey = layout && layout.wide ? find(layout.wide) : '';
   const shown = filtered.slice(0, 50);
   const cell = (r, k) => {
     const v = r[k] == null ? '' : (typeof r[k] === 'object' ? JSON.stringify(r[k]) : String(r[k]));
-    const mono = ['id','created','updated'].includes(k) ? ' class="mono"' : '';
-    return '<td' + mono + ' title="' + safe(v) + '">' + safe(v) + '</td>';
+    const cls = k === wideKey ? ' class="wide"' : (['id','created','updated'].includes(k) ? ' class="mono"' : '');
+    return '<td' + cls + ' title="' + safe(v) + '">' + safe(v) + '</td>';
   };
   table.innerHTML = '<table class="dt"><thead><tr>' +
-    keys.map(k => '<th>' + safe(k) + '</th>').join('') + '<th class="act"></th></tr></thead><tbody>' +
+    keys.map(k => '<th' + (k === wideKey ? ' class="wide"' : '') + '>' + safe(k) + '</th>').join('') +
+    '<th class="act"></th></tr></thead><tbody>' +
     shown.map(r => '<tr>' + keys.map(k => cell(r, k)).join('') +
       '<td class="act"><button class="btn" onclick="editRecord(\'' + safe(r.id) + '\')">Edit</button></td></tr>').join('') +
     '</tbody></table>' +
