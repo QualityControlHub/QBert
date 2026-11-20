@@ -4014,7 +4014,6 @@ function nlLinkText(u) { return String(u || '').trim().replace(/^https?:\/\//i, 
 // flow fills exactly one page, so an issue of any length stays on one sheet.
 function nlDocHtml(month) {
   const secs = nlSections(month);
-  const index = secs.map(sec => '<li>' + safe(sec.title) + '</li>').join('');
   let first = true;
   const body = secs.map(sec => {
     const items = sec.items.map(it => {
@@ -4044,21 +4043,16 @@ function nlDocHtml(month) {
     '.plate h1{margin:0;font-size:40pt;line-height:.95;letter-spacing:-1px;font-weight:700;font-variant:small-caps;color:#002E6D}' +
     '.plate .sub{margin-top:3px;font-family:"Segoe UI",Arial,sans-serif;font-size:8.4pt;letter-spacing:5px;' +
       'text-transform:uppercase;color:#3b4350}' +
-    '.dateline{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #003F80;' +
-      'padding:3px 2px 4px;font-family:"Segoe UI",Arial,sans-serif;font-size:6.8pt;letter-spacing:1.6px;text-transform:uppercase}' +
+    '.dateline{display:flex;justify-content:center;align-items:center;border-bottom:3px solid #003F80;' +
+      'padding:4px 2px 5px;margin-bottom:7px;font-family:"Segoe UI",Arial,sans-serif;font-size:6.8pt;' +
+      'letter-spacing:1.6px;text-transform:uppercase}' +
     // The month sits in a light gold chip, the one banner the palette calls for.
     '.dateline b{font-size:7.6pt;letter-spacing:2px;background:#FFF5C9;padding:2px 9px;border-radius:2px;color:#1B1E29;white-space:nowrap}' +
-    '.issue{border:1px solid #D4E0EC;background:#F4F8FC;border-radius:3px;padding:5px 8px 6px;margin-bottom:7px}' +
-    '.issue h4{margin:0 0 3px;font-family:"Segoe UI",Arial,sans-serif;font-size:6.6pt;letter-spacing:2.4px;' +
-      'text-transform:uppercase;text-align:center;color:#003F80}' +
-    '.issue ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:4px 16px;' +
-      'font-size:8pt;font-style:italic}' +
-    '.issue li+li::before{content:"•";margin-right:16px;font-style:normal;color:#87A7C5}' +
     '.flow{flex:1;min-height:0;overflow:hidden;column-count:3;column-gap:0.19in;column-rule:1px solid #C9D6E3;' +
       'text-align:justify;hyphens:auto;-webkit-hyphens:auto;font-size:9.4pt;line-height:1.36}' +
     '.sec{break-inside:auto}' +
     '.kicker{display:flex;align-items:center;gap:6px;margin:9px 0 5px;text-align:center;font-family:"Segoe UI",Arial,sans-serif;' +
-      'font-size:.72em;letter-spacing:2.2px;text-transform:uppercase;color:#003F80;break-after:avoid}' +
+      'font-size:.72em;letter-spacing:2.2px;text-transform:uppercase;color:#003F80;break-after:avoid;break-inside:avoid}' +
     '.kicker span{padding:2px 7px;border-radius:2px;background:#EDF2F8}' +
     '.kicker::before,.kicker::after{content:"";flex:1 1 8px;min-width:6px;height:1px;background:#003F80}' +
     // Each section takes one colour from the palette, as a hairline and a very
@@ -4092,8 +4086,7 @@ function nlDocHtml(month) {
     '</style></head><body><div class="paper">' +
     '<div class="flag"><span>Published Quarterly</span><span>U.S. Small Business Administration</span><span>For Internal Distribution</span></div>' +
     '<header class="plate"><h1>SBA Disaster Center</h1><div class="sub">Quarterly Newsletter</div></header>' +
-    '<div class="dateline"><span>Disaster Loan Servicing and Liquidation Center</span><b>' + safe(month) + '</b><span>Office of Financial Program Operations</span></div>' +
-    (index ? '<div class="issue"><h4>In This Issue</h4><ul>' + index + '</ul></div>' : '') +
+    '<div class="dateline"><b>' + safe(month) + '</b></div>' +
     '<div class="flow" id="flow">' + (body || '<p>No items for this issue.</p>') + '</div>' +
     '<div class="foot"><span>SBA Disaster Center Quarterly Newsletter</span><span>' + safe(month) + '</span></div>' +
     '</div>' +
