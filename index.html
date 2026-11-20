@@ -3996,6 +3996,16 @@ function nlSections(month) {
 }
 
 function nlImageOf(it) { return it.image || it.imageUrl || it.photo || it.imageURL || ''; }
+// The Note is plain text typed into a textarea, never markup: a blank line
+// starts a new paragraph and a single newline breaks the line. Everything is
+// still escaped, so an angle bracket inside a quoted policy cannot break the
+// page, and nobody has to write HTML to get a second paragraph.
+function nlParas(text, cls, style) {
+  const t = String(text == null ? '' : text).replace(/\r\n?/g, '\n').trim();
+  if (!t) return '';
+  const open = '<p' + (cls ? ' class="' + cls + '"' : '') + (style ? ' style="' + style + '"' : '') + '>';
+  return t.split(/\n{2,}/).map(par => open + safe(par).replace(/\n/g, '<br>') + '</p>').join('');
+}
 function nlHref(u) { u = String(u || '').trim(); return /^[a-z][a-z0-9+.\-]*:/i.test(u) ? u : 'https://' + u.replace(/^\/+/, ''); }
 function nlLinkText(u) { return String(u || '').trim().replace(/^https?:\/\//i, '').replace(/\/$/, ''); }
 
@@ -4013,7 +4023,7 @@ function nlDocHtml(month) {
       return '<article class="story' + (lead ? ' lead' : '') + '">' +
         (it.sectionSubTitle ? '<h3 class="hed">' + safe(it.sectionSubTitle) + '</h3>' : '') +
         (img ? '<figure class="cut"><img src="' + safe(img) + '" alt=""></figure>' : '') +
-        (it.note ? '<p class="body">' + safe(it.note) + '</p>' : '') +
+        nlParas(it.note, 'body') +
         (it.noteLink ? '<p class="url">&#9656; <a href="' + safe(nlHref(it.noteLink)) + '" target="_blank" rel="noopener">' + safe(nlLinkText(it.noteLink)) + '</a></p>' : '') +
       '</article>';
     }).join('<div class="dinkus">&#10087;</div>');
@@ -4053,7 +4063,10 @@ function nlDocHtml(month) {
     '.hed{margin:0 0 2px;font-size:1.24em;line-height:1.14;font-weight:700;letter-spacing:-.2px;text-align:left;break-after:avoid}' +
     '.lead .hed{font-size:1.62em;line-height:1.08}' +
     '.body{margin:0}' +
-    '.lead .body::first-letter{float:left;font-size:3.2em;line-height:.78;padding:2px 4px 0 0;font-weight:700}' +
+    // Newspaper setting: later paragraphs are indented rather than spaced,
+    // which keeps the one-page fit routine honest.
+    '.body + .body{text-indent:1.1em}' +
+    '.lead .body:first-of-type::first-letter{float:left;font-size:3.2em;line-height:.78;padding:2px 4px 0 0;font-weight:700}' +
     '.url{margin:2px 0 0;font-family:"Segoe UI",Arial,sans-serif;font-size:.73em;letter-spacing:.2px;' +
       'color:#2b4a6f;overflow-wrap:anywhere;text-align:left}' +
     '.url a{color:#2b4a6f;text-decoration:underline}' +
@@ -4114,14 +4127,36 @@ function renderNLCards() {
   const month = document.getElementById('nl-month-select').value;
   const cards = document.getElementById('nl-cards');
   const items = nlData.filter(r => r.month === month);
-  const colors = ['#82B0B0', '#D4E5E1', '#FEEBE0', '#E1D5C9'];
+  // SBA palette. Each section gets a header bar, the text colour that reads
+  // against it, and a tint for the panel behind the stories. Gray and gold
+  // both take dark text — white on either falls below a readable contrast.
+  const SBA = [
+    { bar: '#003F80', text: '#FFFFFF', tint: '#EDF2F8' },
+    { bar: '#F1C400', text: '#1B1E29', tint: '#FFF5C9' },
+    { bar: '#87A7C5', text: '#1B1E29', tint: '#EEF3F8' },
+    { bar: '#002E6D', text: '#FFFFFF', tint: '#ECEFF6' },
+    { bar: '#969696', text: '#1B1E29', tint: '#F2F2F2' }
+  ];
   const sections = [...new Set(items.map(r => r.sectionTitle))];
   if (!sections.length) { cards.innerHTML = '<p>No items for this month.</p>'; return; }
   cards.innerHTML = sections.map((sec, i) => {
-    const color = colors[i % colors.length];
+    const c = SBA[i % SBA.length];
     const secItems = items.filter(r => r.sectionTitle === sec);
-    return '<div style="background:' + color + ';border-radius:10px;padding:16px"><h2 style="margin:0 0 12px;font-size:16px;color:#1a1a2e">' + sec + '</h2>' +
-      secItems.map(r => '<div style="background:white;border-radius:6px;padding:12px;margin-bottom:8px"><strong>' + (r.sectionSubTitle || '') + '</strong><p style="margin:6px 0 0;font-size:13px">' + (r.note || '') + '</p>' + (r.noteLink ? '<a href="' + r.noteLink + '" target="_blank" style="font-size:12px">Link</a>' : '') + '</div>').join('') + '</div>';
+    return '<section style="border:1px solid #D9D9D9;border-radius:10px;overflow:hidden;margin-bottom:16px">' +
+      '<h2 style="margin:0;padding:11px 16px;background:' + c.bar + ';color:' + c.text + ';font-size:14px;' +
+        'letter-spacing:.6px;text-transform:uppercase;font-weight:700">' + safe(sec) + '</h2>' +
+      '<div style="background:' + c.tint + ';padding:14px 14px 6px">' +
+      secItems.map(r =>
+        '<article style="background:#FFFFFF;border:1px solid #D9D9D9;border-left:4px solid ' + c.bar + ';' +
+          'border-radius:6px;padding:13px 15px;margin-bottom:10px">' +
+        (r.sectionSubTitle ? '<h3 style="margin:0 0 2px;font-size:14.5px;color:#1B1E29;font-weight:700">' +
+          safe(r.sectionSubTitle) + '</h3><div style="height:2px;width:34px;background:#CC1E25;margin:0 0 8px"></div>' : '') +
+        nlParas(r.note, '', 'margin:0 0 7px;font-size:13px;line-height:1.6;color:#1B1E29') +
+        (r.noteLink ? '<a href="' + safe(nlHref(r.noteLink)) + '" target="_blank" rel="noopener" ' +
+          'style="font-size:12px;color:#007DBC;font-weight:600;text-decoration:none">&#9656; ' +
+          safe(nlLinkText(r.noteLink)) + '</a>' : '') +
+        '</article>').join('') +
+      '</div></section>';
   }).join('');
 }
 </script>
