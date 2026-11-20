@@ -4027,37 +4027,51 @@ function nlDocHtml(month) {
         (it.noteLink ? '<p class="url">&#9656; <a href="' + safe(nlHref(it.noteLink)) + '" target="_blank" rel="noopener">' + safe(nlLinkText(it.noteLink)) + '</a></p>' : '') +
       '</article>';
     }).join('<div class="dinkus">&#10087;</div>');
-    return '<section class="sec"><h2 class="kicker"><span>' + safe(sec.title) + '</span></h2>' + items + '</section>';
+    return '<section class="sec s' + (secs.indexOf(sec) % 5) + '"><h2 class="kicker"><span>' +
+      safe(sec.title) + '</span></h2>' + items + '</section>';
   }).join('');
   return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<title>SBA Disaster Center Quarterly Newsletter — ' + safe(month) + '</title><style>' +
     '@page{size:letter portrait;margin:0}' +
     '*{box-sizing:border-box}' +
     'html,body{margin:0;padding:0;background:#f3f1e7;-webkit-print-color-adjust:exact;print-color-adjust:exact}' +
-    '.paper{width:8.5in;height:11in;margin:0 auto;background:#fffdf5;color:#15181d;padding:0.75in 0.79in 0.71in;' +
+    '.paper{width:8.5in;height:11in;margin:0 auto;background:#fffdf5;color:#1B1E29;padding:0.75in 0.79in 0.71in;' +
       'display:flex;flex-direction:column;font-family:Georgia,"Times New Roman",Times,serif;box-shadow:0 2px 14px #0000001a}' +
     '@media print{html,body{background:#fff}.paper{box-shadow:none;margin:0}}' +
     '.flag{display:flex;justify-content:space-between;align-items:center;font-family:"Segoe UI",Arial,sans-serif;' +
       'font-size:6.6pt;letter-spacing:1.3px;text-transform:uppercase;padding-bottom:4px}' +
-    '.plate{border-top:3px solid #15181d;border-bottom:1px solid #15181d;text-align:center;padding:7px 0 5px}' +
-    '.plate h1{margin:0;font-size:40pt;line-height:.95;letter-spacing:-1px;font-weight:700;font-variant:small-caps}' +
+    '.plate{border-top:3px solid #003F80;border-bottom:1px solid #003F80;text-align:center;padding:7px 0 5px}' +
+    '.plate h1{margin:0;font-size:40pt;line-height:.95;letter-spacing:-1px;font-weight:700;font-variant:small-caps;color:#002E6D}' +
     '.plate .sub{margin-top:3px;font-family:"Segoe UI",Arial,sans-serif;font-size:8.4pt;letter-spacing:5px;' +
       'text-transform:uppercase;color:#3b4350}' +
-    '.dateline{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #15181d;' +
+    '.dateline{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #003F80;' +
       'padding:3px 2px 4px;font-family:"Segoe UI",Arial,sans-serif;font-size:6.8pt;letter-spacing:1.6px;text-transform:uppercase}' +
-    '.dateline b{font-size:7.6pt;letter-spacing:2px}' +
-    '.issue{border-bottom:1px solid #15181d;padding:5px 0 6px;margin-bottom:7px}' +
+    // The month sits in a light gold chip, the one banner the palette calls for.
+    '.dateline b{font-size:7.6pt;letter-spacing:2px;background:#FFF5C9;padding:2px 9px;border-radius:2px;color:#1B1E29;white-space:nowrap}' +
+    '.issue{border:1px solid #D4E0EC;background:#F4F8FC;border-radius:3px;padding:5px 8px 6px;margin-bottom:7px}' +
     '.issue h4{margin:0 0 3px;font-family:"Segoe UI",Arial,sans-serif;font-size:6.6pt;letter-spacing:2.4px;' +
-      'text-transform:uppercase;text-align:center;color:#3b4350}' +
+      'text-transform:uppercase;text-align:center;color:#003F80}' +
     '.issue ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:4px 16px;' +
       'font-size:8pt;font-style:italic}' +
-    '.issue li+li::before{content:"•";margin-right:16px;font-style:normal;color:#8a8f98}' +
-    '.flow{flex:1;min-height:0;overflow:hidden;column-count:3;column-gap:0.19in;column-rule:1px solid #c9c6b8;' +
+    '.issue li+li::before{content:"•";margin-right:16px;font-style:normal;color:#87A7C5}' +
+    '.flow{flex:1;min-height:0;overflow:hidden;column-count:3;column-gap:0.19in;column-rule:1px solid #C9D6E3;' +
       'text-align:justify;hyphens:auto;-webkit-hyphens:auto;font-size:9.4pt;line-height:1.36}' +
     '.sec{break-inside:auto}' +
     '.kicker{display:flex;align-items:center;gap:6px;margin:9px 0 5px;text-align:center;font-family:"Segoe UI",Arial,sans-serif;' +
-      'font-size:.72em;letter-spacing:2.2px;text-transform:uppercase;color:#15181d;break-after:avoid}' +
-    '.kicker::before,.kicker::after{content:"";flex:1 1 8px;min-width:6px;height:1px;background:#15181d}' +
+      'font-size:.72em;letter-spacing:2.2px;text-transform:uppercase;color:#003F80;break-after:avoid}' +
+    '.kicker span{padding:2px 7px;border-radius:2px;background:#EDF2F8}' +
+    '.kicker::before,.kicker::after{content:"";flex:1 1 8px;min-width:6px;height:1px;background:#003F80}' +
+    // Each section takes one colour from the palette, as a hairline and a very
+    // light chip behind the kicker. The fills stay pale so the sheet still
+    // prints cleanly in black and white.
+    '.s1 .kicker{color:#7a6300}.s1 .kicker span{background:#FFF5C9}' +
+      '.s1 .kicker::before,.s1 .kicker::after{background:#F1C400}' +
+    '.s2 .kicker{color:#2b4a6f}.s2 .kicker span{background:#EEF3F8}' +
+      '.s2 .kicker::before,.s2 .kicker::after{background:#87A7C5}' +
+    '.s3 .kicker{color:#002E6D}.s3 .kicker span{background:#ECEFF6}' +
+      '.s3 .kicker::before,.s3 .kicker::after{background:#002E6D}' +
+    '.s4 .kicker{color:#4a4a4a}.s4 .kicker span{background:#F2F2F2}' +
+      '.s4 .kicker::before,.s4 .kicker::after{background:#969696}' +
     '.sec:first-child .kicker{margin-top:0}' +
     '.story{break-inside:avoid}' +
     '.hed{margin:0 0 2px;font-size:1.24em;line-height:1.14;font-weight:700;letter-spacing:-.2px;text-align:left;break-after:avoid}' +
@@ -4066,15 +4080,15 @@ function nlDocHtml(month) {
     // Newspaper setting: later paragraphs are indented rather than spaced,
     // which keeps the one-page fit routine honest.
     '.body + .body{text-indent:1.1em}' +
-    '.lead .body:first-of-type::first-letter{float:left;font-size:3.2em;line-height:.78;padding:2px 4px 0 0;font-weight:700}' +
+    '.lead .body:first-of-type::first-letter{float:left;font-size:3.2em;line-height:.78;padding:2px 4px 0 0;font-weight:700;color:#002E6D}' +
     '.url{margin:2px 0 0;font-family:"Segoe UI",Arial,sans-serif;font-size:.73em;letter-spacing:.2px;' +
-      'color:#2b4a6f;overflow-wrap:anywhere;text-align:left}' +
-    '.url a{color:#2b4a6f;text-decoration:underline}' +
+      'color:#007DBC;overflow-wrap:anywhere;text-align:left}' +
+    '.url a{color:#007DBC;text-decoration:underline}' +
     '.cut{margin:0 0 4px;break-inside:avoid}' +
-    '.cut img{width:100%;display:block;border:1px solid #15181d;filter:grayscale(.2) contrast(1.05)}' +
-    '.dinkus{text-align:center;font-size:.75em;color:#8a8f98;margin:5px 0;break-inside:avoid}' +
-    '.foot{border-top:3px solid #15181d;margin-top:7px;padding-top:4px;display:flex;justify-content:space-between;' +
-      'font-family:"Segoe UI",Arial,sans-serif;font-size:6.4pt;letter-spacing:1.2px;text-transform:uppercase;color:#3b4350}' +
+    '.cut img{width:100%;display:block;border:1px solid #87A7C5;filter:grayscale(.2) contrast(1.05)}' +
+    '.dinkus{text-align:center;font-size:.75em;color:#87A7C5;margin:5px 0;break-inside:avoid}' +
+    '.foot{border-top:3px solid #003F80;margin-top:7px;padding-top:4px;display:flex;justify-content:space-between;' +
+      'font-family:"Segoe UI",Arial,sans-serif;font-size:6.4pt;letter-spacing:1.2px;text-transform:uppercase;color:#003F80}' +
     '</style></head><body><div class="paper">' +
     '<div class="flag"><span>Published Quarterly</span><span>U.S. Small Business Administration</span><span>For Internal Distribution</span></div>' +
     '<header class="plate"><h1>SBA Disaster Center</h1><div class="sub">Quarterly Newsletter</div></header>' +
