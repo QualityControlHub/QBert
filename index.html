@@ -3925,7 +3925,7 @@ async function loadNewsletter() {
   const status = document.getElementById('nl-status');
   status.textContent = 'Loading…';
   try {
-    const data = await fetch(CONFIG.url + '/api/collections/newsletter/records?perPage=200&sort=sectionTitle').then(r => r.json());
+    const data = await fetch(CONFIG.url + '/api/collections/newsletter/records?perPage=200&sort=-month,sectionOrder,sectionTitle').then(r => r.json());
     nlRecords = data.items || [];
     status.textContent = nlRecords.length + ' records';
     renderNL();
@@ -3936,8 +3936,9 @@ function renderNL() {
   const table = document.getElementById('nl-table');
   table.classList.add('dt-wrap');
   if (!nlRecords.length) { table.innerHTML = '<p class="dt-none">No records.</p>'; return; }
-  table.innerHTML = '<table class="dt"><thead><tr><th>Month</th><th>Section</th><th>Subtitle</th><th>Note</th><th class="act"></th></tr></thead><tbody>' +
+  table.innerHTML = '<table class="dt"><thead><tr><th style="width:60px">Order</th><th>Month</th><th>Section</th><th>Subtitle</th><th>Note</th><th class="act"></th></tr></thead><tbody>' +
     nlRecords.map(r => '<tr>' +
+      '<td>' + (r.sectionOrder == null || r.sectionOrder === '' ? '&mdash;' : safe(String(r.sectionOrder))) + '</td>' +
       '<td>' + safe(r.month || '') + '</td>' +
       '<td>' + safe(r.sectionTitle || '') + '</td>' +
       '<td title="' + safe(r.sectionSubTitle || '') + '">' + safe(r.sectionSubTitle || '') + '</td>' +
@@ -3948,12 +3949,13 @@ function renderNL() {
 
 window.editNL = function(id) {
   const r = id ? nlRecords.find(x => x.id === id) : {};
-  const html = '<div id="nl-modal" style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:white;padding:20px;border-radius:8px;max-width:500px;width:90%;max-height:80vh;overflow:auto"><h3>' + (id ? 'Edit' : 'Add') + ' Newsletter Item</h3><div style="display:grid;gap:8px"><div><label>Month</label><input id="nl-month" value="' + (r.month||'').replace(/"/g,'"') + '" style="width:100%"></div><div><label>Section Title</label><input id="nl-section" value="' + (r.sectionTitle||'').replace(/"/g,'"') + '" style="width:100%"></div><div><label>Subtitle</label><input id="nl-sub" value="' + (r.sectionSubTitle||'').replace(/"/g,'"') + '" style="width:100%"></div><div><label>Note</label><textarea id="nl-note" rows="4" style="width:100%">' + (r.note||'') + '</textarea></div><div><label>Link</label><input id="nl-link" value="' + (r.noteLink||'').replace(/"/g,'"') + '" style="width:100%"></div></div><div style="margin-top:12px;display:flex;gap:8px"><button class="btn primary" onclick="saveNL(\'' + (id||'') + '\')">Save</button><button class="btn" onclick="document.getElementById(\'nl-modal\').remove()">Cancel</button>' + (id ? '<button class="btn" style="margin-left:auto;background:#8b1e1e;color:white" onclick="deleteNL(\'' + id + '\')">Delete</button>' : '') + '</div></div></div>';
+  const html = '<div id="nl-modal" style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999"><div style="background:white;padding:20px;border-radius:8px;max-width:500px;width:90%;max-height:80vh;overflow:auto"><h3>' + (id ? 'Edit' : 'Add') + ' Newsletter Item</h3><div style="display:grid;gap:8px"><div><label>Month</label><input id="nl-month" value="' + (r.month||'').replace(/"/g,'"') + '" style="width:100%"></div><div><label>Section Title</label><input id="nl-section" value="' + (r.sectionTitle||'').replace(/"/g,'"') + '" style="width:100%"></div><div><label>Section Order</label><input id="nl-order" type="number" step="1" value="' + (r.sectionOrder == null ? '' : String(r.sectionOrder)) + '" style="width:100%" placeholder="Lower numbers come first"><small style="color:#666;font-size:11px">Sections run low to high. Give every item in a section the same number; blank sends it to the end.</small></div><div><label>Subtitle</label><input id="nl-sub" value="' + (r.sectionSubTitle||'').replace(/"/g,'"') + '" style="width:100%"></div><div><label>Note</label><textarea id="nl-note" rows="4" style="width:100%">' + (r.note||'') + '</textarea></div><div><label>Link</label><input id="nl-link" value="' + (r.noteLink||'').replace(/"/g,'"') + '" style="width:100%"></div></div><div style="margin-top:12px;display:flex;gap:8px"><button class="btn primary" onclick="saveNL(\'' + (id||'') + '\')">Save</button><button class="btn" onclick="document.getElementById(\'nl-modal\').remove()">Cancel</button>' + (id ? '<button class="btn" style="margin-left:auto;background:#8b1e1e;color:white" onclick="deleteNL(\'' + id + '\')">Delete</button>' : '') + '</div></div></div>';
   document.body.insertAdjacentHTML('beforeend', html);
 };
 
 window.saveNL = async function(id) {
-  const body = { month: document.getElementById('nl-month').value, sectionTitle: document.getElementById('nl-section').value, sectionSubTitle: document.getElementById('nl-sub').value, note: document.getElementById('nl-note').value, noteLink: document.getElementById('nl-link').value };
+  const ord = document.getElementById('nl-order').value.trim();
+  const body = { month: document.getElementById('nl-month').value, sectionTitle: document.getElementById('nl-section').value, sectionOrder: ord === '' ? null : Number(ord), sectionSubTitle: document.getElementById('nl-sub').value, note: document.getElementById('nl-note').value, noteLink: document.getElementById('nl-link').value };
   const url = CONFIG.url + '/api/collections/newsletter/records' + (id ? '/' + id : '');
   const res = await fetch(url, { method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   if (res.ok) { document.getElementById('nl-modal')?.remove(); loadNewsletter(); }
@@ -3976,7 +3978,7 @@ async function loadFrontNewsletter() {
   if (!sel || !cards) return;
   cards.innerHTML = '<p>Loading…</p>';
   try {
-    const data = await fetch(CONFIG.url + '/api/collections/newsletter/records?perPage=200&sort=-month').then(r => r.json());
+    const data = await fetch(CONFIG.url + '/api/collections/newsletter/records?perPage=200&sort=-month,sectionOrder').then(r => r.json());
     nlData = data.items || [];
     const months = [...new Set(nlData.map(r => r.month).filter(Boolean))];
     sel.innerHTML = months.map(m => '<option value="' + m + '">' + m + '</option>').join('');
@@ -3988,11 +3990,26 @@ async function loadFrontNewsletter() {
 
 // ---- Newsletter exports: PDF, standalone HTML, PowerPoint -------------
 // All three read the same grouped data, so the three outputs stay in step.
+// sectionOrder drives the running order: a section sits at the lowest number
+// any of its items carries, and anything left blank falls to the end rather
+// than to the front, so a half-numbered issue still reads sensibly. Ties keep
+// the order the records came back in, which is how it behaved before.
+function nlOrderOf(r) {
+  const v = r.sectionOrder;
+  if (v === null || v === undefined || v === '') return Infinity;
+  const n = Number(v);
+  return isFinite(n) ? n : Infinity;
+}
+function nlGroup(items) {
+  const seen = [];
+  items.forEach(r => { const t = r.sectionTitle || 'General'; if (!seen.includes(t)) seen.push(t); });
+  return seen.map((t, i) => {
+    const rows = items.filter(r => (r.sectionTitle || 'General') === t);
+    return { title: t, items: rows, rank: Math.min(...rows.map(nlOrderOf)), seq: i };
+  }).sort((a, b) => a.rank - b.rank || a.seq - b.seq);
+}
 function nlSections(month) {
-  const items = nlData.filter(r => r.month === month);
-  const order = [];
-  items.forEach(r => { const t = r.sectionTitle || 'General'; if (!order.includes(t)) order.push(t); });
-  return order.map(t => ({ title: t, items: items.filter(r => (r.sectionTitle || 'General') === t) }));
+  return nlGroup(nlData.filter(r => r.month === month));
 }
 
 function nlImageOf(it) { return it.image || it.imageUrl || it.photo || it.imageURL || ''; }
@@ -4133,7 +4150,7 @@ document.getElementById('nl-html').addEventListener('click', () => {
 function renderNLCards() {
   const month = document.getElementById('nl-month-select').value;
   const cards = document.getElementById('nl-cards');
-  const items = nlData.filter(r => r.month === month);
+  const grouped = nlGroup(nlData.filter(r => r.month === month));
   // SBA palette. Each section gets a header bar, the text colour that reads
   // against it, and a tint for the panel behind the stories. Gray and gold
   // both take dark text — white on either falls below a readable contrast.
@@ -4144,14 +4161,13 @@ function renderNLCards() {
     { bar: '#002E6D', text: '#FFFFFF', tint: '#ECEFF6' },
     { bar: '#969696', text: '#1B1E29', tint: '#F2F2F2' }
   ];
-  const sections = [...new Set(items.map(r => r.sectionTitle))];
-  if (!sections.length) { cards.innerHTML = '<p>No items for this month.</p>'; return; }
-  cards.innerHTML = sections.map((sec, i) => {
+  if (!grouped.length) { cards.innerHTML = '<p>No items for this month.</p>'; return; }
+  cards.innerHTML = grouped.map((g, i) => {
     const c = SBA[i % SBA.length];
-    const secItems = items.filter(r => r.sectionTitle === sec);
+    const secItems = g.items;
     return '<section style="border:1px solid #D9D9D9;border-radius:10px;overflow:hidden;margin-bottom:16px">' +
       '<h2 style="margin:0;padding:11px 16px;background:' + c.bar + ';color:' + c.text + ';font-size:14px;' +
-        'letter-spacing:.6px;text-transform:uppercase;font-weight:700">' + safe(sec) + '</h2>' +
+        'letter-spacing:.6px;text-transform:uppercase;font-weight:700">' + safe(g.title) + '</h2>' +
       '<div style="background:' + c.tint + ';padding:14px 14px 6px">' +
       secItems.map(r =>
         '<article style="background:#FFFFFF;border:1px solid #D9D9D9;border-left:4px solid ' + c.bar + ';' +
