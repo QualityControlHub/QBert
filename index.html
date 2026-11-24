@@ -4024,6 +4024,9 @@ function nlParas(text, cls, style) {
   return t.split(/\n{2,}/).map(par => open + safe(par).replace(/\n/g, '<br>') + '</p>').join('');
 }
 function nlHref(u) { u = String(u || '').trim(); return /^[a-z][a-z0-9+.\-]*:/i.test(u) ? u : 'https://' + u.replace(/^\/+/, ''); }
+// Articles carry a plain "Link" rather than the URL itself: some of these run
+// long enough to break a newspaper column. The address stays in the href, and
+// in the title so it can be seen on hover or read off a printed page's PDF.
 function nlLinkText(u) { return String(u || '').trim().replace(/^https?:\/\//i, '').replace(/\/$/, ''); }
 
 // One-page broadsheet: nameplate, dateline, three justified columns.
@@ -4040,7 +4043,7 @@ function nlDocHtml(month) {
         (it.sectionSubTitle ? '<h3 class="hed">' + safe(it.sectionSubTitle) + '</h3>' : '') +
         (img ? '<figure class="cut"><img src="' + safe(img) + '" alt=""></figure>' : '') +
         nlParas(it.note, 'body') +
-        (it.noteLink ? '<p class="url">&#9656; <a href="' + safe(nlHref(it.noteLink)) + '" target="_blank" rel="noopener">' + safe(nlLinkText(it.noteLink)) + '</a></p>' : '') +
+        (it.noteLink ? '<p class="url">&#9656; <a href="' + safe(nlHref(it.noteLink)) + '" target="_blank" rel="noopener" title="' + safe(nlLinkText(it.noteLink)) + '">Link</a></p>' : '') +
       '</article>';
     }).join('<div class="dinkus">&#10087;</div>');
     return '<section class="sec s' + (secs.indexOf(sec) % 5) + '"><h2 class="kicker"><span>' +
@@ -4093,7 +4096,7 @@ function nlDocHtml(month) {
     '.body + .body{text-indent:1.1em}' +
     '.lead .body:first-of-type::first-letter{float:left;font-size:3.2em;line-height:.78;padding:2px 4px 0 0;font-weight:700;color:#002E6D}' +
     '.url{margin:2px 0 0;font-family:"Segoe UI",Arial,sans-serif;font-size:.73em;letter-spacing:.2px;' +
-      'color:#007DBC;overflow-wrap:anywhere;text-align:left}' +
+      'color:#007DBC;text-align:left}' +
     '.url a{color:#007DBC;text-decoration:underline}' +
     '.cut{margin:0 0 4px;break-inside:avoid}' +
     '.cut img{width:100%;display:block;border:1px solid #87A7C5;filter:grayscale(.2) contrast(1.05)}' +
@@ -4176,8 +4179,8 @@ function renderNLCards() {
           safe(r.sectionSubTitle) + '</h3><div style="height:2px;width:34px;background:#CC1E25;margin:0 0 8px"></div>' : '') +
         nlParas(r.note, '', 'margin:0 0 7px;font-size:13px;line-height:1.6;color:#1B1E29') +
         (r.noteLink ? '<a href="' + safe(nlHref(r.noteLink)) + '" target="_blank" rel="noopener" ' +
-          'style="font-size:12px;color:#007DBC;font-weight:600;text-decoration:none">&#9656; ' +
-          safe(nlLinkText(r.noteLink)) + '</a>' : '') +
+          'title="' + safe(nlLinkText(r.noteLink)) + '" ' +
+          'style="font-size:12px;color:#007DBC;font-weight:600;text-decoration:none">&#9656; Link</a>' : '') +
         '</article>').join('') +
       '</div></section>';
   }).join('');
