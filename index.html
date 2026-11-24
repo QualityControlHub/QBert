@@ -1799,6 +1799,15 @@ disconnectedPresentation();
       <button class="btn" id="nl-load">Load</button>
       <button class="btn primary" id="nl-add">Add Record</button>
     </div>
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px;padding:12px;
+      background:#f7f9fa;border:1px solid var(--line);border-radius:8px">
+      <div class="field" style="max-width:260px;margin:0">
+        <label for="nl-default">Issue shown on the front page</label>
+        <select id="nl-default"><option value="">Newest issue (automatic)</option></select>
+      </div>
+      <button class="btn" id="nl-default-save">Save Default</button>
+      <span id="nl-default-status" style="font-size:12px;color:var(--muted)"></span>
+    </div>
     <div id="nl-table" style="overflow-x:auto;max-height:400px;border:1px solid #ddd;border-radius:6px"></div>
     <div id="nl-status" style="margin-top:8px;font-size:12px"></div>
   </div>
@@ -3920,6 +3929,8 @@ const nlLoadBtn = document.getElementById('nl-load');
 const nlAddBtn = document.getElementById('nl-add');
 if (nlLoadBtn) nlLoadBtn.addEventListener('click', loadNewsletter);
 if (nlAddBtn) nlAddBtn.addEventListener('click', () => editNL(null));
+const nlDefBtn = document.getElementById('nl-default-save');
+if (nlDefBtn) nlDefBtn.addEventListener('click', () => nlSaveDefault());
 
 async function loadNewsletter() {
   const status = document.getElementById('nl-status');
@@ -3929,6 +3940,7 @@ async function loadNewsletter() {
     nlRecords = data.items || [];
     status.textContent = nlRecords.length + ' records';
     renderNL();
+    nlDefaultLoad();
   } catch (e) { status.textContent = 'Failed: ' + e.message; }
 }
 
@@ -3962,6 +3974,41 @@ window.saveNL = async function(id) {
   else alert('Save failed');
 };
 
+// Reads and writes app_state.defaultNewsletter, the issue the front page
+// opens on. Left blank, the front page falls back to the newest issue.
+async function nlDefaultLoad() {
+  const sel = document.getElementById('nl-default');
+  const st = document.getElementById('nl-default-status');
+  const months = [...new Set(nlRecords.map(r => r.month).filter(Boolean))]
+    .sort((a, b) => (typeof nlMonthKey === 'function' ? nlMonthKey(b) - nlMonthKey(a) : 0) || String(a).localeCompare(String(b)));
+  let current = '';
+  try {
+    const r = await fetch(CONFIG.url + '/api/collections/app_state/records?perPage=1&filter=' +
+      encodeURIComponent('user = "robert"'));
+    const rec = r.ok ? ((await r.json()).items || [])[0] : null;
+    if (rec) { nlStateId = rec.id; current = String(rec.defaultNewsletter || '').trim(); }
+  } catch (e) { /* the selector still works, saving is what will complain */ }
+  sel.innerHTML = '<option value="">Newest issue (automatic)</option>' +
+    months.map(m => '<option' + (m === current ? ' selected' : '') + '>' + safe(m) + '</option>').join('');
+  st.textContent = current ? 'Front page opens on ' + current + '.' : 'Front page opens on the newest issue.';
+  st.style.color = 'var(--muted)';
+}
+let nlStateId = '';
+window.nlSaveDefault = async function() {
+  const sel = document.getElementById('nl-default');
+  const st = document.getElementById('nl-default-status');
+  if (!nlStateId) { st.textContent = 'No app_state record for user "robert".'; st.style.color = '#a32f58'; return; }
+  st.textContent = 'Saving…'; st.style.color = 'var(--muted)';
+  try {
+    const res = await fetch(CONFIG.url + '/api/collections/app_state/records/' + encodeURIComponent(nlStateId),
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ defaultNewsletter: sel.value }) });
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' — add a text field named defaultNewsletter to app_state.');
+    st.textContent = sel.value ? 'Front page now opens on ' + sel.value + '.' : 'Front page now opens on the newest issue.';
+    st.style.color = '#216b50';
+  } catch (e) { st.textContent = 'Could not save. ' + e.message; st.style.color = '#a32f58'; }
+};
+
 window.deleteNL = async function(id) {
   if (!confirm('Delete this record?')) return;
   await fetch(CONFIG.url + '/api/collections/newsletter/records/' + id, { method: 'DELETE' });
@@ -3972,17 +4019,48 @@ window.deleteNL = async function(id) {
 
 <script>
 let nlData = [];
+const NL_STATE_USER = 'robert';
+// month is a text field, so sorting it as text puts June ahead of January.
+// Parse it into a real point in time instead; anything unparseable keeps its
+// place at the end rather than jumping to the front.
+const NL_MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+function nlMonthKey(m) {
+  const t = String(m || '').trim().match(/^([A-Za-z]+)\s+(\d{4})$/);
+  if (!t) return -Infinity;
+  const i = NL_MONTHS.findIndex(x => x.startsWith(t[1].slice(0, 3).toLowerCase()));
+  return i < 0 ? -Infinity : Number(t[2]) * 12 + i;
+}
+function nlMonthList() {
+  return [...new Set(nlData.map(r => r.month).filter(Boolean))]
+    .sort((a, b) => nlMonthKey(b) - nlMonthKey(a) || String(a).localeCompare(String(b)));
+}
+// Which issue the front page opens on. Held centrally so everyone sees the
+// same one, rather than per browser.
+async function nlReadDefault() {
+  try {
+    const r = await fetch(CONFIG.url + '/api/collections/app_state/records?perPage=1&filter=' +
+      encodeURIComponent('user = "' + NL_STATE_USER + '"'));
+    if (!r.ok) return '';
+    const rec = ((await r.json()).items || [])[0];
+    return rec ? String(rec.defaultNewsletter || '').trim() : '';
+  } catch (e) { return ''; }
+}
 async function loadFrontNewsletter() {
   const sel = document.getElementById('nl-month-select');
   const cards = document.getElementById('nl-cards');
   if (!sel || !cards) return;
   cards.innerHTML = '<p>Loading…</p>';
   try {
-    const data = await fetch(CONFIG.url + '/api/collections/newsletter/records?perPage=200&sort=-month,sectionOrder').then(r => r.json());
+    const [data, pinned] = await Promise.all([
+      fetch(CONFIG.url + '/api/collections/newsletter/records?perPage=200&sort=-month,sectionOrder').then(r => r.json()),
+      nlReadDefault()
+    ]);
     nlData = data.items || [];
-    const months = [...new Set(nlData.map(r => r.month).filter(Boolean))];
-    sel.innerHTML = months.map(m => '<option value="' + m + '">' + m + '</option>').join('');
-    if (months.length) sel.value = months[0];
+    const months = nlMonthList();
+    sel.innerHTML = months.map(m => '<option value="' + safe(m) + '">' + safe(m) + '</option>').join('');
+    // The pinned issue wins, but only while it still exists; otherwise the
+    // newest one, so a deleted or renamed issue cannot blank the page.
+    if (months.length) sel.value = months.includes(pinned) ? pinned : months[0];
     sel.onchange = renderNLCards;
     renderNLCards();
   } catch (e) { cards.innerHTML = '<p>Failed: ' + e.message + '</p>'; }
