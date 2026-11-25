@@ -1727,7 +1727,7 @@ disconnectedPresentation();
     <section class="rpt-block">
       <h3>Add to Collection <span class="rpt-tag">Keeps existing records</span></h3>
       <p class="del-hint">Paste a CSV to append rows to the delinquency collection. Nothing already in the collection is removed.
-        Columns: loanNumber, borrowerName, group, daysPastDue, nextDueDate, dateLastPay, fileReview, findingCategory, findingText, qualityNotes, qualityConcur.</p>
+        Columns: loanNumber, borrowerName, group, daysPastDue, nextDueDate, dateLastPay, fileReviewDate, checkId, checkText, notesAndFindings, qualityConcur.</p>
       <textarea id="del-add-csv" rows="7" style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px" placeholder="Paste CSV with headers"></textarea>
       <div style="margin:10px 0;display:flex;gap:8px;align-items:center">
         <button class="btn primary" id="del-add-run">Add Records</button>
@@ -1738,8 +1738,8 @@ disconnectedPresentation();
     <section class="rpt-block">
       <h3>Replace Collection <span class="rpt-tag wip">Deletes all records not reviewed</span></h3>
 
-      <p class="del-hint">Paste the delinquency CSV. Records with no <code>fileReview</code> date are deleted and replaced; any file that has already been reviewed is kept.
-        Columns: loanNumber, borrowerName, group, daysPastDue, nextDueDate, dateLastPay, fileReview, findingCategory, findingText, qualityNotes, qualityConcur.</p>
+      <p class="del-hint">Paste the delinquency CSV. Records with no <code>fileReviewDate</code> are deleted and replaced; any file that has already been reviewed is kept.
+        Columns: loanNumber, borrowerName, group, daysPastDue, nextDueDate, dateLastPay, fileReviewDate, checkId, checkText, notesAndFindings, qualityConcur.</p>
       <textarea id="del-csv" rows="7" style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px" placeholder="Paste CSV with headers"></textarea>
       <div style="margin:10px 0;display:flex;gap:8px;align-items:center">
         <button class="btn danger" id="del-replace">Replace Collection</button>
@@ -1750,7 +1750,7 @@ disconnectedPresentation();
     <section class="rpt-block">
       <h3>Delinquency Reviews <span class="rpt-tag">145–179 days</span></h3>
 
-      <p class="del-hint">A random five files with <strong>145–179 days past due</strong> and no <code>fileReview</code> date. Set the review date and the outcome on each; tick checks and write a finding only when you do not concur.</p>
+      <p class="del-hint">A random five files with <strong>145–179 days past due</strong> and no <code>fileReviewDate</code>. Set the review date and the outcome on each; tick checks and write a finding only when you do not concur.</p>
       <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
         <button class="btn" id="del-review-pull">Pull 5 Files</button>
         <span id="del-review-status" style="font-size:12px"></span>
@@ -1761,7 +1761,7 @@ disconnectedPresentation();
     <section class="rpt-block">
       <h3>DCIA Reviews <span class="rpt-tag wip">180+ days</span></h3>
 
-      <p class="del-hint">A random five files at <strong>180 or more days past due</strong> and no <code>fileReview</code> date, eligible for Treasury cross-servicing referral. Set the review date and the outcome on each; tick checks and write a finding only when you do not concur.</p>
+      <p class="del-hint">A random five files at <strong>180 or more days past due</strong> and no <code>fileReviewDate</code>, eligible for Treasury cross-servicing referral. Set the review date and the outcome on each; tick checks and write a finding only when you do not concur.</p>
       <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
         <button class="btn" id="del-dcia-pull">Pull 5 Files</button>
         <span id="del-dcia-status" style="font-size:12px"></span>
@@ -2088,8 +2088,8 @@ document.getElementById('g-save').addEventListener('click', async () => {
 // paging everything into the browser.
 const DL_COLS = [
   ['loanNumber','Loan Number'],['borrowerName','Borrower'],['group','Group'],['daysPastDue','Days Past Due'],
-  ['nextDueDate','Next Due'],['dateLastPay','Last Pay'],['fileReview','File Review'],['reviewer','Reviewer'],
-  ['findingCategory','Checks'],['qualityConcur','Outcome'],['findingText','Finding'],['issued','Issued?']
+  ['nextDueDate','Next Due'],['dateLastPay','Last Pay'],['fileReviewDate','File Review'],['reviewer','Reviewer'],
+  ['checkId','Check ID'],['qualityConcur','Outcome'],['checkText','Check'],['notesAndFindings','Finding'],['issued','Issued?']
 ];
 const DL_SEARCH = ['loanNumber','borrowerName','group'];
 let dlEditRecords = [];
@@ -2118,7 +2118,7 @@ async function loadDlEdit() {
 function dlCell(r, k) {
   const v = r[k];
   if (k === 'qualityConcur') return v === true ? 'Concur' : v === false ? 'Non Concur' : '';
-  if (k === 'nextDueDate' || k === 'dateLastPay') return delShowDate(v);
+  if (k === 'nextDueDate' || k === 'dateLastPay' || k === 'fileReviewDate') return delShowDate(v);
   return v == null ? '' : String(v);
 }
 
@@ -2157,18 +2157,18 @@ window.dlEditOpen = async function (id) {
       '<input id="dle-nextDueDate" type="date" value="' + day(r.nextDueDate) + '" style="' + inp + '"></div>' +
     '<div><label for="dle-dateLastPay" style="' + fld + '">Date Last Pay</label>' +
       '<input id="dle-dateLastPay" type="date" value="' + day(r.dateLastPay) + '" style="' + inp + '"></div>' +
-    '<div><label for="dle-fileReview" style="' + fld + '">File Review Date</label>' +
-      '<input id="dle-fileReview" type="date" value="' + day(r.fileReview) + '" style="' + inp + ';width:150px;background:#fdeff2;border-color:#e6bcc6;color:#8a2d45;font-weight:600"></div>' +
+    '<div><label for="dle-fileReviewDate" style="' + fld + '">File Review Date</label>' +
+      '<input id="dle-fileReviewDate" type="date" value="' + day(r.fileReviewDate) + '" style="' + inp + ';width:150px;background:#fdeff2;border-color:#e6bcc6;color:#8a2d45;font-weight:600"></div>' +
     '<div><label for="dle-reviewer" style="' + fld + '">Reviewer</label><select id="dle-reviewer" style="' + inp + '">' +
       delStaffOptions(r.reviewer || '') + '</select></div>' +
-    // One dropdown feeds both fields: the ID goes to findingCategory and the
-    // wording to findingText, so there is nothing to keep in step by hand.
-    '<div><label for="dle-findingText" style="' + fld + '">Check</label><select id="dle-findingText" style="' + inp + '">' +
+    // One dropdown feeds both fields: the ID goes to checkId and the wording
+    // to checkText, so there is nothing to keep in step by hand.
+    '<div><label for="dle-checkText" style="' + fld + '">Check</label><select id="dle-checkText" style="' + inp + '">' +
       '<option value="" data-id="">' + (delChecks.length ? 'Select check\u2026' : 'No DELINQUENCY checks found') + '</option>' +
-      (r.findingText && !delChecks.some(c => c.check === r.findingText)
-        ? '<option selected data-id="' + safe(r.findingCategory || '') + '">' + safe(r.findingText) + '</option>' : '') +
+      (r.checkText && !delChecks.some(c => c.check === r.checkText)
+        ? '<option selected data-id="' + safe(r.checkId || '') + '">' + safe(r.checkText) + '</option>' : '') +
       delChecks.map(c => '<option value="' + safe(c.check || '') + '" data-id="' + safe(c.checkID || '') + '"' +
-        (r.findingText === c.check ? ' selected' : '') + '>' +
+        (r.checkText === c.check ? ' selected' : '') + '>' +
         safe((c.checkID ? c.checkID + ' \u2014 ' : '') + (c.check || '')) + '</option>').join('') +
       '</select></div>' +
     '<div><label for="dle-qualityConcur" style="' + fld + '">Outcome</label><select id="dle-qualityConcur" style="' + inp + '">' +
@@ -2179,8 +2179,8 @@ window.dlEditOpen = async function (id) {
       '<option value="">Not set</option>' +
       DEL_ISSUED.map(o => '<option' + (o === r.issued ? ' selected' : '') + '>' + o + '</option>').join('') +
       '</select></div>' +
-    '<div><label for="dle-qualityNotes" style="' + fld + '">Finding</label>' +
-      '<textarea id="dle-qualityNotes" rows="3" style="' + inp + ';resize:vertical">' + safe(r.qualityNotes || '') + '</textarea></div>';
+    '<div><label for="dle-notesAndFindings" style="' + fld + '">Finding</label>' +
+      '<textarea id="dle-notesAndFindings" rows="3" style="' + inp + ';resize:vertical">' + safe(r.notesAndFindings || '') + '</textarea></div>';
   document.body.insertAdjacentHTML('beforeend',
     '<div id="dl-edit-modal" style="position:fixed;inset:0;background:#0006;display:flex;align-items:center;justify-content:center;z-index:999">' +
     '<div style="background:white;padding:20px;border-radius:10px;max-width:480px;width:92%;max-height:86vh;overflow:auto">' +
@@ -2201,13 +2201,13 @@ window.dlEditSave = async function (id) {
   if (!loan) { st.textContent = 'Enter the loan number.'; st.style.color = '#a32f58'; return; }
   const body = { loanNumber: loan, borrowerName: val('borrowerName'), group: val('group'),
     reviewer: val('reviewer'), issued: val('issued'),
-    findingText: val('findingText'), qualityNotes: val('qualityNotes') };
+    checkText: val('checkText'), notesAndFindings: val('notesAndFindings') };
   // The check ID travels on the selected option rather than its own box.
-  const chk = document.getElementById('dle-findingText');
-  body.findingCategory = chk && chk.selectedOptions[0] ? (chk.selectedOptions[0].dataset.id || '') : '';
+  const chk = document.getElementById('dle-checkText');
+  body.checkId = chk && chk.selectedOptions[0] ? (chk.selectedOptions[0].dataset.id || '') : '';
   const dpd = val('daysPastDue');
   if (dpd !== '' && !isNaN(Number(dpd))) body.daysPastDue = Number(dpd);
-  ['nextDueDate','dateLastPay','fileReview'].forEach(k => { const d = val(k); body[k] = d ? d + ' 00:00:00.000Z' : ''; });
+  ['nextDueDate','dateLastPay','fileReviewDate'].forEach(k => { const d = val(k); body[k] = d ? d + ' 00:00:00.000Z' : ''; });
   const oc = val('qualityConcur');
   body.qualityConcur = oc === 'true' ? true : oc === 'false' ? false : null;
   st.textContent = 'Saving…'; st.style.color = '#5a6b80';
@@ -2617,9 +2617,9 @@ document.getElementById('rpt-download').addEventListener('click', () => {
 });
 
 // ---- Delinquency workspace: replace, reviews, DCIA ---------------------
-const DEL_FIELDS = ['loanNumber','borrowerName','group','daysPastDue','nextDueDate','dateLastPay','fileReview','reviewer','findingCategory','findingText','qualityNotes','qualityConcur','issued'];
+const DEL_FIELDS = ['loanNumber','borrowerName','group','daysPastDue','nextDueDate','dateLastPay','fileReviewDate','reviewer','checkId','checkText','notesAndFindings','qualityConcur','issued'];
 const DEL_NUM = ['daysPastDue'];
-const DEL_DATE = ['nextDueDate','dateLastPay','fileReview'];
+const DEL_DATE = ['nextDueDate','dateLastPay','fileReviewDate'];
 const DEL_BOOL = ['qualityConcur'];
 let delChecks = [], delRows = {}, delGroups = [], delStaff = [];
 const DEL_ISSUED = ['Ready', 'Hold', 'Sent'];
@@ -2673,7 +2673,11 @@ async function delLoadLists() {
     ]);
     delChecks = (ck.items || []).filter(c => /^delinquen/i.test(String(c.category || '').trim()))
       .sort((a, b) => String(a.checkID || '').localeCompare(String(b.checkID || ''), undefined, { numeric: true }));
-    delStaff = [...new Set((sf.items || []).map(x => String(x.name || x.staffName || x.agent || '').trim()).filter(Boolean))]
+    // Reviewers only. The staff collection holds every agent and supervisor
+    // too, which is why this list used to run long.
+    delStaff = [...new Set((sf.items || [])
+      .filter(x => /^\s*reviewer\s*$/i.test(String(x.role || '')))
+      .map(x => String(x.name || x.staffName || x.agent || '').trim()).filter(Boolean))]
       .sort((a, b) => a.localeCompare(b));
   } catch (e) { console.warn('Delinquency lists failed', e); }
 }
@@ -2689,10 +2693,11 @@ window.delToggleIssued = function (el) {
   if (box) box.style.display = el.value === 'false' ? '' : 'none';
 };
 
-// A record's failed checks. findingCategory holds comma separated check IDs,
-// the same shape loan action and customer service findings use.
+// A record's failed checks. checkId holds comma separated check IDs, the
+// same shape loan action and customer service findings use under their own
+// field names.
 function delChecksOf(r) {
-  const cat = String(r.findingCategory || '').trim();
+  const cat = String(r.checkId || '').trim();
   if (cat) return cat.split(/\s*,\s*/).map(x => x.trim()).filter(Boolean);
   const legacy = String(r.qualityCheck || '').trim();
   return legacy ? [legacy] : [];
@@ -2713,9 +2718,9 @@ function delCard(r) {
   const i = id => 'd-' + id + '-' + r.id;
   // These cards only ever draw files that have never been reviewed, so a
   // qualityConcur sitting on the record came in with the import, not from a
-  // reviewer. Honour it only once there is a fileReview date behind it;
+  // reviewer. Honour it only once there is a fileReviewDate behind it;
   // otherwise the card opens on Concur.
-  const reviewed = !!String(r.fileReview || '').trim();
+  const reviewed = !!String(r.fileReviewDate || '').trim();
   const isNon = reviewed && r.qualityConcur === false;
   return '<div class="del-card" data-rec="' + safe(r.id) + '">' +
     '<div class="del-head"><h4>' + safe(r.loanNumber || 'No loan number') + '</h4>' +
@@ -2727,7 +2732,7 @@ function delCard(r) {
         '<input id="' + i('group') + '" data-group list="del-group-list" value="' + safe(r.group || '') + '" placeholder="Group"></div>' +
     '</div>' +
     '<div class="del-grid">' +
-      '<div class="del-f"><label for="' + i('fr') + '">File Review date</label><input type="date" class="del-fr" id="' + i('fr') + '" value="' + safe(String(r.fileReview || '').slice(0, 10) || delToday()) + '"></div>' +
+      '<div class="del-f"><label for="' + i('fr') + '">File Review date</label><input type="date" class="del-fr" id="' + i('fr') + '" value="' + safe(String(r.fileReviewDate || '').slice(0, 10) || delToday()) + '"></div>' +
       '<div class="del-f"><label for="' + i('rev') + '">Reviewer</label>' +
         '<select id="' + i('rev') + '" data-reviewer>' + delStaffOptions(r.reviewer || '') + '</select></div>' +
       '<div class="del-f" data-issued-wrap' + (isNon ? '' : ' style="display:none"') + '>' +
@@ -2740,7 +2745,7 @@ function delCard(r) {
         '<div class="g-checks" data-checks>' + checkBoxes + '</div></div>' +
     '</div>' +
     '<div class="del-grid">' +
-      '<div class="del-f del-full"><label for="' + i('finding') + '">Finding / Notes</label><textarea id="' + i('finding') + '">' + safe(r.findingText || r.qualityNotes || '') + '</textarea></div>' +
+      '<div class="del-f del-full"><label for="' + i('finding') + '">Finding / Notes</label><textarea id="' + i('finding') + '">' + safe(r.notesAndFindings || '') + '</textarea></div>' +
     '</div>' +
     '<div class="del-act"><div class="del-concur">' +
       '<label><input type="radio" onchange="delToggleIssued(this)" name="' + i('concur') + '" value="true"' + (isNon ? '' : ' checked') + '> Concur</label>' +
@@ -2763,7 +2768,15 @@ window.delSave = async function (btn) {
   const q = sel => card.querySelector(sel);
   const st = q('[id^="d-st-"]');
   const concur = card.querySelector('input[type=radio]:checked');
-  const checks = [...card.querySelectorAll('[data-check]:checked')].map(x => x.value);
+  const ticked = [...card.querySelectorAll('[data-check]:checked')];
+  const checks = ticked.map(x => x.value);
+  // The ticked checks supply both the IDs and their wording; what the
+  // reviewer types is theirs and goes to notesAndFindings. Before the rename
+  // this text was written to findingText, where nothing ever read it back.
+  const checkWording = ticked.map(x => {
+    const hit = delChecks.find(c => String(c.checkID || '').trim().toUpperCase() === String(x.value).trim().toUpperCase());
+    return hit && hit.check ? String(hit.check).trim() : '';
+  }).filter(Boolean).join(' | ');
   const finding = q('textarea[id^="d-finding-"]').value.trim();
   const day = q('input[id^="d-fr-"]').value;
   if (!day) { st.textContent = 'Set the File Review date.'; st.style.color = '#a32f58'; return; }
@@ -2776,10 +2789,11 @@ window.delSave = async function (btn) {
   const revEl = q('[data-reviewer]'), issEl = q('[data-issued]');
   const body = {
     group: q('[data-group]').value.trim(),
-    fileReview: day + ' 00:00:00.000Z',
+    fileReviewDate: day + ' 00:00:00.000Z',
     reviewer: revEl ? revEl.value : '',
-    findingCategory: checks.join(', '),
-    findingText: finding,
+    checkId: checks.join(', '),
+    checkText: checkWording,
+    notesAndFindings: finding,
     qualityConcur: !isNon
   };
   // Only a finding carries an issued state; a concur clears it.
@@ -2802,12 +2816,12 @@ async function delPull(kind) {
   listEl.innerHTML = '';
   await delLoadLists();
   // Only files that have never been reviewed are eligible for a draw.
-  const filter = (isDcia ? 'daysPastDue >= 180' : '(daysPastDue >= 145 && daysPastDue <= 179)') + ' && fileReview = ""';
+  const filter = (isDcia ? 'daysPastDue >= 180' : '(daysPastDue >= 145 && daysPastDue <= 179)') + ' && fileReviewDate = ""';
   try {
     const url = CONFIG.url + '/api/collections/delinquency/records?perPage=500&filter=' + encodeURIComponent(filter);
     const res = await fetch(url);
     if (!res.ok) throw new Error('delinquency returned HTTP ' + res.status);
-    let items = ((await res.json()).items || []).filter(r => !String(r.fileReview || '').trim());
+    let items = ((await res.json()).items || []).filter(r => !String(r.fileReviewDate || '').trim());
     // Both sections draw the same way: shuffle the eligible files, take five.
     for (let i = items.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [items[i], items[j]] = [items[j], items[i]]; }
     items = items.slice(0, 5);
@@ -2840,11 +2854,11 @@ async function delImportCsv(textareaId, statusId, replace) {
   if (!known.length) { status.textContent = 'No recognised columns. Expected: ' + DEL_FIELDS.join(', '); status.style.color = '#a32f58'; return; }
   const unknown = headers.filter((h, i) => !mapped[i]);
   const question = replace
-    ? 'Replace the unreviewed delinquency records with ' + rows.length + ' rows?\n\nOnly records with no fileReview date are deleted. Files that have already been reviewed are kept.'
+    ? 'Replace the unreviewed delinquency records with ' + rows.length + ' rows?\n\nOnly records with no fileReviewDate are deleted. Files that have already been reviewed are kept.'
     : 'Add ' + rows.length + ' row' + (rows.length === 1 ? '' : 's') + ' to the delinquency collection?\n\nExisting records are kept.';
   if (!confirm(question + '\n\nMapped columns: ' + known.join(', ') + (unknown.length ? '\nIgnored: ' + unknown.join(', ') : ''))) return;
   if (replace) {
-    // fileReview is the record of work done, so a reviewed file is never
+    // fileReviewDate is the record of work done, so a reviewed file is never
     // deleted. Everything else is paged through and cleared.
     status.textContent = 'Reading the collection…'; status.style.color = '#5a6b80';
     let kept = 0, removed = 0;
@@ -2856,7 +2870,7 @@ async function delImportCsv(textareaId, statusId, replace) {
         const j = await r.json();
         all = all.concat(j.items || []); pages = j.totalPages || 1; page++;
       } while (page <= pages);
-      const doomed = all.filter(r => !String(r.fileReview || '').trim());
+      const doomed = all.filter(r => !String(r.fileReviewDate || '').trim());
       kept = all.length - doomed.length;
       for (const rec of doomed) {
         const d = await fetch(CONFIG.url + '/api/collections/delinquency/records/' + rec.id, { method: 'DELETE' });
@@ -3267,9 +3281,9 @@ function dqConcurTag(r) {
 // left out entirely when the record carries none.
 function dqReviewBlock(r) {
   const checks = delChecksOf(r).map(delCheckText).filter(Boolean);
-  const notes = String(r.qualityNotes || '').trim();
+  const notes = String(r.notesAndFindings || '').trim();
   return '<div class="dq-review" style="background:' + dqNoteBg(r) + '">' +
-    '<p class="when">Review Performed ' + safe(dqDate(r.fileReview)) + '</p>' +
+    '<p class="when">Review Performed ' + safe(dqDate(r.fileReviewDate)) + '</p>' +
     (checks.length ? '<ul class="dq-checks">' + checks.map(c => '<li>' + safe(c) + '</li>').join('') + '</ul>' : '') +
     (notes ? '<dl class="dq-rev"><dt>Notes</dt><dd>' + safe(notes) + '</dd></dl>' : '') +
   '</div>';
@@ -3295,9 +3309,9 @@ async function loadAging() {
     // The check wording lives in checklists; load it so the cards can show
     // more than a bare check ID.
     if (typeof delLoadLists === 'function') { try { await delLoadLists(); } catch (e) {} }
-    // A file counts as reviewed once it carries a fileReview date.
-    const items = (await dqFetch('fileReview != "" && daysPastDue <= 179', '-fileReview'))
-      .filter(r => String(r.fileReview || '').trim());
+    // A file counts as reviewed once it carries a fileReviewDate.
+    const items = (await dqFetch('fileReviewDate != "" && daysPastDue <= 179', '-fileReviewDate'))
+      .filter(r => String(r.fileReviewDate || '').trim());
     if (!items.length) { cards.innerHTML = '<p class="cards-empty">No delinquency files have been reviewed yet.</p>'; return; }
     const groups = {};
     items.forEach(r => {
@@ -3331,8 +3345,8 @@ async function loadDcia() {
   cards.innerHTML = '<p class="cards-empty">Loading…</p>';
   try {
     if (typeof delLoadLists === 'function') { try { await delLoadLists(); } catch (e) {} }
-    const items = (await dqFetch('fileReview != "" && daysPastDue >= 180', '-daysPastDue'))
-      .filter(r => String(r.fileReview || '').trim());
+    const items = (await dqFetch('fileReviewDate != "" && daysPastDue >= 180', '-daysPastDue'))
+      .filter(r => String(r.fileReviewDate || '').trim());
     if (!items.length) { cards.innerHTML = '<p class="cards-empty">No reviewed files are 180 or more days past due.</p>'; return; }
     cards.innerHTML = items.map(r =>
       '<article class="dcia-card">' +
@@ -5067,11 +5081,12 @@ if (metricsBtn) {
     const hit = m ? CHECKS[m[1].toUpperCase()] : null;
     return hit && hit.check ? String(hit.check).trim() : String(tok).trim();
   }
-  // findingCategory holds comma separated check IDs across all three
+  // The check IDs, comma separated. Loan action and customer service keep
+  // them in findingCategory; delinquency renamed the field to checkId.
   // collections; a legacy single label is never split, because the check
   // wording itself can contain commas.
   function checksOf(r, legacyField) {
-    const cat = String(r.findingCategory || '').trim();
+    const cat = String(r.findingCategory || r.checkId || '').trim();
     if (cat) return cat.split(/\s*,\s*/).map(x => x.trim()).filter(Boolean).map(checkLine);
     const legacy = legacyField ? String(r[legacyField] || '').trim() : '';
     return legacy ? [checkLine(legacy)] : [];
@@ -5191,7 +5206,7 @@ if (metricsBtn) {
       const [la, cs, dq, ck] = await Promise.all([
         getAll('loan_action_reviews', withRev(F_LA), '-findingIssuedOn'),
         getAll('customer_service', withRev(F_CS), '-updated'),
-        getAll('delinquency', withRev(F_DQ), '-fileReview'),
+        getAll('delinquency', withRev(F_DQ), '-fileReviewDate'),
         getAll('checklists', '', '')
       ]);
       CHECKS = {};
@@ -5252,8 +5267,8 @@ if (metricsBtn) {
       const dqRows = dq.map(r => cell('0 0 10px', block(SAGE,
         'Loan ' + esc(r.loanNumber || 'Not recorded') + (r.borrowerName ? ' <span style="font-weight:normal;color:#5a6b80">· ' + esc(r.borrowerName) + '</span>' : ''),
         r.daysPastDue == null ? '' : r.daysPastDue + ' days past due',
-        [['Group', r.group, b_(r.group)], ['Reviewed', day(r.fileReview), b_(day(r.fileReview))]],
-        checksOf(r), r.qualityNotes || '', '', '#e9ecde'))).join('');
+        [['Group', r.group, b_(r.group)], ['Reviewed', day(r.fileReviewDate), b_(day(r.fileReviewDate))]],
+        checksOf(r), r.notesAndFindings || '', '', '#e9ecde'))).join('');
 
       const total = laF.length + cs.length + dq.length;
       const tile = (n, lab, bg, fg) => '<td width="33%" align="center" bgcolor="' + bg + '" style="width:33%;border:0;' +
@@ -5301,7 +5316,7 @@ if (metricsBtn) {
         ...narrPlain,
         flat('Loan Action Findings (' + laF.length + ')', laF, r => '  ' + (r.title || '?') + ' · ' + (r.loanAction || '') + ' · ' + (r.findingText || '')), '',
         flat('Customer Service Findings (' + cs.length + ')', cs, r => '  ' + (r.contactID || '?') + ' · ' + (r.agent || '') + ' · ' + (r.findingComment || '')), '',
-        flat('Delinquency Findings (' + dq.length + ')', dq, r => '  ' + (r.loanNumber || '?') + ' · ' + (r.group || '') + ' · ' + (r.qualityNotes || ''))].join('\n');
+        flat('Delinquency Findings (' + dq.length + ')', dq, r => '  ' + (r.loanNumber || '?') + ' · ' + (r.group || '') + ' · ' + (r.notesAndFindings || ''))].join('\n');
       fname = 'QC_Findings_' + a + '.html';
       // Held for Mark Sent: only the two collections that carry issued.
       lastSent = { cs: cs.map(r => r.id), dq: dq.map(r => r.id) };
@@ -5327,7 +5342,7 @@ if (metricsBtn) {
       const [la, cs, dq] = await Promise.all([
         getAll('loan_action_reviews', withRev(F_LA), '-findingIssuedOn'),
         getAll('customer_service', withRev(F_CS_ALL), '-updated'),
-        getAll('delinquency', withRev(F_DQ_ALL), '-fileReview')
+        getAll('delinquency', withRev(F_DQ_ALL), '-fileReviewDate')
       ]);
       cs.sort(byType);
       const S = 'font-family:Calibri,Segoe UI,sans-serif';
@@ -5367,7 +5382,7 @@ if (metricsBtn) {
       const csR = cs.map(r => ({ __type: r.type, __loan: r.loanNumber || r.contactID, __rev: r.reviewer,
         __s: r.issued, __txt: r.findingComment, __when: chip(r.issued) }));
       const dqR = dq.map(r => ({ __loan: r.loanNumber, __rev: r.reviewer, __s: r.issued,
-        __txt: r.qualityNotes, __when: chip(r.issued) }));
+        __txt: r.notesAndFindings, __when: chip(r.issued) }));
       const all = laR.length + csR.length + dqR.length;
       const rdy = laR.length + csR.filter(r => !/hold/i.test(String(r.__s || ''))).length +
                   dqR.filter(r => !/hold/i.test(String(r.__s || ''))).length;
@@ -5472,7 +5487,7 @@ if (metricsBtn) {
   // though the check wording itself can contain them.
   const checkIds = rows => {
     const m = {};
-    rows.forEach(r => String(r.findingCategory || '').split(',').map(x => x.trim()).filter(Boolean)
+    rows.forEach(r => String(r.findingCategory || r.checkId || '').split(',').map(x => x.trim()).filter(Boolean)
       .forEach(id => { const c = CHECKS[id.toUpperCase()];
         const k = id + (c && c.check ? ' — ' + c.check : ''); m[k] = (m[k] || 0) + 1; }));
     return m;
@@ -5524,7 +5539,7 @@ if (metricsBtn) {
   }
 
   function dqStats(rows, pad) {
-    const reviewed = rows.filter(r => String(r.fileReview || '').trim());
+    const reviewed = rows.filter(r => String(r.fileReviewDate || '').trim());
     const nonConcur = reviewed.filter(r => r.qualityConcur === false);
     const bucket = r => {
       const d = Number(r.daysPastDue);
@@ -5553,7 +5568,7 @@ if (metricsBtn) {
       const [la, cs, dq, ck] = await Promise.all([
         getAll('loan_action_reviews', withRev(''), '-actionDate'),
         getAll('customer_service', withRev(''), '-created'),
-        getAll('delinquency', withRev(''), '-fileReview'),
+        getAll('delinquency', withRev(''), '-fileReviewDate'),
         getAll('checklists', '', '')
       ]);
       CHECKS = {};
@@ -5564,7 +5579,7 @@ if (metricsBtn) {
       const laCur = la.filter(r => reviewTag(r) === curTag);
       const laActionMonths = [...new Set(laPrev.map(actionTag).filter(Boolean))].sort().join(', ') || 'not recorded';
       const csPrev = cs.filter(r => inWin(r.created, prev));
-      const dqPrev = dq.filter(r => inWin(r.fileReview, prev));
+      const dqPrev = dq.filter(r => inWin(r.fileReviewDate, prev));
 
       metricsText = [
         'QC METRICS',
